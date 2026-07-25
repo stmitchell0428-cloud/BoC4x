@@ -1,0 +1,173 @@
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+
+public class CameraFollow : MonoBehaviour
+{
+    public static CameraFollow Instance { get; private set; }
+
+    [Header("Target Tracking")]
+    public Transform playerTarget;
+
+    [Header("Tracking Settings")]
+    public float trackingSmoothness = 6f;
+    public float cameraHeightDepth = -10f;
+
+    [Header("Free Pan")]
+    public float keyboardPanSpeed = 22f;
+    public float dragPanSpeed = 1f;
+
+    Vector3? temporaryPanPosition;
+    float temporaryPanUntil;
+    bool userPanning;
+    bool dragPanActive;
+    Vector3 dragPanCamStart;
+    Vector2 dragPanMouseStart;
+    Camera cam;
+
+    void Awake()
+    {
+        Instance = this;
+        cam = GetComponent<Camera>();
+        if (cam == null)
+            cam = Camera.main;
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
+    public void FollowUnit(Unit unit)
+    {
+        if (unit == null) return;
+        playerTarget = unit.transform;
+        userPanning = false;
+        dragPanActive = false;
+        ClearTemporaryPan();
+    }
+
+    public void PanToHex(HexCoordinates hex, float holdSeconds = 4f)
+    {
+        if (HexGridMap.Instance == null) return;
+        var world = HexGridMap.Instance.HexToWorld(hex);
+        temporaryPanPosition = new Vector3(world.x, world.y, cameraHeightDepth);
+        temporaryPanUntil = Time.time + holdSeconds;
+        userPanning = true;
+        dragPanActive = false;
+    }
+
+    public void ClearTemporaryPan()
+    {
+        temporaryPanPosition = null;
+        temporaryPanUntil = 0f;
+    }
+
+    public void RecenterOnActiveUnit()
+    {
+        var selected = TurnManager.Instance?.SelectedUnit;
+        if (selected != null)
+            FollowUnit(selected);
+        else if (playerTarget != null)
+            userPanning = false;
+    }
+
+    void Update()
+    {
+        if (!TurnManager.Instance?.IsPlayerTurn ?? true)
+            return;
+        if (MatchController.Instance != null && MatchController.Instance.IsMatchOver)
+            return;
+        if (CityScreenPanel.Instance != null && CityScreenPanel.Instance.IsOpen)
+            return;
+        if (ConfessionTechPanel.Instance != null && ConfessionTechPanel.Instance.IsOpen)
+            return;
+
+        HandleKeyboardPan();
+        HandleDragPan();
+
+        if (Keyboard.current != null && Keyboard.current.homeKey.wasPressedThisFrame)
+            RecenterOnActiveUnit();
+    }
+
+    void HandleKeyboardPan()
+    {
+        if (Keyboard.current == null) return;
+
+        Vector2 move = Vector2.zero;
+        if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) move.y += 1f;
+        if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) move.y -= 1f;
+        if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) move.x -= 1f;
+        if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) move.x += 1f;
+
+        if (move.sqrMagnitude <= 0f) return;
+
+        userPanning = true;
+        dragPanActive = false;
+        ClearTemporaryPan();
+
+        move.Normalize();
+        var delta = new Vector3(move.x, move.y, 0f) * keyboardPanSpeed * Time.deltaTime;
+        transform.position += delta;
+    }
+
+    void HandleDragPan()
+    {
+        if (Mouse.current == null || cam == null) return;
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            return;
+
+        if (Mouse.current.middleButton.wasPressedThisFrame)
+        {
+            dragPanActive = true;
+            userPanning = true;
+            dragPanMouseStart = Mouse.current.position.ReadValue();
+            dragPanCamStart = transform.position;
+            ClearTemporaryPan();
+        }
+
+        if (dragPanActive && Mouse.current.middleButton.isPressed)
+        {
+            Vector2 current = Mouse.current.position.ReadValue();
+            Vector2 deltaPixels = dragPanMouseStart - current;
+            float worldPerPixel = cam.orthographicSize * 2f / Screen.height;
+            var worldDelta = new Vector3(deltaPixels.x, deltaPixels.y, 0f) * worldPerPixel * dragPanSpeed;
+            transform.position = dragPanCamStart + worldDelta;
+        }
+
+        if (Mouse.current.middleButton.wasReleasedThisFrame)
+            dragPanActive = false;
+    }
+
+    void LateUpdate()
+    {
+        if (userPanning || dragPanActive)
+            return;
+
+        if (temporaryPanPosition.HasValue && Time.time < temporaryPanUntil)
+        {
+            LerpToward(temporaryPanPosition.Value);
+            return;
+        }
+
+        if (temporaryPanPosition.HasValue)
+            temporaryPanPosition = null;
+
+        if (playerTarget == null) return;
+
+        var targetCoordinates = new Vector3(
+            playerTarget.position.x,
+            playerTarget.position.y,
+            cameraHeightDepth);
+        LerpToward(targetCoordinates);
+    }
+
+    void LerpToward(Vector3 targetCoordinates)
+    {
+        transform.position = Vector3.Lerp(
+            transform.position,
+            targetCoordinates,
+            trackingSmoothness * Time.deltaTime);
+    }
+}
