@@ -8,6 +8,194 @@ public class SimpleAI : MonoBehaviour
 
     void Awake() => Instance = this;
 
+    public void PlaySynodTurn(SynodPlayerId playerId)
+    {
+        if (MatchController.Instance != null && MatchController.Instance.IsMatchOver)
+        {
+            TurnManager.Instance?.EndTurn();
+            return;
+        }
+
+        var tm = TurnManager.Instance;
+        var map = HexGridMap.Instance;
+        var aiCity = CityManager.Instance?.GetSynodPlayerCapital(playerId);
+        if (aiCity != null)
+        {
+            CityManager.Instance?.AdvanceSynodPlayerCities(playerId);
+            CityGrowthManager.Instance?.ProcessSynodPlayerEndTurn(playerId);
+        }
+
+        ManageSynodCityProduction(playerId);
+        TryAiEmbarkTroopsForSynod(playerId);
+
+        var units = tm.GetSynodUnits(playerId);
+        if (units.Count == 0)
+        {
+            MatchController.Instance?.EvaluateConditions();
+            tm.EndTurn();
+            return;
+        }
+
+        var enemyUnits = CollectSynodAiTargets(playerId, tm);
+        var enemyCities = CollectSynodAiCityTargets(playerId);
+        var cityThreat = aiCity != null ? FindNearestThreatToCity(aiCity, enemyUnits, map, 4) : null;
+
+        foreach (var unit in units.OrderBy(u => u.Health / (float)u.MaxHealth))
+        {
+            if (NavalMovementRules.IsNavalUnit(unit.Type))
+            {
+                if (TryExecuteNavalBlockade(unit, enemyCities, enemyUnits, map))
+                    continue;
+                if (TryAiAmphibiousDisembark(unit, enemyCities, map))
+                    continue;
+            }
+
+            if (ShouldRetreat(unit, enemyUnits, map, aiCity))
+            {
+                RetreatTowardCity(unit, aiCity, map);
+                continue;
+            }
+
+            bool martial = IsMartialUnit(unit);
+            if (cityThreat != null && martial &&
+                map.WrappedDistance(unit.HexPosition, cityThreat.HexPosition) <= 5)
+            {
+                ExecuteUnitAttackPlan(unit, cityThreat, map);
+                continue;
+            }
+
+            City targetCity = FindBestCityTarget(unit, enemyCities, map);
+            Unit targetUnit = FindNearestEnemy(unit, enemyUnits, map);
+
+            if (targetUnit != null &&
+                map.WrappedDistance(unit.HexPosition, targetUnit.HexPosition) <=
+                map.WrappedDistance(unit.HexPosition, targetCity?.HexPosition ?? unit.HexPosition) + 1)
+            {
+                ExecuteUnitAttackPlan(unit, targetUnit, map);
+                continue;
+            }
+
+            if (targetCity != null && martial)
+            {
+                TryMoveToward(unit, targetCity.HexPosition, map);
+                CityManager.Instance?.TryCaptureCityAt(unit, unit.HexPosition);
+                continue;
+            }
+
+            if (targetUnit != null)
+                ExecuteUnitAttackPlan(unit, targetUnit, map);
+            else if (targetCity != null && unit.Type == UnitType.Missionary)
+                TryMoveToward(unit, targetCity.HexPosition, map);
+        }
+
+        MatchController.Instance?.EvaluateConditions();
+        CityLoyaltySystem.ProcessEndTurnOccupation(FactionId.LutheranSynod);
+        Invoke(nameof(FinishAiTurn), 0.4f);
+    }
+
+    static List<Unit> CollectSynodAiTargets(SynodPlayerId self, TurnManager tm)
+    {
+        var list = new List<Unit>();
+        foreach (var unit in tm.GetUnits(FactionId.LutheranSynod))
+        {
+            if (!unit.IsAlive || unit.SynodPlayer == self)
+                continue;
+            list.Add(unit);
+        }
+
+        foreach (var unit in tm.GetUnits(FactionId.Schismatic))
+        {
+            if (unit.IsAlive)
+                list.Add(unit);
+        }
+
+        return list;
+    }
+
+    static List<City> CollectSynodAiCityTargets(SynodPlayerId self)
+    {
+        var list = new List<City>();
+        if (CityManager.Instance == null)
+            return list;
+
+        foreach (var city in CityManager.Instance.AllCities)
+        {
+            if (city.Faction == FactionId.LutheranSynod && city.SynodPlayer == self)
+                continue;
+            if (city.Faction == FactionId.LutheranSynod || city.Faction == FactionId.Schismatic)
+                list.Add(city);
+        }
+
+        return list;
+    }
+
+    void ManageSynodCityProduction(SynodPlayerId playerId)
+    {
+        var aiCity = CityManager.Instance?.GetSynodPlayerCapital(playerId);
+        if (aiCity?.Production == null || aiCity.Production.IsProducing)
+            return;
+
+        int soldiers = CountSynodUnits(playerId, UnitType.Soldier);
+        int slingers = CountSynodUnits(playerId, UnitType.Slinger);
+        int missionaries = CountSynodUnits(playerId, UnitType.Missionary);
+        int galleys = CountSynodUnits(playerId, UnitType.CoastalGalley);
+        int patrols = CountSynodUnits(playerId, UnitType.CoastalPatrol);
+        bool coastal = CityManager.Instance != null && CityManager.Instance.CityTouchesNavalCoast(aiCity);
+        bool slingTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.ShepherdsSling) == true;
+
+        if (coastal && !aiCity.Production.HasBuilding(CityBuildId.BuildDock))
+        {
+            aiCity.Production.TryStartAiBuild(CityBuildId.BuildDock);
+            return;
+        }
+
+        if (coastal && aiCity.Production.HasBuilding(CityBuildId.BuildDock) && galleys < 1)
+        {
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainCoastalGalley);
+            return;
+        }
+
+        if (coastal && patrols < 1 && soldiers >= 1)
+        {
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainCoastalPatrol);
+            return;
+        }
+
+        if (!aiCity.Production.HasBuilding(CityBuildId.BuildChapel))
+            aiCity.Production.TryStartAiBuild(CityBuildId.BuildChapel);
+        else if (missionaries < 2)
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainMissionary);
+        else if (slingTech && slingers < 2)
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainSlinger);
+        else if (soldiers < 3)
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainSoldier);
+        else if (!aiCity.Production.HasBuilding(CityBuildId.BuildScriptorium))
+            aiCity.Production.TryStartAiBuild(CityBuildId.BuildScriptorium);
+        else
+            aiCity.Production.TryStartAiBuild(Random.value < 0.35f ? CityBuildId.TrainMissionary : CityBuildId.TrainSoldier);
+    }
+
+    static int CountSynodUnits(SynodPlayerId playerId, UnitType type) =>
+        TurnManager.Instance == null
+            ? 0
+            : TurnManager.Instance.GetSynodUnits(playerId).Count(u => u.Type == type);
+
+    static void TryAiEmbarkTroopsForSynod(SynodPlayerId playerId)
+    {
+        if (TurnManager.Instance == null || HexGridMap.Instance == null)
+            return;
+
+        foreach (var unit in TurnManager.Instance.GetSynodUnits(playerId))
+        {
+            if (!AmphibiousTransport.IsAmphibiousCargo(unit) || unit.MovementRemaining <= 0)
+                continue;
+
+            var galley = AmphibiousTransport.FindAdjacentGalley(unit);
+            if (galley != null)
+                AmphibiousTransport.TryEmbark(unit, galley);
+        }
+    }
+
     public void PlayTurn() => PlayTurn(TurnManager.Instance?.ActiveSchismaticBloc ?? SchismaticBlocId.Bloc1);
 
     public void PlayTurn(SchismaticBlocId blocId)
@@ -28,6 +216,7 @@ public class SimpleAI : MonoBehaviour
         }
 
         ManageAiCityProduction(blocId);
+        TryAiEmbarkTroops(blocId);
 
         var units = tm.GetBlocUnits(blocId);
         if (units.Count == 0)
@@ -48,6 +237,8 @@ public class SimpleAI : MonoBehaviour
             if (NavalMovementRules.IsNavalUnit(unit.Type))
             {
                 if (TryExecuteNavalBlockade(unit, playerCities, playerUnits, map))
+                    continue;
+                if (TryAiAmphibiousDisembark(unit, playerCities, map))
                     continue;
             }
 
@@ -241,6 +432,50 @@ public class SimpleAI : MonoBehaviour
         }
 
         return bestHex;
+    }
+
+    static void TryAiEmbarkTroops(SchismaticBlocId blocId)
+    {
+        if (TurnManager.Instance == null || HexGridMap.Instance == null)
+            return;
+
+        foreach (var unit in TurnManager.Instance.GetBlocUnits(blocId))
+        {
+            if (!AmphibiousTransport.IsAmphibiousCargo(unit) || unit.MovementRemaining <= 0)
+                continue;
+
+            var galley = AmphibiousTransport.FindAdjacentGalley(unit);
+            if (galley != null)
+                AmphibiousTransport.TryEmbark(unit, galley);
+        }
+    }
+
+    static bool TryAiAmphibiousDisembark(Unit galley, List<City> playerCities, HexGridMap map)
+    {
+        if (!AmphibiousTransport.IsGalleyTransporter(galley) || galley.EmbarkedCount == 0)
+            return false;
+
+        var targets = AmphibiousTransport.GetDisembarkHexes(galley);
+        if (targets.Count == 0)
+            return false;
+
+        HexCoordinates best = targets[0];
+        int bestScore = int.MinValue;
+        foreach (var city in playerCities)
+        {
+            foreach (var hex in targets)
+            {
+                int score = -map.WrappedDistance(hex, city.HexPosition);
+                if (city.IsCapital) score += 4;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = hex;
+                }
+            }
+        }
+
+        return AmphibiousTransport.TryDisembark(galley, best);
     }
 
     static bool ShouldRetreat(Unit self, List<Unit> enemies, HexGridMap map, City home)

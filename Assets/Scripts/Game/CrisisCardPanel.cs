@@ -198,7 +198,7 @@ public class CrisisCardPanel : MonoBehaviour
 
     static void ApplyFont(TextMeshProUGUI tmp)
     {
-        var existing = Object.FindAnyObjectByType<TextMeshProUGUI>(FindObjectsInactive.Include);
+        var existing = UnityEngine.Object.FindAnyObjectByType<TextMeshProUGUI>(FindObjectsInactive.Include);
         if (existing != null && existing.font != null)
             tmp.font = existing.font;
         else if (TMP_Settings.defaultFontAsset != null)

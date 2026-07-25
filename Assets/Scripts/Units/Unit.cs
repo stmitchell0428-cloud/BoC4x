@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Unit : MonoBehaviour
 {
     public FactionId Faction { get; private set; }
+    public SynodPlayerId SynodPlayer { get; private set; } = SynodPlayerId.Player1;
     public SchismaticBlocId SchismaticBloc { get; private set; } = SchismaticBlocId.None;
     public City RosterCity { get; private set; }
     public ChaplainAssignment ChaplainRole { get; private set; } = ChaplainAssignment.Parish;
@@ -20,6 +22,15 @@ public class Unit : MonoBehaviour
     public bool HasAttacked { get; private set; }
     public bool HasPreached { get; private set; }
 
+    Unit embarkedAboard;
+    readonly List<Unit> embarkedPassengers = new();
+
+    public bool IsEmbarked => embarkedAboard != null;
+    public int EmbarkedCount => embarkedPassengers.Count;
+    public int EmbarkCapacity => Type == UnitType.CoastalGalley ? AmphibiousTransport.GalleyPassengerCapacity : 0;
+    public bool CanEmbarkMore => EmbarkedCount < EmbarkCapacity;
+    public IReadOnlyList<Unit> EmbarkedPassengers => embarkedPassengers;
+
     HexCoordinates? moveOrderTarget;
     public bool HasMoveOrder => moveOrderTarget.HasValue;
     public HexCoordinates? MoveOrderTarget => moveOrderTarget;
@@ -28,6 +39,7 @@ public class Unit : MonoBehaviour
     CircleCollider2D clickCollider;
 
     public bool IsAlive => Health > 0;
+    public bool IsOnMap => IsAlive && !IsEmbarked;
     public bool CanPreach => IsAlive &&
         (Type == UnitType.Missionary || Type == UnitType.Chaplain ||
          Type == UnitType.Pastor || Type == UnitType.Bishop || Type == UnitType.Archbishop ||
@@ -42,7 +54,7 @@ public class Unit : MonoBehaviour
     {
         get
         {
-            if (!IsAlive || Faction != FactionId.LutheranSynod)
+            if (!IsOnMap || Faction != FactionId.LutheranSynod || SynodPlayer != SynodPlayerId.Player1)
                 return false;
             if (CanFoundNomadicCapital || CanFoundHamlet)
                 return true;
@@ -63,6 +75,12 @@ public class Unit : MonoBehaviour
             if (Type == UnitType.Cantor && CanLeadHymn && !HasPreached)
                 return true;
             if (CanUpgradeOnCity())
+                return true;
+            if (Type == UnitType.CoastalGalley && EmbarkedCount > 0 && MovementRemaining > 0 &&
+                AmphibiousTransport.GetDisembarkHexes(this).Count > 0)
+                return true;
+            if (AmphibiousTransport.IsAmphibiousCargo(this) && MovementRemaining > 0 &&
+                AmphibiousTransport.FindAdjacentGalley(this) != null)
                 return true;
             return false;
         }
@@ -132,9 +150,15 @@ public class Unit : MonoBehaviour
     int bonusDefense;
     int bonusMovement;
 
-    public void Initialize(FactionId faction, UnitType type, HexCoordinates startHex, bool isNomadicFounder = false)
+    public void Initialize(
+        FactionId faction,
+        UnitType type,
+        HexCoordinates startHex,
+        bool isNomadicFounder = false,
+        SynodPlayerId synodPlayer = SynodPlayerId.Player1)
     {
         Faction = faction;
+        SynodPlayer = synodPlayer;
         SchismaticBloc = SchismaticBlocId.None;
         Type = type;
         IsNomadicFounder = isNomadicFounder && type == UnitType.Settler;
@@ -431,7 +455,7 @@ public class Unit : MonoBehaviour
             return;
 
         var mask = GetBaseMaskSprite(Type);
-        var fill = FactionColor(Faction);
+        var fill = FactionColor(Faction, SynodPlayer);
         spriteRenderer.sprite = ArtEraSpriteFactory.StyleSprite(
             mask, fill, ArtEraVisualController.CurrentEra, $"unit_{Type}");
         spriteRenderer.color = Color.white;
@@ -502,7 +526,7 @@ public class Unit : MonoBehaviour
 
     public bool TryIssueMoveOrder(HexCoordinates target)
     {
-        if (!IsAlive || MovementRemaining <= 0 || HexGridMap.Instance == null)
+        if (IsEmbarked || !IsAlive || MovementRemaining <= 0 || HexGridMap.Instance == null)
             return false;
 
         target = HexGridMap.Instance.Wrap(target);
@@ -592,7 +616,7 @@ public class Unit : MonoBehaviour
 
     public bool TryMoveTo(HexCoordinates target)
     {
-        if (MovementRemaining <= 0 || HexGridMap.Instance == null) return false;
+        if (IsEmbarked || MovementRemaining <= 0 || HexGridMap.Instance == null) return false;
 
         target = HexGridMap.Instance.Wrap(target);
         if (!IsValidMoveDestination(target)) return false;
@@ -676,10 +700,73 @@ public class Unit : MonoBehaviour
 
     void Die()
     {
+        if (Type == UnitType.CoastalGalley)
+        {
+            for (int i = embarkedPassengers.Count - 1; i >= 0; i--)
+                embarkedPassengers[i].DieFromTransportLoss();
+            embarkedPassengers.Clear();
+        }
+
+        if (embarkedAboard != null)
+            embarkedAboard.RemovePassenger(this);
+
         ClearTile();
         TurnManager.Instance?.UnregisterUnit(this);
         Destroy(gameObject);
         MatchController.Instance?.EvaluateConditions();
+    }
+
+    void DieFromTransportLoss()
+    {
+        embarkedAboard = null;
+        ClearTile();
+        TurnManager.Instance?.UnregisterUnit(this);
+        Destroy(gameObject);
+    }
+
+    public void SetEmbarkedOn(Unit galley)
+    {
+        embarkedAboard = galley;
+        ClearMoveOrder();
+        ClearTile();
+        MovementRemaining = 0;
+        SetMapVisible(false);
+    }
+
+    public void ClearEmbarkedState(HexCoordinates landHex)
+    {
+        embarkedAboard = null;
+        HexPosition = landHex;
+        MovementRemaining = MovementRange;
+        HasAttacked = false;
+        SetMapVisible(true);
+        SnapToHex(landHex);
+        PlaceOnTile(landHex);
+    }
+
+    public void AddPassenger(Unit passenger)
+    {
+        if (passenger != null && !embarkedPassengers.Contains(passenger))
+            embarkedPassengers.Add(passenger);
+    }
+
+    public void RemovePassenger(Unit passenger)
+    {
+        embarkedPassengers.Remove(passenger);
+    }
+
+    public Unit GetFirstPassenger() =>
+        embarkedPassengers.Count > 0 ? embarkedPassengers[0] : null;
+
+    public void SpendMovement(int amount) =>
+        MovementRemaining = Mathf.Max(0, MovementRemaining - amount);
+
+    void SetMapVisible(bool visible)
+    {
+        if (spriteRenderer != null)
+            spriteRenderer.enabled = visible;
+        if (clickCollider != null)
+            clickCollider.enabled = visible;
     }
 
     public void ConvertToMissionaryAfterFounding()
@@ -721,12 +808,15 @@ public class Unit : MonoBehaviour
 
     public void MarkPreached() => HasPreached = true;
 
-    public static Color FactionColor(FactionId faction) => faction switch
+    public static Color FactionColor(FactionId faction, SynodPlayerId synodPlayer = SynodPlayerId.Player1) =>
+        faction switch
     {
-        FactionId.LutheranSynod => new Color(0.25f, 0.45f, 0.85f),
+        FactionId.LutheranSynod => SynodPlayerDatabase.ColorFor(synodPlayer),
         FactionId.Schismatic => new Color(0.85f, 0.28f, 0.22f),
         _ => Color.gray
     };
+
+    public void SetSynodPlayer(SynodPlayerId playerId) => SynodPlayer = playerId;
 
     public static string TypeDisplayName(UnitType type) => type switch
     {
@@ -768,17 +858,17 @@ public class Unit : MonoBehaviour
         UnitType.CoastalPatrol =>
             $"{HealthLabel} | {MovementSummary} | sight {SightRange} | +1 move on shore/water",
         UnitType.CoastalGalley =>
-            $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def | shore + water only",
+            $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def | cargo {EmbarkedCount}/{EmbarkCapacity} | shore + water{GarrisonBonus.FormatRoleSuffix(this)}",
         UnitType.Soldier =>
-            $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def",
+            $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def{GarrisonBonus.FormatRoleSuffix(this)}",
         UnitType.Slinger =>
-            $"{HealthLabel} | {MovementSummary} | {Attack} rng atk (2 hex)",
+            $"{HealthLabel} | {MovementSummary} | {Attack} rng atk (2 hex){GarrisonBonus.FormatRoleSuffix(this)}",
         UnitType.Archer =>
-            $"{HealthLabel} | {MovementSummary} | {Attack} bow atk (2 hex)",
+            $"{HealthLabel} | {MovementSummary} | {Attack} bow atk (2 hex){GarrisonBonus.FormatRoleSuffix(this)}",
         UnitType.Horseman =>
-            $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def (mounted)",
+            $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def (mounted){GarrisonBonus.FormatRoleSuffix(this)}",
         UnitType.Defender =>
-            $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def (guard)",
+            $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def (guard){GarrisonBonus.FormatRoleSuffix(this)}",
         UnitType.Chaplain =>
             $"{HealthLabel} | {MovementSummary} | {ChaplainSpecialty.FormatAssignment(this)} | preach: {(HasPreached ? "used" : "ready")}",
         UnitType.Cantor =>
@@ -794,7 +884,7 @@ public class Unit : MonoBehaviour
         UnitType.Colonist =>
             $"{HealthLabel} | {MovementSummary} | F = found district (within 3 hexes of city)",
         UnitType.SiegeEngine =>
-            $"{HealthLabel} | {MovementSummary} | {Attack} atk | siege {CityLoyaltySystem.GetSiegePressure(this)}/turn on cities",
+            $"{HealthLabel} | {MovementSummary} | {Attack} atk | siege {CityLoyaltySystem.GetSiegePressure(this)}/turn on cities{GarrisonBonus.FormatRoleSuffix(this)}",
         _ =>
             $"{HealthLabel} | {MovementSummary} | {Attack} atk"
     };

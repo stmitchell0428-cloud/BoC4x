@@ -373,7 +373,7 @@ public class ConfessionResearchManager : MonoBehaviour
     {
         if (TurnManager.Instance == null) return;
         var effective = GetEffectiveModifiers();
-        foreach (var unit in TurnManager.Instance.GetUnits(FactionId.LutheranSynod))
+        foreach (var unit in TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1))
             unit.ApplyConfessionBonuses(effective);
     }
 

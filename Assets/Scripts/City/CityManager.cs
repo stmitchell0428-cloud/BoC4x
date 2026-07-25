@@ -53,7 +53,7 @@ public class CityManager : MonoBehaviour
         City firstIndependent = null;
         foreach (var city in cities)
         {
-            if (city.Faction != FactionId.LutheranSynod)
+            if (city.Faction != FactionId.LutheranSynod || city.SynodPlayer != SynodPlayerId.Player1)
                 continue;
             if (city.IsCapital)
                 return city;
@@ -65,9 +65,18 @@ public class CityManager : MonoBehaviour
         return firstIndependent ?? capital;
     }
 
-    public System.Collections.Generic.List<City> GetPlayerCities()
+    public System.Collections.Generic.List<City> GetPlayerCities() =>
+        GetSynodPlayerCities(SynodPlayerId.Player1);
+
+    public System.Collections.Generic.List<City> GetSynodPlayerCities(SynodPlayerId playerId)
     {
-        return GetCitiesForFaction(FactionId.LutheranSynod);
+        var list = new System.Collections.Generic.List<City>();
+        foreach (var city in cities)
+        {
+            if (city.Faction == FactionId.LutheranSynod && city.SynodPlayer == playerId)
+                list.Add(city);
+        }
+        return list;
     }
 
     public System.Collections.Generic.List<City> GetCitiesForFaction(FactionId faction)
@@ -88,7 +97,8 @@ public class CityManager : MonoBehaviour
 
         if (HexGridMap.Instance.TryGetTile(unit.HexPosition, out var tile) &&
             tile.Settlement != null &&
-            tile.Settlement.Faction == FactionId.LutheranSynod)
+            tile.Settlement.Faction == FactionId.LutheranSynod &&
+            tile.Settlement.SynodPlayer == unit.SynodPlayer)
         {
             return tile.Settlement;
         }
@@ -213,7 +223,30 @@ public class CityManager : MonoBehaviour
         city?.Production?.AdvanceTurn();
     }
 
-    public void AdvancePlayerCities() => AdvanceFactionCities(FactionId.LutheranSynod);
+    public void AdvanceSynodPlayerCities(SynodPlayerId playerId)
+    {
+        foreach (var city in GetSynodPlayerCities(playerId))
+            city.Production?.AdvanceTurn();
+    }
+
+    public City GetSynodPlayerCapital(SynodPlayerId playerId)
+    {
+        foreach (var city in GetSynodPlayerCities(playerId))
+        {
+            if (city.IsCapital)
+                return city;
+        }
+
+        foreach (var city in GetSynodPlayerCities(playerId))
+        {
+            if (!city.IsHamlet)
+                return city;
+        }
+
+        return null;
+    }
+
+    public void AdvancePlayerCities() => AdvanceSynodPlayerCities(SynodPlayerId.Player1);
 
     public void TryCaptureCityAt(Unit unit, HexCoordinates hex)
     {
@@ -221,7 +254,9 @@ public class CityManager : MonoBehaviour
             unit.Type != UnitType.Archer && unit.Type != UnitType.Horseman && unit.Type != UnitType.Slinger) ||
             !unit.IsAlive) return;
         if (!HexGridMap.Instance.TryGetTile(hex, out var tile) || tile.Settlement == null) return;
-        if (tile.Settlement.Faction == unit.Faction) return;
+        if (tile.Settlement.Faction == unit.Faction &&
+            (unit.Faction != FactionId.LutheranSynod || tile.Settlement.SynodPlayer == unit.SynodPlayer))
+            return;
         if (tile.Occupant != null && tile.Occupant != unit) return;
 
         CityLoyaltySystem.TryApplyPressure(unit, tile.Settlement, isPreach: false);
@@ -231,7 +266,9 @@ public class CityManager : MonoBehaviour
     {
         if (unit == null || !unit.CanPreachOrHymn || !unit.IsAlive) return;
         if (!HexGridMap.Instance.TryGetTile(hex, out var tile) || tile.Settlement == null) return;
-        if (tile.Settlement.Faction == unit.Faction) return;
+        if (tile.Settlement.Faction == unit.Faction &&
+            (unit.Faction != FactionId.LutheranSynod || tile.Settlement.SynodPlayer == unit.SynodPlayer))
+            return;
         if (tile.Occupant != null && tile.Occupant != unit) return;
 
         CityLoyaltySystem.TryApplyPressure(unit, tile.Settlement, isPreach: true);
@@ -249,7 +286,7 @@ public class CityManager : MonoBehaviour
         var go = new GameObject($"{city.Faction}_{type}");
         go.transform.SetParent(transform);
         var unit = go.AddComponent<Unit>();
-        unit.Initialize(city.Faction, type, spawnHex.Value);
+        unit.Initialize(city.Faction, type, spawnHex.Value, synodPlayer: city.SynodPlayer);
         if (city.Faction == FactionId.Schismatic && city.SchismaticBloc != SchismaticBlocId.None)
             unit.SetSchismaticBloc(city.SchismaticBloc);
         TurnManager.Instance.RegisterUnit(unit);
@@ -257,7 +294,9 @@ public class CityManager : MonoBehaviour
         if (ClergyRoster.IsClergyUnit(type))
             ClergyRoster.RegisterUnit(unit, city);
 
-        if (city.Faction == FactionId.LutheranSynod && type == UnitType.Missionary)
+        if (city.Faction == FactionId.LutheranSynod &&
+            city.SynodPlayer == SynodPlayerId.Player1 &&
+            type == UnitType.Missionary)
             FirstSteps.Instance?.BindPlayerUnit(unit);
 
         ConfessionResearchManager.Instance?.ApplyBonusesToAllPlayerUnits();
@@ -323,12 +362,15 @@ public class CityManager : MonoBehaviour
 
         var go = new GameObject($"City_{cityName}");
         go.transform.SetParent(transform);
-        go.AddComponent<City>().Initialize(settler.Faction, hex, cityName, isCapital: true);
+        go.AddComponent<City>().Initialize(settler.Faction, hex, cityName, isCapital: true, synodPlayer: settler.SynodPlayer);
 
         settler.ConvertToMissionaryAfterFounding();
 
-        FirstSteps.Instance?.AddFame(15);
-        IdentityPickerPanel.Instance?.Show();
+        if (settler.SynodPlayer == SynodPlayerId.Player1)
+        {
+            FirstSteps.Instance?.AddFame(15);
+            IdentityPickerPanel.Instance?.Show();
+        }
         TerrainInfoPanel.Instance?.RefreshCityYield();
         TerrainInfoPanel.Instance?.RefreshMissionaryTile();
         FogOfWarManager.Instance?.Refresh();
@@ -505,6 +547,9 @@ public class CityManager : MonoBehaviour
         if (!HexGridMap.Instance.TryGetTile(unit.HexPosition, out var tile) || tile.Settlement == null)
             return false;
         if (tile.Settlement.Faction != unit.Faction) return false;
+        if (tile.Settlement.Faction == FactionId.LutheranSynod &&
+            tile.Settlement.SynodPlayer != unit.SynodPlayer)
+            return false;
         return tile.Settlement.Production != null &&
                tile.Settlement.Production.HasBuilding(CityBuildId.BuildFortification);
     }

@@ -417,7 +417,7 @@ public class MatchLobbyPanel : MonoBehaviour
         if (playerCountValueText != null)
             playerCountValueText.text = TmpTextSanitizer.Sanitize(draft.PlayerCount == 1
                 ? "1 (solo synod)"
-                : $"{draft.PlayerCount} ({draft.PlayerCount - 1} AI rival(s))");
+                : $"{draft.PlayerCount} ({draft.PlayerCount - 1} AI synod rival(s))");
         if (wrapValueText != null)
             wrapValueText.text = TmpTextSanitizer.Sanitize(MatchSettingsLabels.Wrap(draft.WrapStyle));
         if (heresyValueText != null)

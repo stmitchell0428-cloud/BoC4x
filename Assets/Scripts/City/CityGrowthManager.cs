@@ -162,6 +162,28 @@ public class CityGrowthManager : MonoBehaviour
         }
     }
 
+    public void ProcessSynodPlayerEndTurn(SynodPlayerId playerId)
+    {
+        if (CityManager.Instance == null)
+            return;
+
+        foreach (var city in CityManager.Instance.GetSynodPlayerCities(playerId))
+        {
+            if (city.IsHamlet)
+                continue;
+
+            var snap = CityGrowthSystem.Evaluate(city);
+            UpdateSurplusStreak(city, snap.FoodSurplus);
+
+            if (snap.FoodSurplus < 0)
+                CityGrowthSystem.ApplyHybridFoodDeficit(city, snap);
+
+            int gain = CityGrowthSystem.ProcessMigration(city, snap);
+            if (gain > 0)
+                Debug.Log($"{city.CityName} ({SynodPlayerDatabase.DisplayName(playerId)}): +{gain} settlers.");
+        }
+    }
+
     public void ProcessBlocEndTurn(SchismaticBlocId blocId)
     {
         var city = CityManager.Instance?.GetAiCity(blocId);

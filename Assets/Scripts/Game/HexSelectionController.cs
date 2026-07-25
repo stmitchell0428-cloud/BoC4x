@@ -124,18 +124,40 @@ public class HexSelectionController : MonoBehaviour
     {
         if (city == null || TurnManager.Instance == null) return;
         if (city.Faction != TurnManager.Instance.ActiveFaction) return;
+        if (city.Faction == FactionId.LutheranSynod &&
+            city.SynodPlayer != TurnManager.Instance.ActiveSynodPlayer)
+            return;
         CityScreenPanel.Instance?.Open(city);
     }
 
     void HandleUnitClick(Unit unit)
     {
         if (unit.Faction != FactionId.LutheranSynod &&
+            unit.Faction != FactionId.Schismatic &&
+            FogOfWarManager.Instance != null &&
+            !FogOfWarManager.Instance.IsVisible(unit.HexPosition))
+            return;
+
+        if (unit.Faction == FactionId.LutheranSynod &&
+            unit.SynodPlayer != SynodPlayerId.Player1 &&
             FogOfWarManager.Instance != null &&
             !FogOfWarManager.Instance.IsVisible(unit.HexPosition))
             return;
 
         var tm = TurnManager.Instance;
         if (unit.Faction != tm.ActiveFaction) return;
+        if (unit.Faction == FactionId.LutheranSynod && unit.SynodPlayer != tm.ActiveSynodPlayer) return;
+
+        var selected = tm.SelectedUnit;
+        if (selected != null && selected != unit && selected.IsOnMap &&
+            AmphibiousTransport.TryEmbark(selected, unit))
+        {
+            tm.SelectUnit(unit);
+            CameraFollow.Instance?.FollowUnit(unit);
+            FocusUnit(unit);
+            PlayerUnitCycle.Instance?.OnUnitOrdersChanged();
+            return;
+        }
 
         if (tm.SelectedUnit == unit)
         {
@@ -179,7 +201,10 @@ public class HexSelectionController : MonoBehaviour
                 return;
             }
 
-            if (tile.Settlement != null && tile.Settlement.Faction == tm.ActiveFaction)
+            if (tile.Settlement != null &&
+                tile.Settlement.Faction == tm.ActiveFaction &&
+                (tm.ActiveFaction != FactionId.LutheranSynod ||
+                 tile.Settlement.SynodPlayer == tm.ActiveSynodPlayer))
             {
                 HandleCityClick(tile.Settlement);
                 return;
@@ -196,7 +221,7 @@ public class HexSelectionController : MonoBehaviour
             return;
         }
 
-        if (tile.Occupant != null && tile.Occupant.Faction != tm.ActiveFaction)
+        if (tile.Occupant != null && FactionRelations.AreHostile(selected, tile.Occupant))
         {
             if (FogOfWarManager.Instance != null && !FogOfWarManager.Instance.IsVisible(hex))
                 return;
@@ -215,6 +240,15 @@ public class HexSelectionController : MonoBehaviour
 
         if (tile.Occupant == null)
         {
+            if (selected.Type == UnitType.CoastalGalley &&
+                AmphibiousTransport.TryDisembark(selected, hex))
+            {
+                ShowReachable(selected);
+                TerrainInfoPanel.Instance?.RefreshUnitDisplay();
+                PlayerUnitCycle.Instance?.OnUnitOrdersChanged();
+                return;
+            }
+
             if (selected.TryMoveTo(hex) || selected.TryIssueMoveOrder(hex))
             {
                 CityManager.Instance?.TryCaptureCityAt(selected, hex);
@@ -242,6 +276,7 @@ public class HexSelectionController : MonoBehaviour
 
         HighlightMoveOrderPath(selected);
         HighlightAttackTargets(selected);
+        HighlightDisembarkShores(selected);
         HighlightPlacementRecommendations(selected);
 
         if (AppealOverlayController.Instance != null && AppealOverlayController.Instance.IsActive)
@@ -255,6 +290,15 @@ public class HexSelectionController : MonoBehaviour
 
         tile.SetHighlight(kind);
         highlightedTiles.Add(coords);
+    }
+
+    void HighlightDisembarkShores(Unit selected)
+    {
+        if (selected == null || selected.Type != UnitType.CoastalGalley)
+            return;
+
+        foreach (var coords in AmphibiousTransport.GetDisembarkHexes(selected))
+            MarkHighlight(coords, HighlightKind.PlacementGood);
     }
 
     void HighlightPlacementRecommendations(Unit selected)
@@ -313,6 +357,15 @@ public class HexSelectionController : MonoBehaviour
         foreach (var enemy in TurnManager.Instance.GetUnits(FactionId.Schismatic))
         {
             if (!enemy.IsAlive) continue;
+            if (!CombatSystem.AreInAttackRange(selected.HexPosition, enemy.HexPosition, selected)) continue;
+            if (FogOfWarManager.Instance != null && !FogOfWarManager.Instance.IsVisible(enemy.HexPosition))
+                continue;
+            MarkHighlight(enemy.HexPosition, HighlightKind.Attack);
+        }
+
+        foreach (var enemy in TurnManager.Instance.GetUnits(FactionId.LutheranSynod))
+        {
+            if (!enemy.IsAlive || !FactionRelations.AreHostile(selected, enemy)) continue;
             if (!CombatSystem.AreInAttackRange(selected.HexPosition, enemy.HexPosition, selected)) continue;
             if (FogOfWarManager.Instance != null && !FogOfWarManager.Instance.IsVisible(enemy.HexPosition))
                 continue;

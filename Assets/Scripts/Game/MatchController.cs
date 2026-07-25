@@ -57,7 +57,7 @@ public class MatchController : MonoBehaviour
 
         if (TurnManager.Instance == null || CityManager.Instance == null) return;
 
-        bool playerHasUnits = TurnManager.Instance.GetUnits(FactionId.LutheranSynod).Any(u => u.IsAlive);
+        bool playerHasUnits = TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1).Any(u => u.IsAlive);
 
         var wittenberg = CityManager.Instance.GetCityByName("Wittenberg");
 

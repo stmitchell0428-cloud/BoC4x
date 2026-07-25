@@ -62,10 +62,7 @@ public static class CityLoyaltySystem
             return false;
 
         var occupier = tile.Occupant;
-        return occupier != null &&
-               occupier.IsAlive &&
-               occupier.Faction != city.Faction &&
-               occupier.Faction != FactionId.None;
+        return occupier != null && occupier.IsAlive && FactionRelations.IsHostileToCity(occupier, city);
     }
 
     public static float DisplayLoyalty(City city)
@@ -121,7 +118,7 @@ public static class CityLoyaltySystem
     /// <summary>Apply siege or preach pressure; returns true if city captured.</summary>
     public static bool TryApplyPressure(Unit unit, City city, bool isPreach)
     {
-        if (unit == null || city == null || city.Faction == unit.Faction)
+        if (unit == null || city == null || !FactionRelations.IsHostileToCity(unit, city))
             return false;
 
         int basePressure = isPreach ? GetPreachPressure(unit) : GetSiegePressure(unit);
@@ -142,7 +139,7 @@ public static class CityLoyaltySystem
 
         if (city.Loyalty <= 0f)
         {
-            city.Capture(unit.Faction);
+            city.Capture(unit.Faction, unit.SynodPlayer);
             return true;
         }
 

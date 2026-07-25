@@ -52,6 +52,12 @@ public static class MissionHouseChain
         return Mathf.Max(1, def.ManuscriptCost - MissionaryManuscriptDiscount(city));
     }
 
+    public static int EffectiveColonistCost(City city)
+    {
+        var def = CityBuildDatabase.Get(CityBuildId.TrainColonist);
+        return Mathf.Max(1, def.ManuscriptCost - ColonistManuscriptDiscount(city));
+    }
+
     /// <summary>+1 fame per turn from each completed mission house.</summary>
     public static void ProcessEndTurnFame()
     {

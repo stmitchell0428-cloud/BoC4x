@@ -28,6 +28,16 @@ public enum FactionId
     Schismatic = 2
 }
 
+/// <summary>Human is Player1; lobby slots 2–4 are AI rival synods (same faction, separate turns).</summary>
+public enum SynodPlayerId
+{
+    None = 0,
+    Player1 = 1,
+    Player2 = 2,
+    Player3 = 3,
+    Player4 = 4
+}
+
 public enum UnitType
 {
     Settler,

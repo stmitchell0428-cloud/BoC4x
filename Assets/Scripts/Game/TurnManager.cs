@@ -6,11 +6,16 @@ public readonly struct TurnSlot
 {
     public readonly FactionId Faction;
     public readonly SchismaticBlocId BlocId;
+    public readonly SynodPlayerId SynodPlayer;
 
-    public TurnSlot(FactionId faction, SchismaticBlocId blocId = SchismaticBlocId.None)
+    public TurnSlot(
+        FactionId faction,
+        SchismaticBlocId blocId = SchismaticBlocId.None,
+        SynodPlayerId synodPlayer = SynodPlayerId.Player1)
     {
         Faction = faction;
         BlocId = blocId;
+        SynodPlayer = synodPlayer;
     }
 }
 
@@ -18,7 +23,7 @@ public class TurnManager : MonoBehaviour
 {
     public static TurnManager Instance { get; private set; }
 
-    readonly List<TurnSlot> turnOrder = new() { new TurnSlot(FactionId.LutheranSynod) };
+    readonly List<TurnSlot> turnOrder = new() { new TurnSlot(FactionId.LutheranSynod, synodPlayer: SynodPlayerId.Player1) };
     readonly Dictionary<FactionId, List<Unit>> factionUnits = new();
 
     int turnNumber = 1;
@@ -26,6 +31,7 @@ public class TurnManager : MonoBehaviour
 
     public FactionId ActiveFaction => turnOrder[activeSlotIndex].Faction;
     public SchismaticBlocId ActiveSchismaticBloc => turnOrder[activeSlotIndex].BlocId;
+    public SynodPlayerId ActiveSynodPlayer => turnOrder[activeSlotIndex].SynodPlayer;
     public int TurnNumber => turnNumber;
     public Unit SelectedUnit { get; private set; }
 
@@ -42,6 +48,20 @@ public class TurnManager : MonoBehaviour
 
     public void ActivateSchismFaction() =>
         ActivateSchismaticBloc(SchismaticBlocId.Bloc1);
+
+    public void ActivateSynodPlayer(SynodPlayerId playerId)
+    {
+        if (playerId is SynodPlayerId.None or SynodPlayerId.Player1)
+            return;
+
+        foreach (var slot in turnOrder)
+        {
+            if (slot.Faction == FactionId.LutheranSynod && slot.SynodPlayer == playerId)
+                return;
+        }
+
+        turnOrder.Add(new TurnSlot(FactionId.LutheranSynod, synodPlayer: playerId));
+    }
 
     public void ActivateSchismaticBloc(SchismaticBlocId blocId)
     {
@@ -79,6 +99,9 @@ public class TurnManager : MonoBehaviour
 
     public IReadOnlyList<Unit> GetUnits(FactionId faction) =>
         factionUnits.TryGetValue(faction, out var list) ? list : System.Array.Empty<Unit>();
+
+    public IReadOnlyList<Unit> GetSynodUnits(SynodPlayerId playerId) =>
+        GetUnits(FactionId.LutheranSynod).Where(u => u.IsAlive && u.SynodPlayer == playerId).ToList();
 
     public IReadOnlyList<Unit> GetBlocUnits(SchismaticBlocId blocId) =>
         GetUnits(FactionId.Schismatic).Where(u => u.IsAlive && u.SchismaticBloc == blocId).ToList();
@@ -120,15 +143,21 @@ public class TurnManager : MonoBehaviour
         {
             if (slot.Faction == FactionId.Schismatic && unit.SchismaticBloc != slot.BlocId)
                 continue;
+            if (slot.Faction == FactionId.LutheranSynod && unit.SynodPlayer != slot.SynodPlayer)
+                continue;
             unit.RefreshTurn();
         }
 
         TurnStarted?.Invoke();
 
         if (slot.Faction == FactionId.LutheranSynod)
-            FogOfWarManager.Instance?.Refresh();
-
-        if (slot.Faction == FactionId.Schismatic)
+        {
+            if (slot.SynodPlayer == SynodPlayerId.Player1)
+                FogOfWarManager.Instance?.Refresh();
+            else
+                SimpleAI.Instance?.PlaySynodTurn(slot.SynodPlayer);
+        }
+        else if (slot.Faction == FactionId.Schismatic)
             SimpleAI.Instance?.PlayTurn(slot.BlocId);
     }
 
@@ -140,9 +169,13 @@ public class TurnManager : MonoBehaviour
         if (ActiveFaction == FactionId.Schismatic && unit.SchismaticBloc != ActiveSchismaticBloc)
             return;
 
+        if (ActiveFaction == FactionId.LutheranSynod && unit.SynodPlayer != ActiveSynodPlayer)
+            return;
+
         SelectedUnit = unit;
         TerrainInfoPanel.Instance?.RefreshSelection();
     }
 
-    public bool IsPlayerTurn => ActiveFaction == FactionId.LutheranSynod;
+    public bool IsPlayerTurn =>
+        ActiveFaction == FactionId.LutheranSynod && ActiveSynodPlayer == SynodPlayerId.Player1;
 }

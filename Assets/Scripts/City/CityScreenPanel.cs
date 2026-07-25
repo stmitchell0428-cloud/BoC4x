@@ -681,30 +681,30 @@ public class CityScreenPanel : MonoBehaviour
         }
 
         string costLine = FormatCostShort(def, activeCity);
-        if (status == CityBuildStatus.Locked && id == CityBuildId.TrainColonist &&
+        if (status == CityBuildStatus.Locked && def.Id == CityBuildId.TrainColonist &&
             activeCity != null && !MissionHouseChain.CanTrainColonist(activeCity))
         {
             costLine = "Needs Mission House in cluster";
         }
-        else if (status == CityBuildStatus.Locked && id == CityBuildId.TrainSiegeEngine &&
+        else if (status == CityBuildStatus.Locked && def.Id == CityBuildId.TrainSiegeEngine &&
                  activeCity?.Production?.HasBuilding(CityBuildId.BuildArmory) != true)
         {
             costLine = "Needs Armory";
         }
-        else if (status == CityBuildStatus.Locked && id == CityBuildId.TrainCoastalPatrol &&
+        else if (status == CityBuildStatus.Locked && def.Id == CityBuildId.TrainCoastalPatrol &&
                  activeCity != null && CityManager.Instance != null &&
                  !CityManager.Instance.CityTouchesNavalCoast(activeCity))
         {
             costLine = "Needs shore or naval coast";
         }
         else if (status == CityBuildStatus.Locked &&
-                 (id == CityBuildId.BuildDock || id == CityBuildId.TrainCoastalGalley) &&
+                 (def.Id == CityBuildId.BuildDock || def.Id == CityBuildId.TrainCoastalGalley) &&
                  activeCity != null && CityManager.Instance != null &&
                  !CityManager.Instance.CityTouchesNavalCoast(activeCity))
         {
             costLine = "Needs shore or naval coast";
         }
-        else if (status == CityBuildStatus.Locked && id == CityBuildId.TrainCoastalGalley &&
+        else if (status == CityBuildStatus.Locked && def.Id == CityBuildId.TrainCoastalGalley &&
                  activeCity?.Production?.HasBuilding(CityBuildId.BuildDock) != true)
         {
             costLine = "Needs Dock";

@@ -142,6 +142,83 @@ public class FirstSteps : MonoBehaviour
 
         if (Keyboard.current.iKey.wasPressedThisFrame)
             TryOpenIdentityRespec();
+
+        if (Keyboard.current.oKey.wasPressedThisFrame)
+            TryEmbarkSelectedUnit();
+
+        if (Keyboard.current.lKey.wasPressedThisFrame)
+            TryDisembarkGalley();
+    }
+
+    void TryEmbarkSelectedUnit()
+    {
+        var passenger = TurnManager.Instance?.SelectedUnit;
+        if (passenger == null)
+            return;
+
+        var galley = AmphibiousTransport.FindAdjacentGalley(passenger);
+        if (galley == null || !AmphibiousTransport.TryEmbark(passenger, galley))
+        {
+            Debug.Log("Board unavailable — select a soldier/slinger on shore with move left, adjacent to your galley on water.");
+            return;
+        }
+
+        TurnManager.Instance.SelectUnit(galley);
+        HexSelectionController.Instance?.FocusUnit(galley);
+        PlayerUnitCycle.Instance?.OnUnitOrdersChanged();
+    }
+
+    void TryDisembarkGalley()
+    {
+        var galley = TurnManager.Instance?.SelectedUnit;
+        if (galley == null || galley.Type != UnitType.CoastalGalley)
+            return;
+
+        var targets = AmphibiousTransport.GetDisembarkHexes(galley);
+        if (targets.Count == 0)
+        {
+            Debug.Log("Land unavailable — galley needs move points, cargo, and an adjacent shore hex.");
+            return;
+        }
+
+        HexCoordinates best = targets[0];
+        if (HexGridMap.Instance != null && CityManager.Instance != null)
+        {
+            int bestScore = int.MinValue;
+            foreach (var city in CityManager.Instance.GetCitiesForFaction(FactionId.Schismatic))
+            {
+                foreach (var hex in targets)
+                {
+                    int score = -HexGridMap.Instance.WrappedDistance(hex, city.HexPosition);
+                    if (city.IsCapital) score += 3;
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        best = hex;
+                    }
+                }
+            }
+        }
+
+        if (!AmphibiousTransport.TryDisembark(galley, best))
+            return;
+
+        Unit landed = null;
+        if (HexGridMap.Instance != null && HexGridMap.Instance.TryGetTile(best, out var tile))
+            landed = tile.Occupant;
+
+        if (landed != null)
+        {
+            TurnManager.Instance.SelectUnit(landed);
+            HexSelectionController.Instance?.FocusUnit(landed);
+        }
+        else
+        {
+            HexSelectionController.Instance?.ShowReachableForUnit(galley);
+        }
+
+        TerrainInfoPanel.Instance?.RefreshUnitDisplay();
+        PlayerUnitCycle.Instance?.OnUnitOrdersChanged();
     }
 
     void TryUnitUpgrade()

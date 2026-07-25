@@ -3,6 +3,7 @@ using UnityEngine;
 public class City : MonoBehaviour
 {
     public FactionId Faction { get; private set; }
+    public SynodPlayerId SynodPlayer { get; private set; } = SynodPlayerId.Player1;
     public SchismaticBlocId SchismaticBloc { get; private set; } = SchismaticBlocId.None;
     public HexCoordinates HexPosition { get; private set; }
     public string CityName { get; private set; }
@@ -54,9 +55,11 @@ public class City : MonoBehaviour
         string name,
         bool isCapital = false,
         int startingPopulation = 20,
-        City parentCity = null)
+        City parentCity = null,
+        SynodPlayerId synodPlayer = SynodPlayerId.Player1)
     {
         Faction = faction;
+        SynodPlayer = synodPlayer;
         SchismaticBloc = SchismaticBlocId.None;
         CityName = name;
         IsCapital = isCapital;
@@ -118,7 +121,7 @@ public class City : MonoBehaviour
 
         spriteRenderer.sprite = ArtEraSpriteFactory.StyleSprite(
             GetCityMaskSprite(SizeTier),
-            Unit.FactionColor(Faction),
+            Unit.FactionColor(Faction, SynodPlayer),
             ArtEraVisualController.CurrentEra,
             $"city_{SizeTier}");
         spriteRenderer.color = Color.white;
@@ -390,12 +393,18 @@ public class City : MonoBehaviour
 
     public string GrowthSummaryLabel() => CityGrowthSystem.FormatGrowthLine(this);
 
-    public void Capture(FactionId newOwner)
+    public void Capture(FactionId newOwner, SynodPlayerId synodPlayer = SynodPlayerId.Player1)
     {
-        if (Faction == newOwner) return;
+        if (Faction == newOwner &&
+            (newOwner != FactionId.LutheranSynod || SynodPlayer == synodPlayer))
+            return;
+
         Faction = newOwner;
         if (newOwner == FactionId.LutheranSynod)
+        {
             SchismaticBloc = SchismaticBlocId.None;
+            SynodPlayer = synodPlayer;
+        }
         ResetLoyaltyForOwner();
         RefreshAppearance();
         Production?.OnCityCaptured();
@@ -414,6 +423,12 @@ public class City : MonoBehaviour
     }
 
     public void SetSchismaticBloc(SchismaticBlocId blocId) => SchismaticBloc = blocId;
+
+    public void SetSynodPlayer(SynodPlayerId playerId)
+    {
+        SynodPlayer = playerId;
+        RefreshAppearance();
+    }
 
     static Sprite diamondSprite;
     static Sprite houseSprite;

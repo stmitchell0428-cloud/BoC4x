@@ -135,8 +135,8 @@ public class PlayerUnitCycle : MonoBehaviour
         if (TurnManager.Instance == null)
             return new List<Unit>();
 
-        return TurnManager.Instance.GetUnits(FactionId.LutheranSynod)
-            .Where(u => u != null && u.IsAlive && u.NeedsOrders)
+        return TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1)
+            .Where(u => u != null && u.IsOnMap && u.NeedsOrders)
             .OrderBy(u => u.Type)
             .ThenBy(u => (long)EntityId.ToULong(u.GetEntityId()))
             .ToList();

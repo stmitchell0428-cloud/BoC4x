@@ -64,7 +64,7 @@ public class GameBootstrap : MonoBehaviour
         SpawnUnit(FactionId.LutheranSynod, UnitType.Settler, spawn.SynodSettler, isNomadicFounder: true);
         SpawnUnit(FactionId.LutheranSynod, UnitType.Scout, spawn.SynodScout);
 
-        AiRivalBootstrap.SpawnLobbyRivals(spawn.SynodSettler);
+        SynodAiBootstrap.SpawnLobbySynodPlayers(spawn.SynodSettler, transform);
 
         var factionState = FirstSteps.Instance ?? FindAnyObjectByType<FirstSteps>();
         factionState?.BindPlayerUnit(FindPlayerLeader());
@@ -84,11 +84,11 @@ public class GameBootstrap : MonoBehaviour
                 cam.FollowUnit(playerUnit);
         }
 
-        Debug.Log("Book of Concord: nomadic start  -  settler + scout. F = found Wittenberg. Rival blocs may already be on the map from lobby settings.");
+        Debug.Log("Book of Concord: nomadic start  -  settler + scout. F = found Wittenberg. AI synod rivals may already be on the map from lobby settings.");
 
         var settings = MatchLobbyController.Instance?.Current;
         if (settings != null && settings.PlayerCount > 1)
-            Debug.Log($"Lobby: {settings.PlayerCount - 1} AI rival bloc(s) active alongside the synod.");
+            Debug.Log($"Lobby: {settings.PlayerCount - 1} AI synod rival(s) active alongside your synod.");
 
         ConfessionResearchManager.Instance?.ApplyBonusesToAllPlayerUnits();
         TerrainInfoPanel.Instance?.RefreshMissionaryTile();
@@ -114,7 +114,7 @@ public class GameBootstrap : MonoBehaviour
     static Unit FindPlayerLeader()
     {
         if (TurnManager.Instance == null) return null;
-        var units = TurnManager.Instance.GetUnits(FactionId.LutheranSynod);
+        var units = TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1);
         return units.FirstOrDefault(u => u.IsAlive && u.Type == UnitType.Settler && u.IsNomadicFounder)
             ?? units.FirstOrDefault(u => u.IsAlive && u.Type == UnitType.Missionary)
             ?? units.FirstOrDefault(u => u.IsAlive);

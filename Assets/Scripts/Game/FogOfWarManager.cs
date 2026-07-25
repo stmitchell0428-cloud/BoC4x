@@ -6,8 +6,6 @@ public class FogOfWarManager : MonoBehaviour
 {
     public static FogOfWarManager Instance { get; private set; }
 
-    const int CitySightRange = 2;
-
     readonly HashSet<HexCoordinates> explored = new();
     readonly HashSet<HexCoordinates> visible = new();
 
@@ -39,15 +37,15 @@ public class FogOfWarManager : MonoBehaviour
 
         int exploredBefore = explored.Count;
 
-        foreach (var unit in TurnManager.Instance.GetUnits(FactionId.LutheranSynod).Where(u => u.IsAlive))
+        foreach (var unit in TurnManager.Instance.GetUnits(FactionId.LutheranSynod).Where(u => u.IsAlive && u.SynodPlayer == SynodPlayerId.Player1))
             RevealAround(unit.HexPosition, unit.SightRange);
 
         if (CityManager.Instance != null)
         {
             foreach (var city in CityManager.Instance.AllCities)
             {
-                if (city.Faction == FactionId.LutheranSynod)
-                    RevealAround(city.HexPosition, CitySightRange);
+                if (city.Faction == FactionId.LutheranSynod && city.SynodPlayer == SynodPlayerId.Player1)
+                    RevealAround(city.HexPosition, GarrisonBonus.GetCitySightRange(city));
             }
         }
 
@@ -104,7 +102,10 @@ public class FogOfWarManager : MonoBehaviour
         {
             foreach (var unit in TurnManager.Instance.GetUnits(faction).Where(u => u.IsAlive))
             {
-                bool hide = unit.Faction != FactionId.LutheranSynod && !IsVisible(unit.HexPosition);
+                bool hide = unit.Faction == FactionId.Schismatic && !IsVisible(unit.HexPosition);
+                hide |= unit.Faction == FactionId.LutheranSynod &&
+                        unit.SynodPlayer != SynodPlayerId.Player1 &&
+                        !IsVisible(unit.HexPosition);
                 unit.SetFogHidden(hide);
             }
         }
@@ -113,7 +114,10 @@ public class FogOfWarManager : MonoBehaviour
 
         foreach (var city in CityManager.Instance.AllCities)
         {
-            bool hide = city.Faction != FactionId.LutheranSynod && !IsExplored(city.HexPosition);
+            bool hide = city.Faction == FactionId.Schismatic && !IsExplored(city.HexPosition);
+            hide |= city.Faction == FactionId.LutheranSynod &&
+                    city.SynodPlayer != SynodPlayerId.Player1 &&
+                    !IsExplored(city.HexPosition);
             city.SetFogHidden(hide);
         }
     }

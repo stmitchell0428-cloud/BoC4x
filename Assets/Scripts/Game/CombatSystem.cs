@@ -11,8 +11,8 @@ public static class CombatSystem
 
     public static CombatResult Resolve(Unit attacker, Unit defender)
     {
-        int defense = defender.Defense + GetFortificationDefenseBonus(defender) + ChaplainSpecialty.GetDefenseBonus(defender);
-        int raw = attacker.Attack + ChaplainSpecialty.GetAttackBonus(attacker) - defense + Random.Range(-2, 3);
+        int defense = defender.Defense + GarrisonBonus.GetDefenseBonus(defender) + ChaplainSpecialty.GetDefenseBonus(defender);
+        int raw = attacker.Attack + GarrisonBonus.GetAttackBonus(attacker) + ChaplainSpecialty.GetAttackBonus(attacker) - defense + Random.Range(-2, 3);
         int damage = Mathf.Max(1, raw);
         damage = ApplyFactionDamageMods(attacker, defender, damage);
 
@@ -25,7 +25,8 @@ public static class CombatSystem
 
         if (defender.IsAlive && CombatSystem.AreAdjacent(attacker.HexPosition, defender.HexPosition))
         {
-            int counter = defender.Attack / 2 - attacker.Defense + Random.Range(-1, 2);
+            int counter = defender.Attack / 2 + GarrisonBonus.GetAttackBonus(defender)
+                - attacker.Defense - GarrisonBonus.GetDefenseBonus(attacker) + Random.Range(-1, 2);
             if (counter > 0)
             {
                 counter = ApplyFactionDamageMods(defender, attacker, counter);
@@ -35,7 +36,7 @@ public static class CombatSystem
         }
 
         attacker.MarkAttacked();
-        Debug.Log($"Combat: {attacker.Faction} {attacker.Type} hit {defender.Faction} {defender.Type} for {damage}.");
+        Debug.Log($"Combat: {attacker.Faction} {attacker.Type} hit {defender.Faction} {defender.Type} for {damage} (garrison atk +{GarrisonBonus.GetAttackBonus(attacker)}, def +{GarrisonBonus.GetDefenseBonus(defender)}).");
         MatchController.Instance?.EvaluateConditions();
         return result;
     }
@@ -48,12 +49,6 @@ public static class CombatSystem
 
         float mult = ConfessionResearchManager.Instance.GetEffectiveModifiers().SchismaticDamageTakenMultiplier;
         return Mathf.Max(1, Mathf.RoundToInt(damage * mult));
-    }
-
-    static int GetFortificationDefenseBonus(Unit defender)
-    {
-        if (CityManager.Instance == null) return 0;
-        return CityManager.Instance.IsOnFortifiedCityTile(defender) ? 2 : 0;
     }
 
     public static bool AreAdjacent(HexCoordinates a, HexCoordinates b) =>

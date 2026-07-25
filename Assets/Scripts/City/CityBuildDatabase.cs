@@ -505,7 +505,7 @@ public static class CityBuildDatabase
             CityBuildId.BuildWatchtower,
             "Watchtower",
             "Stone tower and bell to warn of schismatic raiders.",
-            "+5 adherence; reveals 1 extra hex around district",
+            "+5 adherence; +1 city sight; martial garrison +1 atk/+2 def on city hex",
             CityBuildCategory.ConfessionalBuilding,
             CityBuildTrack.Confessional,
             manuscriptCost: 3,

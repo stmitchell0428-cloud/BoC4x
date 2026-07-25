@@ -52,7 +52,7 @@ public class TerrainInfoPanel : MonoBehaviour
         missionaryText = CreateText(root.transform, "MissionaryText", 15f);
         hoverText = CreateText(root.transform, "HoverText", 15f);
         CreateText(root.transform, "LegendLine1", 12f).text =
-            "O+ settler  > scout  ~ patrol  <> galley  + missionary  # soldier  o slinger  s siege  ^ chaplain";
+            "O+ settler  > scout  ~ patrol  <> galley  + missionary  # soldier  |  O board  L land troops";
         CreateText(root.transform, "LegendLine2", 12f).text =
             "Settler/colonist: green = best founding hex  |  hover for yield rating";
 
@@ -186,6 +186,8 @@ public class TerrainInfoPanel : MonoBehaviour
         SetPanelText(selectionText,
             $"<b>Selected: {marker} {Unit.TypeDisplayName(selected.Type)}</b> - {selected.RoleSummary}" +
             NavalMovementRules.FormatUnitNavalHint(selected) +
+            AmphibiousTransport.FormatGalleyCargoHint(selected) +
+            AmphibiousTransport.FormatEmbarkHint(selected) +
             FormatPlacementSelectionAdvice(selected));
         RelayoutPanel();
     }
@@ -330,12 +332,14 @@ public class TerrainInfoPanel : MonoBehaviour
                         : unit.CanFoundHamlet
                         ? "  |  <color=#FFDD66>F = found hamlet</color>"
                         : "";
-                string cityHint = tile.Settlement != null && tile.Settlement.Faction == FactionId.LutheranSynod
+                string cityHint = tile.Settlement != null &&
+                                  tile.Settlement.Faction == FactionId.LutheranSynod &&
+                                  tile.Settlement.SynodPlayer == SynodPlayerId.Player1
                     ? "  |  <color=#AACCFF>C = city</color>"
                     : "";
                 string placementHint = FormatHoveredPlacementAdvice(hoveredHex.Value);
                 text =
-                    $"<b>{marker} {Unit.TypeDisplayName(unit.Type)}</b> ({unit.Faction})  -  {unit.RoleSummary}" +
+                    $"<b>{marker} {Unit.TypeDisplayName(unit.Type)}</b> ({SynodPlayerDatabase.DisplayName(unit.SynodPlayer)})  -  {unit.RoleSummary}" +
                     NavalMovementRules.FormatUnitNavalHint(unit) +
                     $"{actionHint}{cityHint}{placementHint}";
             }
@@ -344,13 +348,14 @@ public class TerrainInfoPanel : MonoBehaviour
                 var city = tile.Settlement;
                 var mssLabel = city.ManuscriptTilesLabel();
                 var selected = TurnManager.Instance?.SelectedUnit;
-                text =
-                    $"<b>{city.SettlementDisplayName()}</b> ({city.SettlementKindLabel()}, {city.Faction})  -  {city.ProductionBreakdownLabel()}\n" +
+                text +=
+                    $"<b>{city.SettlementDisplayName()}</b> ({SynodPlayerDatabase.DisplayName(city.SynodPlayer)}, {city.SettlementKindLabel()})  -  {city.ProductionBreakdownLabel()}\n" +
                     $"{city.CultureSummaryLabel()}  |  {city.TerritorySummaryLabel()}  |  Queue: {city.Production?.ActiveBuildLabel() ?? "None"}\n" +
-                    CityLoyaltySystem.FormatHoverLoyaltyBlock(city, selected);
+                    CityLoyaltySystem.FormatHoverLoyaltyBlock(city, selected) +
+                    GarrisonBonus.FormatCityGarrisonHint(city);
                 if (!string.IsNullOrEmpty(mssLabel))
                     text += $"\n{mssLabel}";
-                text += city.Faction == FactionId.LutheranSynod
+                text += city.Faction == FactionId.LutheranSynod && city.SynodPlayer == SynodPlayerId.Player1
                     ? "  |  <color=#AACCFF>Click or C to manage</color>"
                     : "";
             }
@@ -397,14 +402,14 @@ public class TerrainInfoPanel : MonoBehaviour
     static Unit FindLeadSynodUnit()
     {
         if (TurnManager.Instance == null) return null;
-        foreach (var unit in TurnManager.Instance.GetUnits(FactionId.LutheranSynod))
+        foreach (var unit in TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1))
         {
             if (!unit.IsAlive) continue;
             if (unit.Type == UnitType.Settler && unit.IsNomadicFounder)
                 return unit;
         }
 
-        foreach (var unit in TurnManager.Instance.GetUnits(FactionId.LutheranSynod))
+        foreach (var unit in TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1))
         {
             if (unit.Type == UnitType.Missionary && unit.IsAlive)
                 return unit;
@@ -416,7 +421,7 @@ public class TerrainInfoPanel : MonoBehaviour
     static Unit FindMissionary()
     {
         if (TurnManager.Instance == null) return null;
-        foreach (var unit in TurnManager.Instance.GetUnits(FactionId.LutheranSynod))
+        foreach (var unit in TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1))
         {
             if (unit.Type == UnitType.Missionary && unit.IsAlive)
                 return unit;
