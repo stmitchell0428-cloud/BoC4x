@@ -61,6 +61,8 @@ public class GameBootstrap : MonoBehaviour
 
         var spawn = map.SpawnLayout;
 
+        NomadicFoundingGate.ResetForNewMatch();
+
         SpawnUnit(FactionId.LutheranSynod, UnitType.Settler, spawn.SynodSettler, isNomadicFounder: true);
         SpawnUnit(FactionId.LutheranSynod, UnitType.Scout, spawn.SynodScout);
 

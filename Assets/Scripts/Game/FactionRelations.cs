@@ -10,7 +10,7 @@ public static class FactionRelations
             return a.Faction != FactionId.None && b.Faction != FactionId.None;
 
         if (a.Faction == FactionId.LutheranSynod)
-            return a.SynodPlayer != b.SynodPlayer;
+            return AreSynodPlayersHostile(a.SynodPlayer, b.SynodPlayer);
 
         if (a.Faction == FactionId.Schismatic)
             return a.SchismaticBloc != b.SchismaticBloc;
@@ -27,11 +27,22 @@ public static class FactionRelations
             return city.Faction != FactionId.None && unit.Faction != FactionId.None;
 
         if (city.Faction == FactionId.LutheranSynod)
-            return city.SynodPlayer != unit.SynodPlayer;
+            return AreSynodPlayersHostile(city.SynodPlayer, unit.SynodPlayer);
 
         if (city.Faction == FactionId.Schismatic)
             return city.SchismaticBloc != unit.SchismaticBloc;
 
         return false;
+    }
+
+    static bool AreSynodPlayersHostile(SynodPlayerId a, SynodPlayerId b)
+    {
+        if (a == b)
+            return false;
+
+        if (SynodDiplomacyManager.Instance != null)
+            return SynodDiplomacyManager.Instance.AreHostile(a, b);
+
+        return a != b;
     }
 }

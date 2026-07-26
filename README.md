@@ -79,7 +79,7 @@ When a district is founded, choose one specialty — the district can **only** b
 |-----------|--------|--------|
 | **Seminary** | Missionary, Pastor, Deaconess, Cantor (+ Pastor→Chaplain upgrade) | Chapel, parish school/church, scriptorium, organ loft, orphanage, hospital |
 | **Garrison** | Soldier, Slinger, Archer, Horseman (+ defender upgrade) | Barracks, archery range, stable, armory, fortifications, watchtower |
-| **Market** | Colonist, Scout | Workshop, pottery, granary, market hall, mill, printing press, mission house |
+| **Market** | Scout | Workshop, pottery, granary, market hall, mill, printing press, mission house |
 | **Scholastic** | Missionary (+ pastor ordination upgrade) | Scriptorium, library, university, observatory, parish school |
 
 Capitals remain generalists; district-only units (pastor, archer, etc.) train only at specialized districts.
@@ -119,7 +119,6 @@ Hover any hex to see yields, manuscript bonuses, resource, owner, and worked sta
 | **Star** | Bishop | **Upgrade from Pastor** (Formula of Concord) — one per city |
 | **Star (large)** | Archbishop | **Upgrade from Bishop** (Augsburg Confession) — one synod-wide when **2+ cities** |
 | **Circle** | Cantor | Train at Seminary district (Chorale Tradition) |
-| **House** | Colonist | **F** founds hamlet on valid land near synod cities; consumed on use |
 | **Diamond** | Small city | Pop under 15 |
 | **House** | Medium city | Pop 15–29 |
 | **Circle** | Large city | Pop 30+ |
@@ -155,8 +154,8 @@ Ocean, lake, and river tiles are **bright blue** and impassable. Shore tiles gra
 - **Adherence win progress** appears in the adherence line and top banner when you approach 95%.
 - **Two Kingdoms growth:** settlers migrate when **food surplus** (produced − consumed) is positive **and** **blended appeal** (secular × spiritual) is high enough. Secular appeal comes from granaries, markets, worked food tiles, and civic restraint; spiritual appeal from chapels, schools, adherence, and comfort. Imbalance triggers Walther tensions (legalism, antinomian drift, etc.).
 - **Housing cap** limits population until you build parish infrastructure (chapel, granary, church, orphanage). **Workers** ≈ ⅓ of population — only one secular production project per free worker pool; short workers halve build speed.
-- **Organic districts:** after **2+ turns of food surplus**, the game may offer a district site inside your borders (accept / defer / decline). Specialty is suggested from your building mix. **Colonists** can still force a district elsewhere with **F**.
-- **Mission House chain:** build a **Mission House** (Wilhelm Loehe tech) to unlock **colonists cluster-wide**. At the city with the house: colonist and missionary training cost **1 fewer manuscript** and **1 fewer turn**; each house yields **+1 fame/turn**.
+- **Organic districts:** after **2+ turns of food surplus**, the game may offer a district site inside your borders (accept / defer / decline). Specialty is suggested from your building mix.
+- **Mission House chain:** build a **Mission House** (Wilhelm Loehe tech) to unlock **Train Frontier Settler** cluster-wide. With exactly one independent city, train a settler and press **F** on valid land to found a **second independent city**; the settler becomes a missionary. Each house yields **+1 fame/turn** and discounts settler/missionary training.
 - **Siege engines:** Garrison districts with an **Armory** and **James Clerk Maxwell** research can train **Siege Engines** — slow but apply high loyalty pressure/turn (partially bypasses fortifications). **Otto von Guericke**, **Maxwell**, and a synod **Armory** further boost siege pressure.
 - **Coastal patrol:** Market districts touching shore or naval coast can train **Coastal Patrol** after **Missionary Sending** — moves on land and **navigable water**; +1 move when starting on shore or water. **Deep ocean** beyond coastal range is impassable (wider range on Archipelago maps).
 - **Dock and galley:** build a **Dock** at coastal Market districts, then train **Coastal Galleys**. **O** boards adjacent troops; **L** or click highlighted shore lands them (2 cargo). AI rivals on coast may blockade and invade by sea.

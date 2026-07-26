@@ -163,6 +163,7 @@ public class HexSelectionController : MonoBehaviour
         {
             ClearHighlights();
             tm.SelectUnit(null);
+            GalleyCargoPanel.Instance?.Hide();
             TerrainInfoPanel.Instance?.RefreshSelection();
             return;
         }
@@ -174,10 +175,16 @@ public class HexSelectionController : MonoBehaviour
 
     public void FocusUnit(Unit unit)
     {
-        if (unit == null) return;
+        if (unit == null)
+        {
+            GalleyCargoPanel.Instance?.Hide();
+            return;
+        }
+
         ShowReachable(unit);
         TerrainInfoPanel.Instance?.RefreshSelection();
         TerrainInfoPanel.Instance?.RefreshMissionaryTile();
+        GalleyCargoPanel.Instance?.Refresh(unit);
     }
 
     void HandleHexClick(HexCoordinates hex)
@@ -215,8 +222,18 @@ public class HexSelectionController : MonoBehaviour
 
         if (tile.Occupant == selected)
         {
+            if (selected.HasMoveOrder)
+            {
+                selected.ClearMoveOrder();
+                ShowReachable(selected);
+                TerrainInfoPanel.Instance?.RefreshUnitDisplay();
+                PlayerUnitCycle.Instance?.OnUnitOrdersChanged();
+                return;
+            }
+
             ClearHighlights();
             tm.SelectUnit(null);
+            GalleyCargoPanel.Instance?.Hide();
             TerrainInfoPanel.Instance?.RefreshSelection();
             return;
         }
@@ -241,9 +258,13 @@ public class HexSelectionController : MonoBehaviour
         if (tile.Occupant == null)
         {
             if (selected.Type == UnitType.CoastalGalley &&
-                AmphibiousTransport.TryDisembark(selected, hex))
+                AmphibiousTransport.TryDisembark(
+                    selected,
+                    hex,
+                    GalleyCargoPanel.Instance?.GetSelectedPassenger(selected)))
             {
                 ShowReachable(selected);
+                GalleyCargoPanel.Instance?.Refresh(selected);
                 TerrainInfoPanel.Instance?.RefreshUnitDisplay();
                 PlayerUnitCycle.Instance?.OnUnitOrdersChanged();
                 return;
@@ -261,6 +282,13 @@ public class HexSelectionController : MonoBehaviour
     }
 
     public void ShowReachableForUnit(Unit selected) => ShowReachable(selected);
+
+    public void RefreshHighlightsForSelection()
+    {
+        var selected = TurnManager.Instance?.SelectedUnit;
+        if (selected != null && selected.IsOnMap)
+            ShowReachable(selected);
+    }
 
     void ShowReachable(Unit selected)
     {
@@ -316,19 +344,6 @@ public class HexSelectionController : MonoBehaviour
                 MarkHighlight(entry.hex, tier >= 2 ? HighlightKind.PlacementExcellent : HighlightKind.PlacementGood);
             }
             return;
-        }
-
-        if (selected.CanFoundHamlet && CityManager.Instance != null)
-        {
-            var parent = CityManager.Instance.GetNearestPlayerCity(selected.HexPosition);
-            if (parent == null) return;
-            var top = CityPlacementAdvisor.GetTopDistrictSites(parent, 3);
-            foreach (var entry in top)
-            {
-                int tier = CityPlacementAdvisor.GetPlacementHighlightTier(entry.hex, top);
-                if (tier == 0) continue;
-                MarkHighlight(entry.hex, tier >= 2 ? HighlightKind.PlacementExcellent : HighlightKind.PlacementGood);
-            }
         }
     }
 

@@ -15,7 +15,7 @@ public class CityBuildDefinition
     public UnitType? SpawnsUnit;
     public ConfessionTechId? RequiredTech;
 
-    public bool UsesProduction => Track == CityBuildTrack.Secular && ProductionCost > 0 && Id != CityBuildId.FoundHamlet;
+    public bool UsesProduction => Track == CityBuildTrack.Secular && ProductionCost > 0;
 
     public CityBuildDefinition(
         CityBuildId id,
@@ -292,16 +292,6 @@ public static class CityBuildDatabase
             manuscriptCost: 2,
             turnsToComplete: 1),
 
-        [CityBuildId.FoundHamlet] = new CityBuildDefinition(
-            CityBuildId.FoundHamlet,
-            "Found Hamlet",
-            "Plant a new Lutheran settlement on nearby land.",
-            "Creates a new city on an adjacent open hex",
-            CityBuildCategory.ConfessionalBuilding,
-            CityBuildTrack.Confessional,
-            manuscriptCost: 2,
-            turnsToComplete: 2),
-
         [CityBuildId.BuildPotteryWorkshop] = new CityBuildDefinition(
             CityBuildId.BuildPotteryWorkshop,
             "Pottery Workshop",
@@ -325,16 +315,16 @@ public static class CityBuildDatabase
             uniquePerCity: true,
             requiredTech: ConfessionTechId.ParishGranary),
 
-        [CityBuildId.TrainColonist] = new CityBuildDefinition(
-            CityBuildId.TrainColonist,
-            "Send Colonist",
-            "Send families to plant a hamlet on frontier land near the synod.",
-            "Requires Mission House in cluster; -1 cost/turn at house city",
+        [CityBuildId.TrainFrontierSettler] = new CityBuildDefinition(
+            CityBuildId.TrainFrontierSettler,
+            "Train Frontier Settler",
+            "Send a settler to found a second independent synod city on valid frontier land.",
+            "Requires Mission House in cluster; one settler at a time while only one city exists",
             CityBuildCategory.Unit,
             CityBuildTrack.Confessional,
-            manuscriptCost: 3,
-            turnsToComplete: 3,
-            spawnsUnit: UnitType.Colonist,
+            manuscriptCost: 4,
+            turnsToComplete: 4,
+            spawnsUnit: UnitType.Settler,
             requiredTech: ConfessionTechId.MissionarySending),
 
         [CityBuildId.BuildSeminary] = new CityBuildDefinition(

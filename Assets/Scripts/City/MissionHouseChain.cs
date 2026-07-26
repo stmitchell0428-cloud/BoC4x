@@ -1,6 +1,6 @@
 using UnityEngine;
 
-/// <summary>Mission house unlocks the frontier colonist chain across a city cluster.</summary>
+/// <summary>Mission house unlocks a frontier settler for a second independent city (Decision 2).</summary>
 public static class MissionHouseChain
 {
     public static bool CityHasMissionHouse(City city) =>
@@ -29,15 +29,47 @@ public static class MissionHouseChain
         return false;
     }
 
-    public static bool CanTrainColonist(City city) =>
+    public static int CountIndependentSynodCities(SynodPlayerId playerId = SynodPlayerId.Player1)
+    {
+        if (CityManager.Instance == null)
+            return 0;
+
+        int count = 0;
+        foreach (var city in CityManager.Instance.GetSynodPlayerCities(playerId))
+        {
+            if (city.IsIndependentCity)
+                count++;
+        }
+
+        return count;
+    }
+
+    public static bool HasFrontierSettlerInField(SynodPlayerId playerId = SynodPlayerId.Player1)
+    {
+        if (TurnManager.Instance == null)
+            return false;
+
+        foreach (var unit in TurnManager.Instance.GetSynodUnits(playerId))
+        {
+            if (unit.IsAlive && unit.IsFrontierSettler)
+                return true;
+        }
+
+        return false;
+    }
+
+    public static bool CanTrainFrontierSettler(City city) =>
         city != null &&
         city.Faction == FactionId.LutheranSynod &&
-        ClusterHasMissionHouse(city);
+        city.SynodPlayer == SynodPlayerId.Player1 &&
+        ClusterHasMissionHouse(city) &&
+        CountIndependentSynodCities() == 1 &&
+        !HasFrontierSettlerInField();
 
-    public static int ColonistManuscriptDiscount(City city) =>
+    public static int SettlerManuscriptDiscount(City city) =>
         CityHasMissionHouse(city) ? 1 : 0;
 
-    public static int ColonistTurnReduction(City city) =>
+    public static int SettlerTurnReduction(City city) =>
         CityHasMissionHouse(city) ? 1 : 0;
 
     public static int MissionaryManuscriptDiscount(City city) =>
@@ -52,10 +84,10 @@ public static class MissionHouseChain
         return Mathf.Max(1, def.ManuscriptCost - MissionaryManuscriptDiscount(city));
     }
 
-    public static int EffectiveColonistCost(City city)
+    public static int EffectiveFrontierSettlerCost(City city)
     {
-        var def = CityBuildDatabase.Get(CityBuildId.TrainColonist);
-        return Mathf.Max(1, def.ManuscriptCost - ColonistManuscriptDiscount(city));
+        var def = CityBuildDatabase.Get(CityBuildId.TrainFrontierSettler);
+        return Mathf.Max(1, def.ManuscriptCost - SettlerManuscriptDiscount(city));
     }
 
     /// <summary>+1 fame per turn from each completed mission house.</summary>

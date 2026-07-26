@@ -38,6 +38,7 @@ public static class SynodAiBootstrap
 
             placedCapitals.Add(capitalHex);
             TurnManager.Instance?.ActivateSynodPlayer(playerId);
+            SynodDiplomacyManager.Instance?.RegisterRival(playerId);
             spawned++;
         }
 

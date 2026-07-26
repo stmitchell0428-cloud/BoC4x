@@ -124,6 +124,9 @@ public class TurnManager : MonoBehaviour
         if (CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible)
             return;
 
+        if (IsPlayerTurn)
+            AdvancePendingPlayerMoveOrders();
+
         TurnEnded?.Invoke();
         SelectedUnit = null;
         HexSelectionController.Instance?.ClearHighlights();
@@ -161,9 +164,33 @@ public class TurnManager : MonoBehaviour
             SimpleAI.Instance?.PlayTurn(slot.BlocId);
     }
 
+    void AdvancePendingPlayerMoveOrders()
+    {
+        foreach (var unit in GetSynodUnits(SynodPlayerId.Player1))
+        {
+            if (!unit.IsAlive || !unit.IsOnMap || !unit.HasMoveOrder)
+                continue;
+
+            while (unit.HasMoveOrder && unit.MovementRemaining > 0)
+            {
+                if (!unit.CommitPendingMoveOrder() && !unit.AdvanceMoveOrder())
+                    break;
+            }
+        }
+
+        FogOfWarManager.Instance?.Refresh();
+    }
+
     public void SelectUnit(Unit unit)
     {
-        if (unit != null && (unit.Faction != ActiveFaction || !unit.IsAlive))
+        if (unit == null)
+        {
+            SelectedUnit = null;
+            TerrainInfoPanel.Instance?.RefreshSelection();
+            return;
+        }
+
+        if (unit.Faction != ActiveFaction || !unit.IsAlive)
             return;
 
         if (ActiveFaction == FactionId.Schismatic && unit.SchismaticBloc != ActiveSchismaticBloc)

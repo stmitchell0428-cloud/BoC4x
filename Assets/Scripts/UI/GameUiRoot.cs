@@ -11,66 +11,58 @@ public static class GameUiRoot
     static Canvas cachedCanvas;
     static Canvas modalCanvas;
 
+#if UNITY_EDITOR
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        cachedCanvas = null;
+        modalCanvas = null;
+    }
+#endif
+
     public static void InvalidateCache()
     {
         cachedCanvas = null;
         modalCanvas = null;
     }
 
-    public static Canvas GetCanvas() => GetOrCreateCanvas(ref cachedCanvas, "GameUiCanvas", 500);
-
-    /// <summary>High-priority overlay for modal panels (crisis cards, pickers).</summary>
-    public static Canvas GetModalCanvas() =>
-        GetOrCreateCanvas(ref modalCanvas, "ModalUiCanvas", ModalSortOrder);
-
-    static Canvas GetOrCreateCanvas(ref Canvas slot, string name, int sortOrder)
+    public static Canvas GetModalCanvas()
     {
-        if (IsAlive(slot))
-            return slot;
+        if (IsAlive(modalCanvas))
+            return modalCanvas;
 
-        slot = null;
+        modalCanvas = FindNamedCanvas("ModalUiCanvas");
+        if (IsAlive(modalCanvas))
+            return modalCanvas;
 
         foreach (var canvas in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include))
         {
             if (!IsAlive(canvas))
                 continue;
-
-            if (canvas.renderMode == RenderMode.ScreenSpaceOverlay &&
-                canvas.gameObject.activeInHierarchy &&
-                canvas.sortingOrder <= sortOrder)
+            if (canvas.renderMode == RenderMode.ScreenSpaceOverlay)
             {
-                slot = canvas;
-                return slot;
+                modalCanvas = canvas;
+                return modalCanvas;
             }
         }
 
+        modalCanvas = CreateOverlayCanvas("ModalUiCanvas", ModalSortOrder);
+        return modalCanvas;
+    }
+
+    static Canvas FindNamedCanvas(string name)
+    {
         foreach (var canvas in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include))
         {
-            if (IsAlive(canvas))
-            {
-                slot = canvas;
-                return slot;
-            }
+            if (IsAlive(canvas) && canvas.gameObject.name == name)
+                return canvas;
         }
 
-        slot = CreateOverlayCanvas(name, sortOrder);
-        return slot;
+        return null;
     }
 
-    static bool IsAlive(Object obj) => obj != null;
-
-    public static void EnsureEventSystem()
-    {
-        if (Object.FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include) != null)
-            return;
-
-        var esGo = new GameObject("EventSystem");
-        Object.DontDestroyOnLoad(esGo);
-        esGo.AddComponent<EventSystem>();
-        esGo.AddComponent<InputSystemUIInputModule>();
-    }
-
-    static Canvas CreateOverlayCanvas(string name, int sortOrder)
+    /// <summary>Creates a dedicated overlay canvas when scene UI is not ready yet.</summary>
+    public static Canvas CreateOverlayCanvas(string name, int sortOrder, bool logCreation = false)
     {
         EnsureEventSystem();
 
@@ -89,7 +81,44 @@ public static class GameUiRoot
 
         go.AddComponent<GraphicRaycaster>();
 
-        Debug.LogWarning($"GameUiRoot: created runtime overlay Canvas ({name}).");
+        if (logCreation)
+            Debug.Log($"GameUiRoot: created runtime overlay Canvas ({name}).");
+
         return canvas;
+    }
+
+    public static Canvas GetCanvas()
+    {
+        if (IsAlive(cachedCanvas))
+            return cachedCanvas;
+
+        cachedCanvas = FindNamedCanvas("GameUiCanvas");
+        if (IsAlive(cachedCanvas))
+            return cachedCanvas;
+
+        foreach (var canvas in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include))
+        {
+            if (IsAlive(canvas))
+            {
+                cachedCanvas = canvas;
+                return cachedCanvas;
+            }
+        }
+
+        cachedCanvas = CreateOverlayCanvas("GameUiCanvas", 500);
+        return cachedCanvas;
+    }
+
+    static bool IsAlive(Object obj) => obj != null;
+
+    public static void EnsureEventSystem()
+    {
+        if (Object.FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include) != null)
+            return;
+
+        var esGo = new GameObject("EventSystem");
+        Object.DontDestroyOnLoad(esGo);
+        esGo.AddComponent<EventSystem>();
+        esGo.AddComponent<InputSystemUIInputModule>();
     }
 }

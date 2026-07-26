@@ -643,8 +643,13 @@ public class ConfessionTechPanel : MonoBehaviour
         sb.AppendLine();
         sb.AppendLine($"<b>Cost</b>  {node.ManuscriptCost} manuscripts, {node.TurnsToComplete} turns");
 
-        if (node.MinAdherence > 0f)
-            sb.AppendLine($"<b>Adherence</b>  {node.MinAdherence:F0}%+ required");
+        if (node.MinAdherence > 0f &&
+            TechTreeRules.CategoryFor(node.Id) == TechTreeCategory.Spiritual)
+            sb.AppendLine($"<b>Adherence</b>  {node.MinAdherence:F0}%+ required (spiritual track)");
+
+        if (TechTreeRules.CategoryFor(node.Id) == TechTreeCategory.Secular)
+            sb.AppendLine(
+                $"<b>Secular track</b>  research allowed at any adherence; bonuses dormant ≤{ConfessionResearchManager.BonusPotencyThreshold:F0}%");
 
         if (node.Prerequisites.Length > 0)
         {
@@ -673,7 +678,10 @@ public class ConfessionTechPanel : MonoBehaviour
         {
             ConfessionTechStatus.Unlocked => "<color=#88CC88>Already completed.</color>",
             ConfessionTechStatus.Researching => "<color=#FFCC55>Already researching this doctrine.</color>",
-            ConfessionTechStatus.AdherenceLocked => "<color=#CC8866>Need 40%+ adherence to research.</color>",
+            ConfessionTechStatus.AdherenceLocked =>
+                TechTreeRules.CategoryFor(id) == TechTreeCategory.Spiritual
+                    ? $"<color=#CC8866>Need {ConfessionResearchManager.BonusPotencyThreshold:F0}%+ adherence for spiritual research.</color>"
+                    : "<color=#CC8866>Cannot start this research.</color>",
             ConfessionTechStatus.Locked => "<color=#888888>Prerequisites not met.</color>",
             ConfessionTechStatus.Available => "<color=#FF8888>Not enough manuscripts.</color>",
             _ => "<color=#888888>Cannot start this research.</color>"

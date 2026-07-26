@@ -179,6 +179,11 @@ public class CityManager : MonoBehaviour
 
             summaries.Add(line);
         }
+
+        string trade = SynodTradeSystem.FormatNetworkSummary(SynodPlayerId.Player1);
+        if (!string.IsNullOrEmpty(trade))
+            summaries.Add(trade);
+
         return summaries.Count > 0 ? string.Join("\n", summaries) : "City production:  - ";
     }
 
@@ -371,6 +376,7 @@ public class CityManager : MonoBehaviour
             FirstSteps.Instance?.AddFame(15);
             IdentityPickerPanel.Instance?.Show();
         }
+        PopulationSync.SyncPlayerFactionFromCities();
         TerrainInfoPanel.Instance?.RefreshCityYield();
         TerrainInfoPanel.Instance?.RefreshMissionaryTile();
         FogOfWarManager.Instance?.Refresh();
@@ -378,46 +384,71 @@ public class CityManager : MonoBehaviour
         return true;
     }
 
-    public bool TryFoundHamletFromColonist(Unit colonist)
+    public bool TrySpawnFrontierSettler(City city)
     {
-        if (colonist == null || !colonist.CanFoundHamlet)
+        if (city == null || !MissionHouseChain.CanTrainFrontierSettler(city))
             return false;
 
-        var hex = colonist.HexPosition;
+        HexCoordinates? spawnHex = FindUnitSpawnHex(city, UnitType.Settler);
+        if (!spawnHex.HasValue || TurnManager.Instance == null)
+            return false;
+
+        var go = new GameObject($"{city.Faction}_FrontierSettler");
+        go.transform.SetParent(transform);
+        var unit = go.AddComponent<Unit>();
+        unit.Initialize(city.Faction, UnitType.Settler, spawnHex.Value, synodPlayer: city.SynodPlayer, isFrontierSettler: true);
+        TurnManager.Instance.RegisterUnit(unit);
+        FogOfWarManager.Instance?.Refresh();
+        return true;
+    }
+
+    public bool TryFoundCityFromFrontierSettler(Unit settler, string cityName = null)
+    {
+        if (settler == null || !settler.CanFoundFrontierCity)
+            return false;
+
+        var hex = settler.HexPosition;
         if (!HexGridMap.Instance.TryGetTile(hex, out var tile))
             return false;
-        if (!TerrainRules.IsPassable(tile.Terrain))
+        if (!TerrainRules.IsPassable(tile.Terrain) || tile.Settlement != null || tile.Occupant != settler)
             return false;
-        if (tile.Settlement != null)
-            return false;
-        if (tile.Occupant != colonist)
-            return false;
-
-        var parent = GetNearestPlayerCity(hex);
-        if (parent == null || !IsValidHamletDistrictSite(hex, parent))
+        if (IsTooCloseToIndependentCity(hex))
         {
-            Debug.LogWarning(
-                $"Cannot found district: need open land within 3 hexes of your city and {MinCitySeparation}+ hexes from other cities.");
+            Debug.LogWarning($"Cannot found second city: must be at least {MinCitySeparation} hexes from any other city.");
             return false;
         }
 
-        hamletCounter++;
-        var go = new GameObject($"City_Hamlet_{hamletCounter}");
+        cityName ??= PickFrontierCityName();
+        var go = new GameObject($"City_{cityName}");
         go.transform.SetParent(transform);
-        var city = go.AddComponent<City>();
-        city.Initialize(colonist.Faction, hex, $"District {hamletCounter}", startingPopulation: 10, parentCity: parent);
+        go.AddComponent<City>().Initialize(
+            settler.Faction, hex, cityName, isCapital: false, synodPlayer: settler.SynodPlayer);
 
-        colonist.ClearTileForFounding();
-        TurnManager.Instance?.UnregisterUnit(colonist);
-        Destroy(colonist.gameObject);
+        settler.ConvertToMissionaryAfterFounding();
 
-        FirstSteps.Instance?.AddFame(5);
-        FirstSteps.Instance?.RefreshDashboard();
+        if (settler.SynodPlayer == SynodPlayerId.Player1)
+            FirstSteps.Instance?.AddFame(10);
+
+        PopulationSync.SyncPlayerFactionFromCities();
         TerrainInfoPanel.Instance?.RefreshCityYield();
+        TerrainInfoPanel.Instance?.RefreshMissionaryTile();
         FogOfWarManager.Instance?.Refresh();
-        DistrictSpecialtyPickerPanel.Instance?.Show(city);
-        Debug.Log($"Founded {city.SettlementDisplayName()} (district of {parent.CityName}).");
+        Debug.Log($"Founded second city {cityName}. The frontier settler is now a missionary.");
         return true;
+    }
+
+    static int frontierCityCounter;
+
+    static string PickFrontierCityName()
+    {
+        frontierCityCounter++;
+        return frontierCityCounter switch
+        {
+            1 => "Leipzig",
+            2 => "Erfurt",
+            3 => "Halle",
+            _ => $"Synod City {frontierCityCounter + 1}"
+        };
     }
 
     public bool TryFoundOrganicDistrict(City parent, HexCoordinates hex, HamletSpecialty suggestedSpecialty)
@@ -620,35 +651,6 @@ public class CityManager : MonoBehaviour
 
         if (totalMss > 0 || totalFame > 0)
             Debug.Log($"Hamlet tribute: +{totalMss} manuscripts, +{totalFame / 2} fame.");
-    }
-
-    public bool TryFoundHamlet(City origin)
-    {
-        if (origin == null || HexGridMap.Instance == null) return false;
-
-        var parent = origin.ControllingCity;
-        foreach (var neighbor in HexGridMap.Instance.GetWrappedNeighbors(parent.HexPosition))
-        {
-            if (!IsValidHamletDistrictSite(neighbor, parent))
-                continue;
-            if (HexGridMap.Instance.TryGetTile(neighbor, out var tile) && tile.Occupant != null)
-                continue;
-
-            hamletCounter++;
-            var go = new GameObject($"City_Hamlet_{hamletCounter}");
-            go.transform.SetParent(transform);
-            var city = go.AddComponent<City>();
-            city.Initialize(parent.Faction, neighbor, $"District {hamletCounter}", startingPopulation: 10, parentCity: parent);
-            Debug.Log($"Founded {city.SettlementDisplayName()} adjacent to {parent.CityName}.");
-            FirstSteps.Instance?.RefreshDashboard();
-            TerrainInfoPanel.Instance?.RefreshCityYield();
-            FogOfWarManager.Instance?.Refresh();
-            DistrictSpecialtyPickerPanel.Instance?.Show(city);
-            return true;
-        }
-
-        Debug.LogWarning($"No open adjacent hex for a district near {parent.CityName}.");
-        return false;
     }
 
     public City GetAiCity(SchismaticBlocId blocId = SchismaticBlocId.None)

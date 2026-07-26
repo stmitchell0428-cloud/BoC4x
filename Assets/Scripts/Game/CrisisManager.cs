@@ -56,6 +56,28 @@ public class CrisisManager : MonoBehaviour
         TurnPhaseBanner.Instance?.Refresh();
     }
 
+    public void EnsurePendingCrisisCardVisible()
+    {
+        if (IsAwaitingPlayerChoice || ActiveCrisis == CrisisType.None)
+            return;
+
+        if (cardShownThisStage)
+            return;
+
+        switch (ActiveCrisis)
+        {
+            case CrisisType.Legalism:
+                PresentLegalismCard();
+                break;
+            case CrisisType.Antinomian:
+                PresentAntinomianCard();
+                break;
+            case CrisisType.DoctrinalDrift when Stage != CrisisStage.None:
+                TryPresentDriftCard(Stage);
+                break;
+        }
+    }
+
     bool TryPresentCard(string title, string body, List<CrisisCardChoice> choices)
     {
         if (CrisisCardPanel.Instance == null)
@@ -91,6 +113,7 @@ public class CrisisManager : MonoBehaviour
             return false;
 
         IsAwaitingPlayerChoice = true;
+        cardShownThisStage = true;
         pendingCard = null;
         FirstSteps.Instance?.RefreshDashboard();
         TurnPhaseBanner.Instance?.Refresh();
@@ -103,9 +126,11 @@ public class CrisisManager : MonoBehaviour
         if (!pending.HasValue)
             yield break;
 
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 8; i++)
         {
             yield return null;
+            if (i == 0)
+                yield return new WaitForEndOfFrame();
 
             if (IsAwaitingPlayerChoice || !pending.HasValue)
                 yield break;
@@ -128,6 +153,9 @@ public class CrisisManager : MonoBehaviour
     public void OnPlayerTurnEnded()
     {
         if (IsAwaitingPlayerChoice)
+            return;
+
+        if (ActiveCrisis is CrisisType.Legalism or CrisisType.Antinomian)
             return;
 
         var faction = FirstSteps.Instance;
@@ -194,6 +222,16 @@ public class CrisisManager : MonoBehaviour
         if (IsAwaitingPlayerChoice)
             return;
 
+        if (ActiveCrisis == CrisisType.Legalism)
+        {
+            if (!cardShownThisStage)
+                PresentLegalismCard();
+            return;
+        }
+
+        if (ActiveCrisis != CrisisType.None)
+            return;
+
         SetCrisis(CrisisType.Legalism, CrisisStage.Breaking);
         PresentLegalismCard();
     }
@@ -201,6 +239,16 @@ public class CrisisManager : MonoBehaviour
     public void QueueAntinomianCrisis()
     {
         if (IsAwaitingPlayerChoice)
+            return;
+
+        if (ActiveCrisis == CrisisType.Antinomian)
+        {
+            if (!cardShownThisStage)
+                PresentAntinomianCard();
+            return;
+        }
+
+        if (ActiveCrisis != CrisisType.None)
             return;
 
         SetCrisis(CrisisType.Antinomian, CrisisStage.Breaking);
@@ -217,6 +265,9 @@ public class CrisisManager : MonoBehaviour
             return;
         }
 
+        if (ActiveCrisis != CrisisType.None)
+            return;
+
         QueueLegalismCrisis();
     }
 
@@ -230,11 +281,17 @@ public class CrisisManager : MonoBehaviour
             return;
         }
 
+        if (ActiveCrisis != CrisisType.None)
+            return;
+
         QueueAntinomianCrisis();
     }
 
     void EvaluateDoctrinalDrift(FirstSteps faction)
     {
+        if (ActiveCrisis is CrisisType.Legalism or CrisisType.Antinomian)
+            return;
+
         if (faction.ConfessionalAdherence > DriftRumblings)
         {
             if (ActiveCrisis == CrisisType.DoctrinalDrift)
@@ -286,11 +343,8 @@ public class CrisisManager : MonoBehaviour
             }
         }
 
-        if (Stage == CrisisStage.Breaking && !IsAwaitingPlayerChoice)
-        {
-            cardShownThisStage = false;
+        if (Stage == CrisisStage.Breaking && !IsAwaitingPlayerChoice && !cardShownThisStage)
             TryPresentDriftCard(CrisisStage.Breaking);
-        }
     }
 
     void TryPresentDriftCard(CrisisStage stage)
@@ -299,15 +353,10 @@ public class CrisisManager : MonoBehaviour
             return;
 
         if (cardShownThisStage && pendingStageForCard == stage)
-        {
-            if (CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible)
-                return;
-            cardShownThisStage = false;
-        }
+            return;
 
         pendingStageForCard = stage;
         PresentDriftCard(stage);
-        cardShownThisStage = IsAwaitingPlayerChoice;
     }
 
     void PresentLegalismCard()
@@ -414,7 +463,7 @@ public class CrisisManager : MonoBehaviour
         var faction = FirstSteps.Instance;
         if (faction != null)
         {
-            faction.population = Mathf.Max(0, faction.population - 2);
+            PopulationSync.ApplyDeltaToPrimaryCity(-2);
             faction.civicRestraint = Mathf.Clamp(faction.civicRestraint - 10f, 0f, 100f);
             faction.spiritualComfort = Mathf.Clamp(faction.spiritualComfort + 8f, 0f, 100f);
         }
@@ -448,7 +497,8 @@ public class CrisisManager : MonoBehaviour
         var faction = FirstSteps.Instance;
         if (faction != null)
         {
-            faction.population = Mathf.Max(1, faction.population / 2);
+            int loss = Mathf.Max(1, PopulationSync.SumSynodPopulation() / 2);
+            PopulationSync.ApplyLossAcrossPlayerCities(loss);
             faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 12f, 0f, 100f);
             faction.spiritualComfort = 40f;
         }
@@ -489,6 +539,8 @@ public class CrisisManager : MonoBehaviour
             schismPressure = Mathf.Max(0, schismPressure - 15);
             ClearCrisis();
         }
+        else
+            cardShownThisStage = true;
 
         FirstSteps.Instance?.RefreshDashboard();
     }
@@ -496,6 +548,7 @@ public class CrisisManager : MonoBehaviour
     void ResolveDriftContinue()
     {
         schismPressure += 4;
+        cardShownThisStage = true;
         FirstSteps.Instance?.RefreshDashboard();
     }
 

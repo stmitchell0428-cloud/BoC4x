@@ -65,9 +65,15 @@ public static class AmphibiousTransport
         return passenger != null;
     }
 
-    public static bool TryDisembark(Unit galley, HexCoordinates landHex)
+    public static bool TryDisembark(Unit galley, HexCoordinates landHex, Unit passenger = null)
     {
-        if (!CanDisembark(galley, landHex, out var passenger))
+        if (passenger == null)
+            passenger = galley.GetFirstPassenger();
+
+        if (passenger == null || !ContainsPassenger(galley, passenger))
+            return false;
+
+        if (!CanDisembark(galley, landHex, out _))
             return false;
 
         galley.RemovePassenger(passenger);
@@ -82,6 +88,9 @@ public static class AmphibiousTransport
         Debug.Log($"{Unit.TypeDisplayName(passenger.Type)} landed from galley at {landHex}.");
         return true;
     }
+
+    public static bool TryDisembark(Unit galley, HexCoordinates landHex)
+        => TryDisembark(galley, landHex, null);
 
     public static List<HexCoordinates> GetDisembarkHexes(Unit galley)
     {
@@ -172,5 +181,15 @@ public static class AmphibiousTransport
         }
 
         return null;
+    }
+
+    static bool ContainsPassenger(Unit galley, Unit passenger)
+    {
+        foreach (var embarked in galley.EmbarkedPassengers)
+        {
+            if (embarked == passenger)
+                return true;
+        }
+        return false;
     }
 }

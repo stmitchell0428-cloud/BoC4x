@@ -146,6 +146,12 @@ public class HexGridMap : MonoBehaviour
             gameObject.AddComponent<CityGrowthManager>();
         if (FindAnyObjectByType<DistrictOfferPanel>() == null)
             gameObject.AddComponent<DistrictOfferPanel>();
+        if (FindAnyObjectByType<GalleyCargoPanel>() == null)
+            gameObject.AddComponent<GalleyCargoPanel>();
+        if (FindAnyObjectByType<SynodDiplomacyManager>() == null)
+            gameObject.AddComponent<SynodDiplomacyManager>();
+        if (FindAnyObjectByType<DiplomacyPanel>() == null)
+            gameObject.AddComponent<DiplomacyPanel>();
         if (FindAnyObjectByType<AppealOverlayController>() == null)
             gameObject.AddComponent<AppealOverlayController>();
         if (FindAnyObjectByType<LoadingScreenPanel>() == null)

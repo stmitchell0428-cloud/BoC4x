@@ -6,19 +6,48 @@
 
 ---
 
-## Latest — AI synod factions (July 25)
+## Latest — decision fork pass (July 26)
 
-### Completed
+### Fork 1 — Decision 1: AI synod schism ✅
 
-1. **AI synod factions** — lobby players 2–4 spawn rival **Lutheran synods** (Strasbourg, Magdeburg, Nuremberg) with capitals, soldiers, and scouts; separate turn slots and teal/blue colors. Schismatic blocs only emerge from **crisis schisms** now.
-2. **Watchtower garrison** — martial units on a friendly city hex with a watchtower get **+1 attack** and **+2 defense**; walls still add **+2 defense** (stacks). Watchtower cities also reveal **+1 sight** in fog of war.
-3. **Amphibious transport** — soldiers/slingers/archers/horsemen board galleys (**O** or click galley) from shore; **L** or click green shore hex to land (2 cargo max)
-4. **Prior:** deep water vs coastal sea, AI naval blockades, naval movement, siege/loyalty/mission house chains
+Rival synods (players 2–4) build Walther crisis pressure from city growth tension. When pressure breaks, a **nearby schismatic bloc splinters off** (new capital + units); the parent AI synod **survives weakened** (lost pop, one unit may defect).
 
-### Recommended next
+### Prior session
 
-1. Embarked unit icons / passenger list on galley selection UI
-2. AI synod founding/preaching (currently start with capitals; human still nomadic)
+1. **AI synod factions** — lobby players 2–4 spawn rival Lutheran synods
+2. **Watchtower garrison**, **amphibious transport**, naval AI blockades
+
+### Fork 2 — Decision 2: Mission House → frontier settler ✅
+
+Mission House now unlocks **Train Frontier Settler** (replaces colonist). With one independent city, train a settler and press **F** on valid land to found a **second independent city** (Leipzig, etc.); settler becomes a missionary. Districts remain organic-only.
+
+### Fork 3 — Decision 7: population sync ✅
+
+Player faction population is now **derived from the sum of all synod city/district populations** each growth/migration/production/confessional phase. Losses and gains apply to cities first, then sync.
+
+### Fork 4 — Decision 8: organic-only districts ✅
+
+Removed **Found Hamlet** build, **Colonist** unit type, and all manual district founding paths. Districts spawn **only** from organic growth offers after food surplus.
+
+### Fork 5 — Decision 14: AI synod personalities ✅
+
+**Strasbourg** (evangelical): missionary-heavy production and preaching sieges. **Magdeburg** (garrison): soldier/siege focus. **Nuremberg** (humanist patrol): scouts + slingers. Shared `ManageCityProduction` also drives schismatic blocs.
+
+### Remaining forks (in order)
+
+### Fork 6 — Decision 17: asymmetric adherence rules ✅
+
+**Spiritual track** keeps adherence gates (40%+ global, per-node minimums). **Secular track** can be researched at any adherence. All tech **bonuses stay dormant at ≤40%** adherence (potency scaling). Tech-granted adherence floors removed — adherence can reach **0%**.
+
+### Remaining forks (in order)
+
+### Fork 7 — Galley cargo UI + synod trade ✅
+
+**Galley cargo panel** (bottom-right when galley selected): shows 0/2 slots, Select/Land per passenger; shore clicks land the selected soldier. **Synod trade stub:** Market districts (Market Hall or Dock) and coastal capitals with Dock/Market Hall within 4 hexes in the same cluster earn **+1 manuscript per link** each production phase.
+
+### Diplomacy (rival synods) ✅
+
+Press **D** for the diplomacy panel (lobby matches with 2+ players). Rival synods start **at war**. **Propose truce** costs 2 manuscripts for **10 turns** without synod-vs-synod combat or siege. **Declare war** breaks a truce. Schismatic blocs ignore diplomacy and stay always hostile.
 
 ---
 

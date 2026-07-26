@@ -92,7 +92,8 @@ public class MatchController : MonoBehaviour
         var faction = FirstSteps.Instance;
         if (faction != null)
         {
-            if (faction.population <= 0)
+            bool hasSynodCities = CityManager.Instance.GetSynodPlayerCities(SynodPlayerId.Player1).Count > 0;
+            if (hasSynodCities && faction.population <= 0)
             {
                 EndMatch(MatchResult.SchismaticVictory, "The synod's population collapsed.");
                 return;

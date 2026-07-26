@@ -49,6 +49,11 @@ public static class CityGrowthSystem
 
     public static FactionGrowthMetrics GetFactionMetrics(City city)
     {
+        if (city != null && city.Faction == FactionId.LutheranSynod && city.SynodPlayer != SynodPlayerId.Player1)
+        {
+            return AiSynodCrisisManager.GetMetrics(city.SynodPlayer);
+        }
+
         if (city != null && city.Faction == FactionId.LutheranSynod && FirstSteps.Instance != null)
         {
             return new FactionGrowthMetrics
@@ -118,15 +123,8 @@ public static class CityGrowthSystem
         city.Population += gain;
         city.RefreshAppearance();
 
-        if (city.Faction == FactionId.LutheranSynod)
-        {
-            var faction = FirstSteps.Instance;
-            if (faction != null)
-            {
-                faction.population += gain;
-                ApplyAntinomianGrowthTax(gain);
-            }
-        }
+        if (city.Faction == FactionId.LutheranSynod && city.SynodPlayer == SynodPlayerId.Player1)
+            ApplyAntinomianGrowthTax(gain);
 
         return gain;
     }
@@ -624,10 +622,11 @@ public static class CityGrowthSystem
             int loss = Mathf.Min(remaining, root.Population - 5);
             root.Population -= loss;
             root.RefreshAppearance();
-            if (root.Faction == FactionId.LutheranSynod && FirstSteps.Instance != null)
-                FirstSteps.Instance.population = Mathf.Max(0, FirstSteps.Instance.population - loss);
             Debug.LogWarning($"{root.CityName}: cluster food deficit {snap.FoodSurplus}  -  {loss} settlers departed.");
         }
+
+        if (root.Faction == FactionId.LutheranSynod && root.SynodPlayer == SynodPlayerId.Player1)
+            PopulationSync.SyncPlayerFactionFromCities();
     }
 
     public static string FormatGrowthLine(City city)

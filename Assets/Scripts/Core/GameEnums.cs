@@ -47,7 +47,6 @@ public enum UnitType
     Chaplain,
     Cantor,
     Defender,
-    Colonist,
     Slinger,
     Archer,
     Horseman,

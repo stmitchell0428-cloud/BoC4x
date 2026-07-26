@@ -161,7 +161,7 @@ public static class HamletSpecialtyDatabase
             "Trains colonists, scouts, coastal patrol, and galleys; builds dock and frontier craft.",
             new[]
             {
-                CityBuildId.TrainColonist,
+                CityBuildId.TrainFrontierSettler,
                 CityBuildId.TrainScout,
                 CityBuildId.TrainCoastalPatrol,
                 CityBuildId.TrainCoastalGalley,

@@ -36,6 +36,9 @@ public class ConfessionResearchManager : MonoBehaviour
     static TechTreeCategory TreeFor(ConfessionTechId id) =>
         TechTreeRules.CategoryFor(id);
 
+    /// <summary>Tech bonuses scale above this adherence; at or below, unlocked effects are dormant.</summary>
+    public const float BonusPotencyThreshold = 40f;
+
     ConfessionTechId? ActiveForTree(TechTreeCategory tree) =>
         tree == TechTreeCategory.Spiritual ? activeSpiritualResearch : activeSecularResearch;
 
@@ -45,7 +48,7 @@ public class ConfessionResearchManager : MonoBehaviour
     int StartedOnTurnForTree(TechTreeCategory tree) =>
         tree == TechTreeCategory.Spiritual ? spiritualResearchStartedOnTurn : secularResearchStartedOnTurn;
 
-    /// <summary>0 below 40% adherence, 1 at 100%. Scales all track effects.</summary>
+    /// <summary>0 at or below BonusPotencyThreshold, 1 at 100%. Scales all track effects.</summary>
     public float AdherencePotency
     {
         get
@@ -53,8 +56,8 @@ public class ConfessionResearchManager : MonoBehaviour
             var faction = Faction;
             if (faction == null) return 0f;
             float a = faction.ConfessionalAdherence;
-            if (a < 40f) return 0f;
-            return (a - 40f) / 60f;
+            if (a <= BonusPotencyThreshold) return 0f;
+            return (a - BonusPotencyThreshold) / (100f - BonusPotencyThreshold);
         }
     }
 
@@ -89,11 +92,11 @@ public class ConfessionResearchManager : MonoBehaviour
         var node = ConfessionTechDatabase.Get(id);
         var faction = Faction;
 
-        if (faction != null)
+        if (faction != null && IsSpiritualTech(id))
         {
             if (faction.ConfessionalAdherence < node.MinAdherence)
                 return ConfessionTechStatus.AdherenceLocked;
-            if (faction.ConfessionalAdherence < 40f)
+            if (faction.ConfessionalAdherence <= BonusPotencyThreshold)
                 return ConfessionTechStatus.AdherenceLocked;
         }
 
@@ -315,7 +318,8 @@ public class ConfessionResearchManager : MonoBehaviour
     public string AdherencePotencyLabel()
     {
         float p = AdherencePotency;
-        if (p <= 0f) return "Tech potency: dormant (<40% adherence)";
+        if (p <= 0f)
+            return $"Tech potency: dormant (≤{BonusPotencyThreshold:F0}% adherence) — secular research still allowed";
         return $"Tech potency: {p * 100f:F0}% (doctrine, culture, secular)";
     }
 

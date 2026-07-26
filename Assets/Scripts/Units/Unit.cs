@@ -12,6 +12,7 @@ public class Unit : MonoBehaviour
     public UnitType Type { get; private set; }
     public HexCoordinates HexPosition { get; private set; }
     public bool IsNomadicFounder { get; private set; }
+    public bool IsFrontierSettler { get; private set; }
 
     public int MaxHealth { get; private set; }
     public int Health { get; private set; }
@@ -32,6 +33,7 @@ public class Unit : MonoBehaviour
     public IReadOnlyList<Unit> EmbarkedPassengers => embarkedPassengers;
 
     HexCoordinates? moveOrderTarget;
+    bool pendingMoveOrderAdvance;
     public bool HasMoveOrder => moveOrderTarget.HasValue;
     public HexCoordinates? MoveOrderTarget => moveOrderTarget;
 
@@ -56,7 +58,7 @@ public class Unit : MonoBehaviour
         {
             if (!IsOnMap || Faction != FactionId.LutheranSynod || SynodPlayer != SynodPlayerId.Player1)
                 return false;
-            if (CanFoundNomadicCapital || CanFoundHamlet)
+            if (CanFoundNomadicCapital || CanFoundFrontierCity)
                 return true;
             if (CanNomadicPreach && !NomadicFoundingGate.PreachCompleted &&
                 FirstSteps.Instance != null &&
@@ -81,6 +83,8 @@ public class Unit : MonoBehaviour
                 return true;
             if (AmphibiousTransport.IsAmphibiousCargo(this) && MovementRemaining > 0 &&
                 AmphibiousTransport.FindAdjacentGalley(this) != null)
+                return true;
+            if (HasMoveOrder)
                 return true;
             return false;
         }
@@ -141,7 +145,36 @@ public class Unit : MonoBehaviour
         IsAlive && Type == UnitType.Settler && IsNomadicFounder &&
         CityManager.Instance != null && CityManager.Instance.GetPrimaryPlayerCity() == null;
 
-    public bool CanFoundHamlet => false; // Districts spawn organically from growth offers only.
+    bool CountsForNomadicScoutSurvey =>
+        Type == UnitType.Scout &&
+        Faction == FactionId.LutheranSynod &&
+        SynodPlayer == SynodPlayerId.Player1;
+
+    public bool CanFoundFrontierCity
+    {
+        get
+        {
+            if (!IsAlive || Type != UnitType.Settler || IsNomadicFounder || !IsFrontierSettler)
+                return false;
+            if (TurnManager.Instance == null || !TurnManager.Instance.IsPlayerTurn)
+                return false;
+            if (SynodPlayer != SynodPlayerId.Player1)
+                return false;
+            if (CityManager.Instance == null || CityManager.Instance.GetPrimaryPlayerCity() == null)
+                return false;
+            if (MissionHouseChain.CountIndependentSynodCities() != 1)
+                return false;
+            if (HexGridMap.Instance == null || !HexGridMap.Instance.TryGetTile(HexPosition, out var tile))
+                return false;
+            if (!TerrainRules.IsPassable(tile.Terrain))
+                return false;
+            if (tile.Settlement != null)
+                return false;
+            if (tile.Occupant != this)
+                return false;
+            return true;
+        }
+    }
 
     int baseAttack;
     int baseDefense;
@@ -155,13 +188,15 @@ public class Unit : MonoBehaviour
         UnitType type,
         HexCoordinates startHex,
         bool isNomadicFounder = false,
-        SynodPlayerId synodPlayer = SynodPlayerId.Player1)
+        SynodPlayerId synodPlayer = SynodPlayerId.Player1,
+        bool isFrontierSettler = false)
     {
         Faction = faction;
         SynodPlayer = synodPlayer;
         SchismaticBloc = SchismaticBlocId.None;
         Type = type;
         IsNomadicFounder = isNomadicFounder && type == UnitType.Settler;
+        IsFrontierSettler = isFrontierSettler && type == UnitType.Settler && !IsNomadicFounder;
         HexPosition = HexGridMap.Instance != null
             ? HexGridMap.Instance.Wrap(startHex)
             : startHex;
@@ -220,12 +255,6 @@ public class Unit : MonoBehaviour
                 MaxHealth = 35;
                 baseAttack = 8;
                 baseDefense = 7;
-                baseMovementRange = 2;
-                break;
-            case UnitType.Colonist:
-                MaxHealth = 18;
-                baseAttack = 3;
-                baseDefense = 2;
                 baseMovementRange = 2;
                 break;
             case UnitType.Archer:
@@ -304,7 +333,6 @@ public class Unit : MonoBehaviour
             UnitType.Horseman => 0.68f,
             UnitType.Chaplain => 0.50f,
             UnitType.Cantor => 0.48f,
-            UnitType.Colonist => 0.52f,
             UnitType.Pastor => 0.52f,
             UnitType.Bishop => 0.58f,
             UnitType.Archbishop => 0.62f,
@@ -324,7 +352,7 @@ public class Unit : MonoBehaviour
         SnapToHex(startHex);
         PlaceOnTile(startHex);
 
-        if (Type == UnitType.Scout && NomadicFoundingGate.IsNomadicPhase)
+        if (CountsForNomadicScoutSurvey && NomadicFoundingGate.IsNomadicPhase)
             NomadicFoundingGate.RecordScoutHex(HexPosition);
 
         if (ConfessionResearchManager.Instance != null && faction == FactionId.LutheranSynod)
@@ -389,9 +417,6 @@ public class Unit : MonoBehaviour
             case UnitType.Defender:
                 MaxHealth = 35; baseAttack = 8; baseDefense = 7; baseMovementRange = 2;
                 break;
-            case UnitType.Colonist:
-                MaxHealth = 18; baseAttack = 3; baseDefense = 2; baseMovementRange = 2;
-                break;
             case UnitType.Archer:
                 MaxHealth = 13; baseAttack = 9; baseDefense = 1; baseMovementRange = 2;
                 break;
@@ -437,7 +462,6 @@ public class Unit : MonoBehaviour
             UnitType.Horseman => 0.68f,
             UnitType.Chaplain => 0.50f,
             UnitType.Cantor => 0.48f,
-            UnitType.Colonist => 0.52f,
             UnitType.Pastor => 0.52f,
             UnitType.Bishop => 0.58f,
             UnitType.Archbishop => 0.62f,
@@ -472,7 +496,6 @@ public class Unit : MonoBehaviour
         UnitType.Slinger => CreateSlingerSprite(),
         UnitType.Chaplain => CreateTriangleSprite(),
         UnitType.Cantor => CreateCircleSprite(),
-        UnitType.Colonist => CreateColonistSprite(),
         UnitType.Archer => CreateSlingerSprite(),
         UnitType.Horseman => CreateSquareSprite(),
         UnitType.Pastor => CreateTriangleSprite(),
@@ -519,14 +542,37 @@ public class Unit : MonoBehaviour
 
         HasAttacked = false;
         HasPreached = false;
-        AdvanceMoveOrder();
+
+        if (IsPlayerControlledSynod)
+            pendingMoveOrderAdvance = HasMoveOrder;
+        else
+            AdvanceMoveOrder();
     }
 
-    public void ClearMoveOrder() => moveOrderTarget = null;
+    bool IsPlayerControlledSynod =>
+        Faction == FactionId.LutheranSynod && SynodPlayer == SynodPlayerId.Player1;
+
+    public void ClearMoveOrder()
+    {
+        moveOrderTarget = null;
+        pendingMoveOrderAdvance = false;
+    }
+
+    public bool CommitPendingMoveOrder()
+    {
+        if (!pendingMoveOrderAdvance || !HasMoveOrder)
+            return false;
+
+        pendingMoveOrderAdvance = false;
+        if (MovementRemaining <= 0)
+            return false;
+
+        return AdvanceMoveOrder();
+    }
 
     public bool TryIssueMoveOrder(HexCoordinates target)
     {
-        if (IsEmbarked || !IsAlive || MovementRemaining <= 0 || HexGridMap.Instance == null)
+        if (IsEmbarked || !IsAlive || HexGridMap.Instance == null)
             return false;
 
         target = HexGridMap.Instance.Wrap(target);
@@ -543,8 +589,13 @@ public class Unit : MonoBehaviour
             fullPath.Count <= 1)
             return false;
 
+        pendingMoveOrderAdvance = false;
         moveOrderTarget = target;
-        return AdvanceMoveOrder();
+
+        if (MovementRemaining > 0)
+            return AdvanceMoveOrder();
+
+        return true;
     }
 
     public bool AdvanceMoveOrder()
@@ -583,6 +634,14 @@ public class Unit : MonoBehaviour
     }
 
     public void SetSchismaticBloc(SchismaticBlocId blocId) => SchismaticBloc = blocId;
+
+    public void ConvertToSchismaticBloc(SchismaticBlocId blocId)
+    {
+        Faction = FactionId.Schismatic;
+        SetSchismaticBloc(blocId);
+        ApplyArtEraVisuals();
+        TerrainInfoPanel.Instance?.RefreshUnitDisplay();
+    }
 
     public void SetRosterCity(City city) => RosterCity = city;
 
@@ -650,7 +709,7 @@ public class Unit : MonoBehaviour
         PlaceOnTile(destination);
         HexGridMap.Instance.InvalidateMovementCostCache();
 
-        if (Type == UnitType.Scout && NomadicFoundingGate.IsNomadicPhase)
+        if (CountsForNomadicScoutSurvey && NomadicFoundingGate.IsNomadicPhase)
         {
             NomadicFoundingGate.RecordScoutPath(path);
             FirstSteps.Instance?.RefreshDashboard();
@@ -829,7 +888,6 @@ public class Unit : MonoBehaviour
         UnitType.Chaplain => "Chaplain",
         UnitType.Cantor => "Cantor",
         UnitType.Defender => "Defender",
-        UnitType.Colonist => "Colonist",
         UnitType.Archer => "Archer",
         UnitType.Horseman => "Horseman",
         UnitType.Pastor => "Pastor",
@@ -852,7 +910,9 @@ public class Unit : MonoBehaviour
         UnitType.Settler =>
             IsNomadicFounder
                 ? $"{HealthLabel} | {MovementSummary} | {NomadicFoundingGate.FormatProgressShort()}"
-                : $"{HealthLabel} | {MovementSummary}",
+                : IsFrontierSettler
+                    ? $"{HealthLabel} | {MovementSummary} | F = found 2nd city"
+                    : $"{HealthLabel} | {MovementSummary}",
         UnitType.Scout =>
             $"{HealthLabel} | {MovementSummary} | sight {SightRange}",
         UnitType.CoastalPatrol =>
@@ -881,8 +941,6 @@ public class Unit : MonoBehaviour
             $"{HealthLabel} | {MovementSummary} | {EpiscopalOversight.FormatPassiveSummary(this)} | preach: {(HasPreached ? "used" : "ready")}",
         UnitType.Deaconess =>
             $"{HealthLabel} | {MovementSummary} | free mercy visit: {(HasPreached ? "used" : "ready")}",
-        UnitType.Colonist =>
-            $"{HealthLabel} | {MovementSummary} | F = found district (within 3 hexes of city)",
         UnitType.SiegeEngine =>
             $"{HealthLabel} | {MovementSummary} | {Attack} atk | siege {CityLoyaltySystem.GetSiegePressure(this)}/turn on cities{GarrisonBonus.FormatRoleSuffix(this)}",
         _ =>
@@ -896,7 +954,6 @@ public class Unit : MonoBehaviour
     static Sprite triangleSprite;
     static Sprite diamondSprite;
     static Sprite circleSprite;
-    static Sprite colonistSprite;
     static Sprite slingerSprite;
     static Sprite starSprite;
 
@@ -1137,39 +1194,6 @@ public class Unit : MonoBehaviour
                 inside = !inside;
         }
         return inside;
-    }
-
-    static Sprite CreateColonistSprite()
-    {
-        if (colonistSprite != null) return colonistSprite;
-
-        const int size = 32;
-        var tex = new Texture2D(size, size);
-        const int baseLeft = 10;
-        const int baseRight = 21;
-        const int baseBottom = 24;
-        const int roofTop = 8;
-        const int roofBase = 16;
-        const float centerX = 16f;
-
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                bool inBase = x >= baseLeft && x <= baseRight && y >= roofBase && y <= baseBottom;
-                bool inRoof = false;
-                if (y >= roofTop && y <= roofBase)
-                {
-                    float halfWidth = (y - roofTop) / (float)(roofBase - roofTop) * 8f;
-                    inRoof = Mathf.Abs(x - centerX) <= halfWidth;
-                }
-                tex.SetPixel(x, y, inBase || inRoof ? Color.white : Color.clear);
-            }
-        }
-
-        tex.Apply();
-        colonistSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
-        return colonistSprite;
     }
 
     static Sprite CreateSlingerSprite()

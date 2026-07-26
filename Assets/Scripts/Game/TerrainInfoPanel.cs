@@ -177,7 +177,6 @@ public class TerrainInfoPanel : MonoBehaviour
             UnitType.Archbishop => "A",
             UnitType.Missionary => "x",
             UnitType.Cantor => "c",
-            UnitType.Colonist => "H",
             UnitType.SiegeEngine => "s",
             UnitType.CoastalPatrol => "~",
             UnitType.CoastalGalley => "<>",
@@ -215,27 +214,6 @@ public class TerrainInfoPanel : MonoBehaviour
                     sb.Append(top[i].score.FormatSiteLabel(top[i].hex));
                 }
                 sb.Append("\n<size=11><color=#88CCAA>Green highlights = recommended founding hexes</color></size>");
-            }
-            return sb.ToString();
-        }
-
-        if (selected.CanFoundHamlet && CityManager.Instance != null)
-        {
-            var parent = CityManager.Instance.GetNearestPlayerCity(selected.HexPosition);
-            if (parent == null) return "";
-            var here = CityPlacementAdvisor.EvaluateDistrictSite(selected.HexPosition, parent);
-            var top = CityPlacementAdvisor.GetTopDistrictSites(parent, 3);
-            var sb = new System.Text.StringBuilder();
-            sb.Append("\n<color=#AADDFF><b>District placement</b></color> (adjacent yields)  -  ");
-            sb.Append(here.FormatCompact());
-            if (top.Count > 0)
-            {
-                sb.Append("\nBest districts: ");
-                for (int i = 0; i < top.Count; i++)
-                {
-                    if (i > 0) sb.Append("  |  ");
-                    sb.Append(top[i].score.FormatSiteLabel(top[i].hex));
-                }
             }
             return sb.ToString();
         }
@@ -319,7 +297,6 @@ public class TerrainInfoPanel : MonoBehaviour
                     UnitType.Archbishop => "A",
                     UnitType.Missionary => "x",
                     UnitType.Cantor => "c",
-                    UnitType.Colonist => "H",
                     UnitType.SiegeEngine => "s",
                     UnitType.CoastalPatrol => "~",
                     UnitType.CoastalGalley => "<>",
@@ -327,10 +304,10 @@ public class TerrainInfoPanel : MonoBehaviour
                 };
                 string actionHint = unit.CanFoundNomadicCapital
                     ? "  |  <color=#FFDD66>F = found Wittenberg</color>"
+                    : unit.CanFoundFrontierCity
+                        ? "  |  <color=#FFDD66>F = found 2nd city</color>"
                     : unit.CanNomadicPreach && NomadicFoundingGate.IsNomadicPhase
                         ? "  |  <color=#FFDD66>Space = preach</color>"
-                        : unit.CanFoundHamlet
-                        ? "  |  <color=#FFDD66>F = found hamlet</color>"
                         : "";
                 string cityHint = tile.Settlement != null &&
                                   tile.Settlement.Faction == FactionId.LutheranSynod &&
@@ -357,7 +334,11 @@ public class TerrainInfoPanel : MonoBehaviour
                     text += $"\n{mssLabel}";
                 text += city.Faction == FactionId.LutheranSynod && city.SynodPlayer == SynodPlayerId.Player1
                     ? "  |  <color=#AACCFF>Click or C to manage</color>"
-                    : "";
+                    : city.Faction == FactionId.LutheranSynod &&
+                      city.SynodPlayer != SynodPlayerId.Player1 &&
+                      SynodDiplomacyManager.Instance != null
+                        ? $"\n{SynodDiplomacyManager.Instance.FormatStatusLabel(city.SynodPlayer)}  |  <color=#AABBCC>D diplomacy</color>"
+                        : "";
             }
             else if (HexGridMap.Instance.TryGetTerrainInfo(hoveredHex.Value, out var info))
             {
@@ -386,14 +367,6 @@ public class TerrainInfoPanel : MonoBehaviour
         {
             var score = CityPlacementAdvisor.EvaluateCapitalSite(hex);
             return $"\n<color=#AADDFF><b>Capital site:</b></color> {score.FormatCompact()}";
-        }
-
-        if (selected.CanFoundHamlet && CityManager.Instance != null)
-        {
-            var parent = CityManager.Instance.GetNearestPlayerCity(selected.HexPosition);
-            if (parent == null) return "";
-            var score = CityPlacementAdvisor.EvaluateDistrictSite(hex, parent);
-            return $"\n<color=#AADDFF><b>District site:</b></color> {score.FormatCompact()}";
         }
 
         return "";

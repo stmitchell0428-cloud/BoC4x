@@ -88,9 +88,7 @@ public static class ConfessionalIdentityDatabase
 
             SoldierDefenseBonus = 2,
 
-            AdherenceDecayMultiplier = 0.9f,
-
-            MinAdherenceFloor = 15f
+            AdherenceDecayMultiplier = 0.9f
 
         },
 

@@ -24,7 +24,7 @@ public class CrisisCardPanel : MonoBehaviour
 {
     public static CrisisCardPanel Instance { get; private set; }
 
-    GameObject uiRoot;
+    Canvas ownedCanvas;
     GameObject panelRoot;
     TextMeshProUGUI titleText;
     TextMeshProUGUI bodyText;
@@ -60,8 +60,17 @@ public class CrisisCardPanel : MonoBehaviour
 
     public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
 
-    bool IsUiReady =>
-        panelRoot != null && titleText != null && bodyText != null && buttonRow != null;
+    bool IsUiReady
+    {
+        get
+        {
+            if (panelRoot == null)
+                return false;
+
+            RebindUiRefs();
+            return titleText != null && bodyText != null && buttonRow != null;
+        }
+    }
 
     void EnsureUI()
     {
@@ -70,6 +79,26 @@ public class CrisisCardPanel : MonoBehaviour
 
         TearDownUI();
         BuildUI();
+        RebindUiRefs();
+        if (buttonRow == null)
+            EnsureButtonRow();
+    }
+
+    void RebindUiRefs()
+    {
+        if (panelRoot == null)
+            return;
+
+        var box = panelRoot.transform.Find("Box");
+        if (box == null)
+            return;
+
+        if (titleText == null)
+            titleText = box.Find("Title")?.GetComponent<TextMeshProUGUI>();
+        if (bodyText == null)
+            bodyText = box.Find("Body")?.GetComponent<TextMeshProUGUI>();
+        if (buttonRow == null)
+            buttonRow = box.Find("ButtonRow");
     }
 
     void TearDownUI()
@@ -87,62 +116,54 @@ public class CrisisCardPanel : MonoBehaviour
             panelRoot = null;
         }
 
-        if (uiRoot != null)
-        {
-            Destroy(uiRoot);
-            uiRoot = null;
-        }
-
         titleText = null;
         bodyText = null;
         buttonRow = null;
+    }
+
+    Canvas ResolveCanvas()
+    {
+        if (ownedCanvas != null)
+            return ownedCanvas;
+
+        GameUiRoot.EnsureEventSystem();
+        ownedCanvas = GameUiRoot.GetModalCanvas();
+        return ownedCanvas;
     }
 
     void BuildUI()
     {
         try
         {
-            GameUiRoot.EnsureEventSystem();
-            var canvas = GameUiRoot.GetModalCanvas();
+            var canvas = ResolveCanvas();
             if (canvas == null)
             {
-                Debug.LogError("CrisisCardPanel: could not resolve a UI canvas.");
+                Debug.LogError("CrisisCardPanel: could not resolve overlay canvas.");
                 return;
             }
 
-            uiRoot = new GameObject("CrisisCardUiRoot");
-            uiRoot.transform.SetParent(canvas.transform, false);
+            panelRoot = new GameObject("CrisisCardPanel", typeof(RectTransform));
+            panelRoot.transform.SetParent(canvas.transform, false);
 
-            var uiRootRect = uiRoot.AddComponent<RectTransform>();
-            uiRootRect.anchorMin = Vector2.zero;
-            uiRootRect.anchorMax = Vector2.one;
-            uiRootRect.offsetMin = Vector2.zero;
-            uiRootRect.offsetMax = Vector2.zero;
-
-            panelRoot = new GameObject("CrisisCardPanel");
-            panelRoot.transform.SetParent(uiRoot.transform, false);
-
-            var rect = panelRoot.AddComponent<RectTransform>();
+            var rect = panelRoot.GetComponent<RectTransform>();
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
 
-            var bg = panelRoot.AddComponent<Image>();
-            bg.color = new Color(0f, 0f, 0f, 0.78f);
-            bg.raycastTarget = true;
+            panelRoot.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.78f);
 
-            var box = new GameObject("Box");
+            var box = new GameObject("Box", typeof(RectTransform));
             box.transform.SetParent(panelRoot.transform, false);
-            var boxRect = box.AddComponent<RectTransform>();
+            var boxRect = box.GetComponent<RectTransform>();
             boxRect.anchorMin = new Vector2(0.5f, 0.5f);
             boxRect.anchorMax = new Vector2(0.5f, 0.5f);
             boxRect.sizeDelta = new Vector2(680f, 440f);
             box.AddComponent<Image>().color = new Color(0.12f, 0.07f, 0.1f, 0.98f);
 
-            var titleGo = new GameObject("Title");
+            var titleGo = new GameObject("Title", typeof(RectTransform));
             titleGo.transform.SetParent(box.transform, false);
-            var titleRect = titleGo.AddComponent<RectTransform>();
+            var titleRect = titleGo.GetComponent<RectTransform>();
             titleRect.anchorMin = new Vector2(0f, 1f);
             titleRect.anchorMax = new Vector2(1f, 1f);
             titleRect.pivot = new Vector2(0.5f, 1f);
@@ -154,9 +175,9 @@ public class CrisisCardPanel : MonoBehaviour
             titleText.fontStyle = FontStyles.Bold;
             titleText.alignment = TextAlignmentOptions.Center;
 
-            var bodyGo = new GameObject("Body");
+            var bodyGo = new GameObject("Body", typeof(RectTransform));
             bodyGo.transform.SetParent(box.transform, false);
-            var bodyRect = bodyGo.AddComponent<RectTransform>();
+            var bodyRect = bodyGo.GetComponent<RectTransform>();
             bodyRect.anchorMin = new Vector2(0f, 0f);
             bodyRect.anchorMax = new Vector2(1f, 1f);
             bodyRect.offsetMin = new Vector2(24f, 112f);
@@ -167,10 +188,10 @@ public class CrisisCardPanel : MonoBehaviour
             bodyText.alignment = TextAlignmentOptions.TopLeft;
             bodyText.richText = true;
 
-            var rowGo = new GameObject("ButtonRow");
+            var rowGo = new GameObject("ButtonRow", typeof(RectTransform));
             rowGo.transform.SetParent(box.transform, false);
             buttonRow = rowGo.transform;
-            var rowRect = rowGo.AddComponent<RectTransform>();
+            var rowRect = rowGo.GetComponent<RectTransform>();
             rowRect.anchorMin = new Vector2(0f, 0f);
             rowRect.anchorMax = new Vector2(1f, 0f);
             rowRect.pivot = new Vector2(0.5f, 0f);
@@ -191,9 +212,44 @@ public class CrisisCardPanel : MonoBehaviour
         catch (Exception ex)
         {
             Debug.LogError($"CrisisCardPanel.BuildUI failed: {ex.Message}\n{ex.StackTrace}");
-            GameUiRoot.InvalidateCache();
             TearDownUI();
         }
+    }
+
+    void EnsureButtonRow()
+    {
+        if (panelRoot == null)
+            return;
+
+        var box = panelRoot.transform.Find("Box");
+        if (box == null)
+            return;
+
+        var existing = box.Find("ButtonRow");
+        if (existing != null)
+        {
+            buttonRow = existing;
+            return;
+        }
+
+        var rowGo = new GameObject("ButtonRow", typeof(RectTransform));
+        rowGo.transform.SetParent(box, false);
+        buttonRow = rowGo.transform;
+        var rowRect = rowGo.GetComponent<RectTransform>();
+        rowRect.anchorMin = new Vector2(0f, 0f);
+        rowRect.anchorMax = new Vector2(1f, 0f);
+        rowRect.pivot = new Vector2(0.5f, 0f);
+        rowRect.sizeDelta = new Vector2(-32f, 88f);
+        rowRect.anchoredPosition = new Vector2(0f, 16f);
+
+        var buttonLayout = rowGo.AddComponent<HorizontalLayoutGroup>();
+        buttonLayout.spacing = 10f;
+        buttonLayout.padding = new RectOffset(4, 4, 4, 4);
+        buttonLayout.childAlignment = TextAnchor.MiddleCenter;
+        buttonLayout.childControlWidth = true;
+        buttonLayout.childControlHeight = true;
+        buttonLayout.childForceExpandWidth = true;
+        buttonLayout.childForceExpandHeight = true;
     }
 
     static void ApplyFont(TextMeshProUGUI tmp)
@@ -217,15 +273,14 @@ public class CrisisCardPanel : MonoBehaviour
         }
 
         for (int attempt = 0; attempt < 3 && !IsUiReady; attempt++)
-        {
-            if (attempt > 0)
-                GameUiRoot.InvalidateCache();
             EnsureUI();
-        }
 
         if (!IsUiReady)
         {
-            Debug.LogError("CrisisCardPanel.Show failed  -  UI could not be built.");
+            Debug.LogError(
+                "CrisisCardPanel.Show failed  -  UI could not be built. " +
+                $"panelRoot={panelRoot != null}, titleText={titleText != null}, " +
+                $"bodyText={bodyText != null}, buttonRow={buttonRow != null}, canvas={ownedCanvas != null}");
             return false;
         }
 
@@ -243,7 +298,6 @@ public class CrisisCardPanel : MonoBehaviour
         for (int i = 0; i < choices.Count; i++)
             CreateChoiceButton(choices[i], buttonWidth);
 
-        uiRoot.transform.SetAsLastSibling();
         panelRoot.transform.SetAsLastSibling();
         panelRoot.SetActive(true);
         Canvas.ForceUpdateCanvases();
@@ -268,7 +322,13 @@ public class CrisisCardPanel : MonoBehaviour
 
     void CreateChoiceButton(CrisisCardChoice choice, float width)
     {
-        var btnGo = new GameObject(choice.Label);
+        if (buttonRow == null)
+        {
+            Debug.LogError("CrisisCardPanel.CreateChoiceButton failed  -  button row missing.");
+            return;
+        }
+
+        var btnGo = new GameObject(SanitizeButtonName(choice.Label), typeof(RectTransform));
         btnGo.transform.SetParent(buttonRow, false);
 
         var layout = btnGo.AddComponent<LayoutElement>();
@@ -284,13 +344,13 @@ public class CrisisCardPanel : MonoBehaviour
         btn.targetGraphic = img;
         btn.onClick.AddListener(() =>
         {
-            Dismiss();
             choice.OnSelect?.Invoke();
+            Dismiss();
         });
 
-        var labelGo = new GameObject("Label");
+        var labelGo = new GameObject("Label", typeof(RectTransform));
         labelGo.transform.SetParent(btnGo.transform, false);
-        var labelRect = labelGo.AddComponent<RectTransform>();
+        var labelRect = labelGo.GetComponent<RectTransform>();
         labelRect.anchorMin = Vector2.zero;
         labelRect.anchorMax = Vector2.one;
         labelRect.offsetMin = new Vector2(8f, 6f);
@@ -305,6 +365,18 @@ public class CrisisCardPanel : MonoBehaviour
         tmp.raycastTarget = false;
 
         choiceButtons.Add(btnGo);
+    }
+
+    static string SanitizeButtonName(string label)
+    {
+        if (string.IsNullOrWhiteSpace(label))
+            return "Choice";
+
+        var cleaned = label.Trim();
+        foreach (char c in System.IO.Path.GetInvalidFileNameChars())
+            cleaned = cleaned.Replace(c, '_');
+
+        return cleaned.Length > 32 ? cleaned.Substring(0, 32) : cleaned;
     }
 
     void ForceDismiss()

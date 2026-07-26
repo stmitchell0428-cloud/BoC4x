@@ -28,6 +28,12 @@ public static class NomadicFoundingGate
             preachCompleted = true;
     }
 
+    public static void ResetForNewMatch()
+    {
+        preachCompleted = false;
+        scoutSurveyHexes.Clear();
+    }
+
     public static void RecordScoutHex(HexCoordinates hex)
     {
         if (!IsNomadicPhase || HexGridMap.Instance == null)
@@ -78,8 +84,9 @@ public static class NomadicFoundingGate
         sb.Append("<b>Found Wittenberg when:</b> ");
         sb.Append(FormatCheck(preachCompleted, "Preach (Space)"));
         sb.Append("  |  ");
+        int surveyShown = Mathf.Min(ScoutSurveyCount, RequiredScoutHexes);
         sb.Append(FormatCheck(ScoutSurveyCount >= RequiredScoutHexes,
-            $"Scout survey {ScoutSurveyCount}/{RequiredScoutHexes}"));
+            $"Scout survey {surveyShown}/{RequiredScoutHexes}"));
         sb.Append("  |  ");
         sb.Append(FormatCheck(HasBoundCatechism, $"Catechism bound (B, {BindCatechismManuscriptCost} mss)"));
         if (RequirementsMet)
@@ -96,7 +103,10 @@ public static class NomadicFoundingGate
         if (!preachCompleted)
             parts.Add("preach once (Space with settler selected)");
         if (ScoutSurveyCount < RequiredScoutHexes)
-            parts.Add($"scout must survey {RequiredScoutHexes} hexes ({ScoutSurveyCount}/{RequiredScoutHexes})");
+        {
+            int surveyShown = Mathf.Min(ScoutSurveyCount, RequiredScoutHexes);
+            parts.Add($"scout must survey {RequiredScoutHexes} hexes ({surveyShown}/{RequiredScoutHexes})");
+        }
         if (!HasBoundCatechism)
             parts.Add($"bind a catechism (B, costs {BindCatechismManuscriptCost} manuscripts)");
         return "Cannot found yet: " + string.Join("; ", parts) + ".";
@@ -109,7 +119,8 @@ public static class NomadicFoundingGate
 
         string preach = PreachCompleted ? "OK" : "-";
         string catechism = HasBoundCatechism ? "OK" : "-";
-        return $"Founding: Preach {preach} | Survey {ScoutSurveyCount}/{RequiredScoutHexes} | Catechism {catechism}";
+        int surveyShown = Mathf.Min(ScoutSurveyCount, RequiredScoutHexes);
+        return $"Founding: Preach {preach} | Survey {surveyShown}/{RequiredScoutHexes} | Catechism {catechism}";
     }
 
     static string FormatCheck(bool done, string label) =>

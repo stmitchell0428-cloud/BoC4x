@@ -70,10 +70,9 @@ public class FirstSteps : MonoBehaviour
         spiritualComfort = Mathf.Clamp(spiritualComfort + delta, 0f, 100f);
     }
 
-    public const float MaxCrisisAdherenceFloor = 32f;
+    public const float MaxCrisisAdherenceFloor = 0f;
 
-    public float EffectiveMinAdherenceFloor =>
-        Mathf.Min(Modifiers.MinAdherenceFloor, MaxCrisisAdherenceFloor);
+    public float EffectiveMinAdherenceFloor => 0f;
 
     public HexCoordinates? SynodAnchorHex
     {
@@ -148,6 +147,9 @@ public class FirstSteps : MonoBehaviour
 
         if (Keyboard.current.lKey.wasPressedThisFrame)
             TryDisembarkGalley();
+
+        if (Keyboard.current.dKey.wasPressedThisFrame)
+            DiplomacyPanel.Instance?.Toggle();
     }
 
     void TryEmbarkSelectedUnit()
@@ -200,7 +202,10 @@ public class FirstSteps : MonoBehaviour
             }
         }
 
-        if (!AmphibiousTransport.TryDisembark(galley, best))
+        if (!AmphibiousTransport.TryDisembark(
+                galley,
+                best,
+                GalleyCargoPanel.Instance?.GetSelectedPassenger(galley)))
             return;
 
         Unit landed = null;
@@ -257,7 +262,14 @@ public class FirstSteps : MonoBehaviour
             return;
         }
 
-        // District founding is organic-only (growth offers)  -  colonist F disabled.
+        if (selected.CanFoundFrontierCity)
+        {
+            if (CityManager.Instance != null && CityManager.Instance.TryFoundCityFromFrontierSettler(selected))
+                RefreshAfterFounding();
+            return;
+        }
+
+        // District founding is organic-only (growth offers).
     }
 
     void RefreshAfterFounding()
@@ -370,6 +382,7 @@ public class FirstSteps : MonoBehaviour
     {
         CityGrowthManager.Instance?.ProcessGrowthFoodPhase(FactionId.LutheranSynod);
         CityGrowthManager.Instance?.TickCooldowns();
+        PopulationSync.SyncPlayerFactionFromCities();
         RefreshDashboard();
         TerrainInfoPanel.Instance?.RefreshCityYield();
     }
@@ -377,6 +390,7 @@ public class FirstSteps : MonoBehaviour
     public void RunMigrationPhase()
     {
         CityGrowthManager.Instance?.ProcessMigrationPhase(FactionId.LutheranSynod, offerDistricts: true);
+        PopulationSync.SyncPlayerFactionFromCities();
         RefreshDashboard();
         TerrainInfoPanel.Instance?.RefreshCityYield();
     }
@@ -387,6 +401,8 @@ public class FirstSteps : MonoBehaviour
         CityManager.Instance?.AdvanceCityCulture();
         CityManager.Instance?.CollectWorkedTileManuscripts();
         CityManager.Instance?.CollectHamletTribute();
+        SynodTradeSystem.ProcessEndTurn(SynodPlayerId.Player1);
+        PopulationSync.SyncPlayerFactionFromCities();
         RefreshDashboard();
         ConfessionTechPanel.Instance?.Refresh();
         CityScreenPanel.Instance?.Refresh();
@@ -403,6 +419,7 @@ public class FirstSteps : MonoBehaviour
         EpiscopalOversight.ProcessEndTurn(FactionId.LutheranSynod);
         CrisisManager.Instance?.OnPlayerTurnEnded();
         MatchController.Instance?.OnPlayerTurnEnded();
+        SynodDiplomacyManager.Instance?.ProcessTurnEnd();
         TurnPhaseBanner.Instance?.Refresh();
         RefreshDashboard();
         ConfessionTechPanel.Instance?.Refresh();
@@ -472,7 +489,8 @@ public class FirstSteps : MonoBehaviour
         }
 
         confessionalAdherence = Mathf.Clamp(confessionalAdherence - randomDecay, EffectiveMinAdherenceFloor, 100f);
-        population = Mathf.Max(0, population + randomPopulationChange);
+        if (randomPopulationChange != 0)
+            PopulationSync.ApplyDeltaToPrimaryCity(randomPopulationChange);
 
         if (civicRestraint > 68f && spiritualComfort < 45f)
         {
@@ -485,9 +503,13 @@ public class FirstSteps : MonoBehaviour
                 return;
             }
 
-            population = Mathf.Max(0, population - Random.Range(1, 3));
-            CrisisManager.Instance?.HandleLegalismCrisis(hadGuard: false);
-            Debug.LogWarning($"Turn {turn}: legalistic preaching shrank population to {population}");
+            if (CrisisManager.Instance == null || CrisisManager.Instance.ActiveCrisis == CrisisType.None)
+            {
+                PopulationSync.ApplyLossAcrossPlayerCities(Random.Range(1, 3));
+                CrisisManager.Instance?.HandleLegalismCrisis(hadGuard: false);
+                Debug.LogWarning($"Turn {turn}: legalistic preaching shrank population to {population}");
+            }
+
             return;
         }
 
@@ -502,15 +524,21 @@ public class FirstSteps : MonoBehaviour
                 return;
             }
 
-            population = Mathf.Max(1, population - Mathf.Max(1, population / 4));
-            confessionalAdherence = Mathf.Clamp(confessionalAdherence + 5f, EffectiveMinAdherenceFloor, 100f);
-            spiritualComfort = 40f;
-            CrisisManager.Instance?.HandleAntinomianCrisis(hadGuard: false);
-            Debug.LogError($"Turn {turn}: antinomian fracture! Remaining pop: {population}");
+            if (CrisisManager.Instance == null || CrisisManager.Instance.ActiveCrisis == CrisisType.None)
+            {
+                int loss = Mathf.Max(1, PopulationSync.SumSynodPopulation() / 4);
+                PopulationSync.ApplyLossAcrossPlayerCities(loss);
+                confessionalAdherence = Mathf.Clamp(confessionalAdherence + 5f, EffectiveMinAdherenceFloor, 100f);
+                spiritualComfort = 40f;
+                CrisisManager.Instance?.HandleAntinomianCrisis(hadGuard: false);
+                Debug.LogError($"Turn {turn}: antinomian fracture! Remaining pop: {population}");
+            }
+
             return;
         }
 
         Debug.Log($"Turn {turn}: {terrainNarrativeLog} Pop {population} | Adherence {confessionalAdherence:F1}%");
+        PopulationSync.SyncPlayerFactionFromCities();
     }
 
     void PreachPureWord()
@@ -663,6 +691,10 @@ public class FirstSteps : MonoBehaviour
             string progress = NomadicFoundingGate.FormatProgressLine();
             return progress ?? "<color=#FFDD88>Nomadic  -  preparing to found Wittenberg</color>";
         }
+
+        string diplomacy = SynodDiplomacyManager.Instance?.FormatSummaryLine();
+        if (!string.IsNullOrEmpty(diplomacy))
+            return diplomacy;
 
         return "<color=#88AAFF>Synod united</color>";
     }

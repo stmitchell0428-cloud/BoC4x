@@ -681,10 +681,14 @@ public class CityScreenPanel : MonoBehaviour
         }
 
         string costLine = FormatCostShort(def, activeCity);
-        if (status == CityBuildStatus.Locked && def.Id == CityBuildId.TrainColonist &&
-            activeCity != null && !MissionHouseChain.CanTrainColonist(activeCity))
+        if (status == CityBuildStatus.Locked && def.Id == CityBuildId.TrainFrontierSettler &&
+            activeCity != null && !MissionHouseChain.CanTrainFrontierSettler(activeCity))
         {
-            costLine = "Needs Mission House in cluster";
+            costLine = MissionHouseChain.HasFrontierSettlerInField()
+                ? "Frontier settler already in field"
+                : MissionHouseChain.CountIndependentSynodCities() > 1
+                    ? "Second city already founded"
+                    : "Needs Mission House in cluster";
         }
         else if (status == CityBuildStatus.Locked && def.Id == CityBuildId.TrainSiegeEngine &&
                  activeCity?.Production?.HasBuilding(CityBuildId.BuildArmory) != true)
@@ -725,8 +729,8 @@ public class CityScreenPanel : MonoBehaviour
             return $"{def.ProductionCost} production";
 
         int cost = def.ManuscriptCost;
-        if (def.Id == CityBuildId.TrainColonist && city != null)
-            cost = MissionHouseChain.EffectiveColonistCost(city);
+        if (def.Id == CityBuildId.TrainFrontierSettler && city != null)
+            cost = MissionHouseChain.EffectiveFrontierSettlerCost(city);
         else if (def.Id == CityBuildId.TrainMissionary && city != null)
             cost = MissionHouseChain.EffectiveMissionaryCost(city);
 
@@ -741,8 +745,8 @@ public class CityScreenPanel : MonoBehaviour
             return $"Cost: {def.ProductionCost} production (city yield applied each End Turn)";
 
         int cost = def.ManuscriptCost;
-        if (def.Id == CityBuildId.TrainColonist && city != null)
-            cost = MissionHouseChain.EffectiveColonistCost(city);
+        if (def.Id == CityBuildId.TrainFrontierSettler && city != null)
+            cost = MissionHouseChain.EffectiveFrontierSettlerCost(city);
         else if (def.Id == CityBuildId.TrainMissionary && city != null)
             cost = MissionHouseChain.EffectiveMissionaryCost(city);
 
@@ -929,9 +933,13 @@ public class CityScreenPanel : MonoBehaviour
             CityBuildStatus.Available => def.UsesProduction
                 ? "<color=#FF8888>Cannot start  -  check manuscripts or queue.</color>"
                 : "<color=#FF8888>Not enough manuscripts.</color>",
-            _ when id == CityBuildId.TrainColonist && activeCity != null &&
-                   !MissionHouseChain.CanTrainColonist(activeCity)
-                => "<color=#888888>Build a Mission House anywhere in this city cluster first.</color>",
+            _ when id == CityBuildId.TrainFrontierSettler && activeCity != null &&
+                   !MissionHouseChain.CanTrainFrontierSettler(activeCity)
+                => MissionHouseChain.HasFrontierSettlerInField()
+                    ? "<color=#888888>A frontier settler is already in the field.</color>"
+                    : MissionHouseChain.CountIndependentSynodCities() > 1
+                        ? "<color=#888888>Train frontier settlers only while you have a single independent city.</color>"
+                        : "<color=#888888>Build a Mission House anywhere in this city cluster first.</color>",
             _ when id == CityBuildId.TrainSiegeEngine &&
                    activeCity?.Production?.HasBuilding(CityBuildId.BuildArmory) != true
                 => "<color=#888888>Requires an Armory in this city.</color>",

@@ -138,13 +138,10 @@ public class CityProduction : MonoBehaviour
         if (!HamletSpecialtyDatabase.IsBuildAllowed(city, id))
             return CityBuildStatus.Locked;
 
-        if (id == CityBuildId.FoundHamlet)
-            return CityBuildStatus.Locked;
-
         if (id == CityBuildId.BuildCathedral && !city.IsCapital)
             return CityBuildStatus.Locked;
 
-        if (id == CityBuildId.TrainColonist && !MissionHouseChain.CanTrainColonist(city))
+        if (id == CityBuildId.TrainFrontierSettler && !MissionHouseChain.CanTrainFrontierSettler(city))
             return CityBuildStatus.Locked;
 
         if (id == CityBuildId.TrainSiegeEngine &&
@@ -176,7 +173,7 @@ public class CityProduction : MonoBehaviour
             {
                 int cost = id switch
                 {
-                    CityBuildId.TrainColonist => MissionHouseChain.EffectiveColonistCost(city),
+                    CityBuildId.TrainFrontierSettler => MissionHouseChain.EffectiveFrontierSettlerCost(city),
                     CityBuildId.TrainMissionary => MissionHouseChain.EffectiveMissionaryCost(city),
                     _ => def.ManuscriptCost
                 };
@@ -201,8 +198,8 @@ public class CityProduction : MonoBehaviour
         if (!def.UsesProduction)
         {
             int manuscriptCost = def.ManuscriptCost;
-            if (id == CityBuildId.TrainColonist)
-                manuscriptCost = MissionHouseChain.EffectiveColonistCost(city);
+            if (id == CityBuildId.TrainFrontierSettler)
+                manuscriptCost = MissionHouseChain.EffectiveFrontierSettlerCost(city);
             else if (id == CityBuildId.TrainMissionary)
                 manuscriptCost = MissionHouseChain.EffectiveMissionaryCost(city);
 
@@ -210,8 +207,8 @@ public class CityProduction : MonoBehaviour
                 return false;
             faction.ScriptureManuscripts -= manuscriptCost;
             turnsRemaining = def.TurnsToComplete;
-            if (id == CityBuildId.TrainColonist)
-                turnsRemaining = Mathf.Max(1, turnsRemaining - MissionHouseChain.ColonistTurnReduction(city));
+            if (id == CityBuildId.TrainFrontierSettler)
+                turnsRemaining = Mathf.Max(1, turnsRemaining - MissionHouseChain.SettlerTurnReduction(city));
             if (id == CityBuildId.TrainMissionary)
                 turnsRemaining = Mathf.Max(1, turnsRemaining - MissionHouseChain.MissionaryTurnReduction(city));
             if (id == CityBuildId.TrainSoldier && HasBuilding(CityBuildId.BuildBarracks))
@@ -341,15 +338,6 @@ public class CityProduction : MonoBehaviour
 
     void CompleteBuild(CityBuildId id)
     {
-        if (id == CityBuildId.FoundHamlet)
-        {
-            if (CityManager.Instance != null && CityManager.Instance.TryFoundHamlet(city))
-                Debug.Log($"{city.CityName}: completed Found Hamlet.");
-            else
-                Debug.LogWarning($"{city.CityName}: Found Hamlet finished but no adjacent district site was free.");
-            return;
-        }
-
         if (id == CityBuildId.BindCatechism)
         {
             var faction = FirstSteps.Instance;
@@ -359,6 +347,13 @@ public class CityProduction : MonoBehaviour
                 faction.AddFame(3);
                 Debug.Log($"{city.CityName}: bound a catechism (+1 catechism stock).");
             }
+            return;
+        }
+
+        if (id == CityBuildId.TrainFrontierSettler)
+        {
+            if (CityManager.Instance != null && CityManager.Instance.TrySpawnFrontierSettler(city))
+                Debug.Log($"{city.CityName}: frontier settler ready to found a second city.");
             return;
         }
 
@@ -392,7 +387,6 @@ public class CityProduction : MonoBehaviour
         switch (id)
         {
             case CityBuildId.BuildParishSchool:
-                faction.population += 5;
                 city.Population += 5;
                 city.RefreshAppearance();
                 break;
@@ -405,7 +399,6 @@ public class CityProduction : MonoBehaviour
                 faction.AddFame(10);
                 break;
             case CityBuildId.BuildHospital:
-                faction.population += 3;
                 city.Population += 3;
                 city.RefreshAppearance();
                 break;
@@ -417,10 +410,10 @@ public class CityProduction : MonoBehaviour
                 faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 5f, 0f, 100f);
                 break;
             case CityBuildId.BuildOrphanage:
-                faction.population += 3;
+                city.Population += 3;
+                city.RefreshAppearance();
                 break;
             case CityBuildId.BuildGranary:
-                faction.population += 2;
                 city.Population += 2;
                 city.RefreshAppearance();
                 break;
@@ -466,7 +459,6 @@ public class CityProduction : MonoBehaviour
         if (HasBuilding(CityBuildId.BuildHospital) && Random.value < 0.35f)
         {
             city.Population += 1;
-            faction.population += 1;
             city.RefreshAppearance();
             Debug.Log($"{city.CityName}: Hospital tended the sick (+1 population).");
         }

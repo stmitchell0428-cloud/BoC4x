@@ -39,6 +39,7 @@ public class SimpleAI : MonoBehaviour
         var enemyUnits = CollectSynodAiTargets(playerId, tm);
         var enemyCities = CollectSynodAiCityTargets(playerId);
         var cityThreat = aiCity != null ? FindNearestThreatToCity(aiCity, enemyUnits, map, 4) : null;
+        var personality = SynodPlayerDatabase.PersonalityFor(playerId);
 
         foreach (var unit in units.OrderBy(u => u.Health / (float)u.MaxHealth))
         {
@@ -75,7 +76,8 @@ public class SimpleAI : MonoBehaviour
                 continue;
             }
 
-            if (targetCity != null && martial)
+            if (targetCity != null && martial &&
+                (personality.PreferSoldiers || !personality.PreferMissionaries))
             {
                 TryMoveToward(unit, targetCity.HexPosition, map);
                 CityManager.Instance?.TryCaptureCityAt(unit, unit.HexPosition);
@@ -84,12 +86,13 @@ public class SimpleAI : MonoBehaviour
 
             if (targetUnit != null)
                 ExecuteUnitAttackPlan(unit, targetUnit, map);
-            else if (targetCity != null && unit.Type == UnitType.Missionary)
+            else if (targetCity != null && personality.PreferMissionaries && unit.Type == UnitType.Missionary)
                 TryMoveToward(unit, targetCity.HexPosition, map);
         }
 
         MatchController.Instance?.EvaluateConditions();
         CityLoyaltySystem.ProcessEndTurnOccupation(FactionId.LutheranSynod);
+        AiSynodCrisisManager.ProcessEndTurn(playerId);
         Invoke(nameof(FinishAiTurn), 0.4f);
     }
 
@@ -99,6 +102,10 @@ public class SimpleAI : MonoBehaviour
         foreach (var unit in tm.GetUnits(FactionId.LutheranSynod))
         {
             if (!unit.IsAlive || unit.SynodPlayer == self)
+                continue;
+            if (unit.SynodPlayer == SynodPlayerId.Player1 &&
+                SynodDiplomacyManager.Instance != null &&
+                !SynodDiplomacyManager.Instance.AreHostile(self, SynodPlayerId.Player1))
                 continue;
             list.Add(unit);
         }
@@ -122,6 +129,11 @@ public class SimpleAI : MonoBehaviour
         {
             if (city.Faction == FactionId.LutheranSynod && city.SynodPlayer == self)
                 continue;
+            if (city.Faction == FactionId.LutheranSynod &&
+                city.SynodPlayer == SynodPlayerId.Player1 &&
+                SynodDiplomacyManager.Instance != null &&
+                !SynodDiplomacyManager.Instance.AreHostile(self, SynodPlayerId.Player1))
+                continue;
             if (city.Faction == FactionId.LutheranSynod || city.Faction == FactionId.Schismatic)
                 list.Add(city);
         }
@@ -135,13 +147,36 @@ public class SimpleAI : MonoBehaviour
         if (aiCity?.Production == null || aiCity.Production.IsProducing)
             return;
 
-        int soldiers = CountSynodUnits(playerId, UnitType.Soldier);
-        int slingers = CountSynodUnits(playerId, UnitType.Slinger);
-        int missionaries = CountSynodUnits(playerId, UnitType.Missionary);
-        int galleys = CountSynodUnits(playerId, UnitType.CoastalGalley);
-        int patrols = CountSynodUnits(playerId, UnitType.CoastalPatrol);
+        var personality = SynodPlayerDatabase.PersonalityFor(playerId);
+        ManageCityProduction(
+            aiCity,
+            personality.PreferMissionaries,
+            personality.PreferSoldiers,
+            personality.PreferRanged,
+            personality.PreferScouts,
+            personality.PreferSiege,
+            type => CountSynodUnits(playerId, type));
+    }
+
+    static void ManageCityProduction(
+        City aiCity,
+        bool preferMissionaries,
+        bool preferSoldiers,
+        bool preferRanged,
+        bool preferScouts,
+        bool preferSiege,
+        System.Func<UnitType, int> countUnits)
+    {
+        int soldiers = countUnits(UnitType.Soldier);
+        int slingers = countUnits(UnitType.Slinger);
+        int missionaries = countUnits(UnitType.Missionary);
+        int scouts = countUnits(UnitType.Scout);
+        int siegeEngines = countUnits(UnitType.SiegeEngine);
+        int galleys = countUnits(UnitType.CoastalGalley);
+        int patrols = countUnits(UnitType.CoastalPatrol);
         bool coastal = CityManager.Instance != null && CityManager.Instance.CityTouchesNavalCoast(aiCity);
         bool slingTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.ShepherdsSling) == true;
+        bool siegeTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.JamesClerkMaxwell) == true;
 
         if (coastal && !aiCity.Production.HasBuilding(CityBuildId.BuildDock))
         {
@@ -162,17 +197,81 @@ public class SimpleAI : MonoBehaviour
         }
 
         if (!aiCity.Production.HasBuilding(CityBuildId.BuildChapel))
+        {
             aiCity.Production.TryStartAiBuild(CityBuildId.BuildChapel);
-        else if (missionaries < 2)
+            return;
+        }
+
+        if (preferScouts && scouts < 2)
+        {
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainScout);
+            return;
+        }
+
+        if (preferMissionaries && missionaries < 3)
+        {
             aiCity.Production.TryStartAiBuild(CityBuildId.TrainMissionary);
-        else if (slingTech && slingers < 2)
+            return;
+        }
+
+        if (preferSiege && siegeTech &&
+            aiCity.Production.HasBuilding(CityBuildId.BuildArmory) && siegeEngines < 1)
+        {
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainSiegeEngine);
+            return;
+        }
+
+        if (preferSiege && !aiCity.Production.HasBuilding(CityBuildId.BuildArmory) &&
+            HamletSpecialtyDatabase.IsBuildAllowed(aiCity, CityBuildId.BuildArmory))
+        {
+            aiCity.Production.TryStartAiBuild(CityBuildId.BuildArmory);
+            return;
+        }
+
+        if (preferRanged && slingTech && slingers < 3)
+        {
             aiCity.Production.TryStartAiBuild(CityBuildId.TrainSlinger);
-        else if (soldiers < 3)
+            return;
+        }
+
+        if (preferSoldiers && soldiers < 4)
+        {
             aiCity.Production.TryStartAiBuild(CityBuildId.TrainSoldier);
-        else if (!aiCity.Production.HasBuilding(CityBuildId.BuildScriptorium))
+            return;
+        }
+
+        if (!preferSoldiers && missionaries < 2)
+        {
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainMissionary);
+            return;
+        }
+
+        if (slingTech && slingers < 2 && (preferRanged || !preferMissionaries))
+        {
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainSlinger);
+            return;
+        }
+
+        if (soldiers < 3)
+        {
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainSoldier);
+            return;
+        }
+
+        if (!aiCity.Production.HasBuilding(CityBuildId.BuildScriptorium))
+        {
             aiCity.Production.TryStartAiBuild(CityBuildId.BuildScriptorium);
+            return;
+        }
+
+        if (preferMissionaries && Random.value < 0.55f)
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainMissionary);
+        else if (preferRanged && slingTech && Random.value < 0.45f)
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainSlinger);
+        else if (preferScouts && scouts < 3 && Random.value < 0.35f)
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainScout);
         else
-            aiCity.Production.TryStartAiBuild(Random.value < 0.35f ? CityBuildId.TrainMissionary : CityBuildId.TrainSoldier);
+            aiCity.Production.TryStartAiBuild(CityBuildId.TrainSoldier);
     }
 
     static int CountSynodUnits(SynodPlayerId playerId, UnitType type) =>
@@ -294,57 +393,14 @@ public class SimpleAI : MonoBehaviour
         var profile = SchismaticBlocRegistry.Instance?.ProfileForBloc(blocId)
                       ?? HeresyDatabase.ProfileFor(HeresyType.DoctrinalDrift);
 
-        int soldiers = CountBlocUnits(blocId, UnitType.Soldier);
-        int slingers = CountBlocUnits(blocId, UnitType.Slinger);
-        int missionaries = CountBlocUnits(blocId, UnitType.Missionary);
-        int galleys = CountBlocUnits(blocId, UnitType.CoastalGalley);
-        int patrols = CountBlocUnits(blocId, UnitType.CoastalPatrol);
-        bool coastal = CityManager.Instance != null && CityManager.Instance.CityTouchesNavalCoast(aiCity);
-        bool slingTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.ShepherdsSling) == true;
-
-        if (coastal && !aiCity.Production.HasBuilding(CityBuildId.BuildDock))
-        {
-            aiCity.Production.TryStartAiBuild(CityBuildId.BuildDock);
-            return;
-        }
-
-        if (coastal && aiCity.Production.HasBuilding(CityBuildId.BuildDock) && galleys < 2)
-        {
-            aiCity.Production.TryStartAiBuild(CityBuildId.TrainCoastalGalley);
-            return;
-        }
-
-        if (coastal && patrols < 1 && soldiers >= 1)
-        {
-            aiCity.Production.TryStartAiBuild(CityBuildId.TrainCoastalPatrol);
-            return;
-        }
-
-        if (!aiCity.Production.HasBuilding(CityBuildId.BuildChapel))
-            aiCity.Production.TryStartAiBuild(CityBuildId.BuildChapel);
-        else if (profile.PreferMissionaries && missionaries < 2)
-            aiCity.Production.TryStartAiBuild(CityBuildId.TrainMissionary);
-        else if (profile.PreferRanged && slingTech && slingers < 2)
-            aiCity.Production.TryStartAiBuild(CityBuildId.TrainSlinger);
-        else if (profile.PreferSoldiers && soldiers < 2)
-            aiCity.Production.TryStartAiBuild(CityBuildId.TrainSoldier);
-        else if (soldiers < 2)
-            aiCity.Production.TryStartAiBuild(CityBuildId.TrainSoldier);
-        else if (profile.PreferRanged && slingTech && slingers < 3 && Random.value < 0.45f)
-            aiCity.Production.TryStartAiBuild(CityBuildId.TrainSlinger);
-        else if (missionaries < 1 && profile.PreferMissionaries)
-            aiCity.Production.TryStartAiBuild(CityBuildId.TrainMissionary);
-        else if (!aiCity.Production.HasBuilding(CityBuildId.BuildScriptorium))
-            aiCity.Production.TryStartAiBuild(CityBuildId.BuildScriptorium);
-        else
-        {
-            if (profile.PreferMissionaries && Random.value < 0.4f)
-                aiCity.Production.TryStartAiBuild(CityBuildId.TrainMissionary);
-            else if (profile.PreferRanged && slingTech && Random.value < 0.35f)
-                aiCity.Production.TryStartAiBuild(CityBuildId.TrainSlinger);
-            else
-                aiCity.Production.TryStartAiBuild(CityBuildId.TrainSoldier);
-        }
+        ManageCityProduction(
+            aiCity,
+            profile.PreferMissionaries,
+            profile.PreferSoldiers,
+            profile.PreferRanged,
+            preferScouts: false,
+            preferSiege: profile.PreferSoldiers && profile.PreferRanged,
+            type => CountBlocUnits(blocId, type));
     }
 
     static bool IsMartialUnit(Unit unit) =>

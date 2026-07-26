@@ -123,12 +123,11 @@ public class ConfessionModifiers
         ConfessionTechId.MichaelFaraday => new ConfessionModifiers { AdherenceDecayMultiplier = 0.9f },
         ConfessionTechId.HermannSasse => new ConfessionModifiers { SchismaticDamageTakenMultiplier = 0.75f },
         ConfessionTechId.BoGiertz => new ConfessionModifiers { MissionaryAttackBonus = 2 },
-        ConfessionTechId.RobertPreus => new ConfessionModifiers { PopulationGrowthBonus = 1, MinAdherenceFloor = 28f },
+        ConfessionTechId.RobertPreus => new ConfessionModifiers { PopulationGrowthBonus = 1 },
         ConfessionTechId.SynodicalGovernance => new ConfessionModifiers { PopulationGrowthBonus = 2 },
         ConfessionTechId.EdRiojas => new ConfessionModifiers
         {
             PopulationGrowthBonus = 1,
-            MinAdherenceFloor = 30f,
             SpiritualComfortTurnBonus = 1f
         },
         ConfessionTechId.JamesClerkMaxwell => new ConfessionModifiers { AllUnitsMovementBonus = 1, SoldierAttackBonus = 1, SiegePressureBonus = 1 },
@@ -138,10 +137,10 @@ public class ConfessionModifiers
         ConfessionTechId.TwoKingdoms => new ConfessionModifiers { SoldierDefenseBonus = 2, LegalismDriftMultiplier = 0.88f },
         ConfessionTechId.LargeCatechism => new ConfessionModifiers { PreachAdherenceBonus = 5f, PreachManuscriptRefundChance = 0.15f },
         ConfessionTechId.GutenbergPress => new ConfessionModifiers { SettlementManuscriptBonus = 1, WildernessManuscriptBonus = 1 },
-        ConfessionTechId.DavidChytraeus => new ConfessionModifiers { SoldierDefenseBonus = 1, MinAdherenceFloor = 12f },
+        ConfessionTechId.DavidChytraeus => new ConfessionModifiers { SoldierDefenseBonus = 1 },
         ConfessionTechId.NikolausSelnecker => new ConfessionModifiers { SpiritualComfortTurnBonus = 4f, CantorComfortBonus = 6f },
         ConfessionTechId.WilhelmLoehe => new ConfessionModifiers { MissionaryMovementBonus = 1, MissionaryAttackBonus = 1 },
-        ConfessionTechId.CTCRReports => new ConfessionModifiers { AdherenceDecayMultiplier = 0.85f, MinAdherenceFloor = 32f },
+        ConfessionTechId.CTCRReports => new ConfessionModifiers { AdherenceDecayMultiplier = 0.85f },
         ConfessionTechId.NormanNagel => new ConfessionModifiers { PreachAdherenceBonus = 8f, LawGospelDriftMultiplier = 0.7f },
         ConfessionTechId.ConcordiaPublishing => new ConfessionModifiers { SettlementManuscriptBonus = 1, PopulationGrowthBonus = 1 },
         ConfessionTechId.WernerHeisenberg => new ConfessionModifiers { SoldierAttackBonus = 1, AdherenceDecayMultiplier = 0.92f },

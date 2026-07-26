@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -127,14 +128,120 @@ public class SchismManager : MonoBehaviour
         return true;
     }
 
-    /// <summary>Stub for future AI synod factions  -  schismatic blocs can split when AI meters fail.</summary>
-    public bool TryTriggerAiSchism(City sourceCity, HeresyType heresy, string reason)
+    /// <summary>AI rival synod splinters a nearby schismatic bloc; parent synod survives weakened.</summary>
+    public bool TryTriggerAiSchism(
+        City sourceCity,
+        SynodPlayerId playerId,
+        CrisisType crisis,
+        string tensionLabel)
     {
-        if (sourceCity == null || sourceCity.Faction != FactionId.LutheranSynod)
+        if (sourceCity == null ||
+            sourceCity.Faction != FactionId.LutheranSynod ||
+            sourceCity.SynodPlayer != playerId ||
+            playerId is SynodPlayerId.None or SynodPlayerId.Player1)
             return false;
 
-        Debug.LogWarning($"AI schism queued at {sourceCity.CityName}: {HeresyDatabase.ProfileFor(heresy).DisplayName}  -  {reason}");
-        return false;
+        var registry = SchismaticBlocRegistry.Instance;
+        if (registry == null)
+            return false;
+
+        var blocId = registry.AllocateBlocId();
+        if (blocId == null)
+        {
+            Debug.LogWarning($"AI schism blocked for {SynodPlayerDatabase.DisplayName(playerId)}: max blocs active.");
+            return false;
+        }
+
+        if (HexGridMap.Instance == null ||
+            !HexGridMap.Instance.TryPickSchismSite(
+                sourceCity.HexPosition,
+                out var schismCapital,
+                out var soldierHex,
+                out var missionaryHex))
+        {
+            Debug.LogWarning($"AI schism blocked for {sourceCity.CityName}: no valid dissent site.");
+            return false;
+        }
+
+        var heresy = registry.PickHeresyForCrisis(crisis, registry.HasAnySchism);
+        var profile = HeresyDatabase.ProfileFor(heresy);
+        string synodName = SynodPlayerDatabase.DisplayName(playerId);
+        string reason =
+            $"{synodName} fractured under {tensionLabel} — {profile.DisplayName} broke away near {sourceCity.CityName}.";
+
+        var record = new SchismRecord(
+            blocId.Value,
+            heresy,
+            reason,
+            schismCapital,
+            TurnManager.Instance != null ? TurnManager.Instance.TurnNumber : 1);
+
+        registry.TryRegisterBloc(record);
+        schismHistory.Add(record);
+        LastSchismReason = reason;
+        DissentCapitalHex = schismCapital;
+
+        WeakenAiSynod(playerId, sourceCity);
+        PeelUnitToSchismaticBloc(playerId, blocId.Value, soldierHex);
+
+        var schismCity = SpawnSchismaticCity(record, schismCapital);
+        SpawnSchismaticUnits(record, profile, soldierHex, missionaryHex, schismCity);
+
+        TurnManager.Instance?.ActivateSchismaticBloc(blocId.Value);
+        FogOfWarManager.Instance?.Refresh();
+        FirstSteps.Instance?.RefreshDashboard();
+        TurnPhaseBanner.Instance?.Refresh($"Schism! {profile.DisplayName} splintered from {synodName}.");
+        SchismEventPanel.Instance?.Show(record, reason);
+
+        Debug.LogWarning($"AI SCHISM ({record.BlocId}): {reason} at {schismCapital}.");
+        return true;
+    }
+
+    static void WeakenAiSynod(SynodPlayerId playerId, City capital)
+    {
+        if (CityManager.Instance == null)
+            return;
+
+        capital.Population = Mathf.Max(8, Mathf.RoundToInt(capital.Population * 0.65f));
+        capital.AdjustLoyalty(-8f);
+        capital.RefreshAppearance();
+
+        foreach (var city in CityManager.Instance.GetSynodPlayerCities(playerId))
+        {
+            if (city == capital)
+                continue;
+
+            city.Population = Mathf.Max(5, city.Population - Random.Range(2, 5));
+            city.RefreshAppearance();
+        }
+    }
+
+    static void PeelUnitToSchismaticBloc(SynodPlayerId playerId, SchismaticBlocId blocId, HexCoordinates rallyHex)
+    {
+        if (TurnManager.Instance == null)
+            return;
+
+        Unit peel = null;
+        foreach (var unit in TurnManager.Instance.GetSynodUnits(playerId))
+        {
+            if (!unit.IsAlive || !unit.IsOnMap)
+                continue;
+
+            if (unit.Type is UnitType.Soldier or UnitType.Slinger or UnitType.Archer or UnitType.Horseman)
+            {
+                peel = unit;
+                break;
+            }
+        }
+
+        peel ??= TurnManager.Instance.GetSynodUnits(playerId).FirstOrDefault(u => u.IsAlive && u.IsOnMap);
+
+        if (peel == null)
+            return;
+
+        peel.ConvertToSchismaticBloc(blocId);
+        if (peel.HexPosition != rallyHex && HexGridMap.Instance != null)
+            peel.TryMoveTo(rallyHex);
     }
 
     void SplitPopulation(bool controlledSplit)
@@ -144,8 +251,8 @@ public class SchismManager : MonoBehaviour
             return;
 
         int divisor = controlledSplit ? 4 : 3;
-        int splinterPop = Mathf.Max(6, faction.population / divisor);
-        faction.population = Mathf.Max(0, faction.population - splinterPop);
+        int splinterPop = Mathf.Max(6, PopulationSync.SumSynodPopulation() / divisor);
+        PopulationSync.ApplyLossAcrossPlayerCities(splinterPop);
         float adherenceLoss = controlledSplit ? 5f : 8f;
         faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence - adherenceLoss, 0f, 100f);
     }
