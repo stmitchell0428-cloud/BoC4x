@@ -11,8 +11,12 @@ public class EndTurnPhaseController : MonoBehaviour
 
     void OnEnable()
     {
-        if (TurnManager.Instance != null)
-            TurnManager.Instance.TurnStarted += OnTurnStarted;
+        TrySubscribeTurnStarted();
+    }
+
+    void Start()
+    {
+        TrySubscribeTurnStarted();
     }
 
     void OnDisable()
@@ -22,6 +26,15 @@ public class EndTurnPhaseController : MonoBehaviour
 
         if (Instance == this)
             Instance = null;
+    }
+
+    void TrySubscribeTurnStarted()
+    {
+        if (TurnManager.Instance == null)
+            return;
+
+        TurnManager.Instance.TurnStarted -= OnTurnStarted;
+        TurnManager.Instance.TurnStarted += OnTurnStarted;
     }
 
     void OnTurnStarted()

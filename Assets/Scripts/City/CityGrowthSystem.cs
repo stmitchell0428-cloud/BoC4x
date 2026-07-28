@@ -184,6 +184,7 @@ public static class CityGrowthSystem
     {
         foodConsumed = FoundingCapitalPopulation;
         foodProduced = CapitalUrbanFoodBaseline;
+        foodSurplus = foodProduced - foodConsumed;
         int workerCap = Mathf.Max(1, FoundingCapitalPopulation / WorkerPopulationDivisor);
 
         if (HexGridMap.Instance == null)

@@ -1,45 +1,45 @@
 # BoC4x — Session Checkpoint
 
-**Saved:** July 27, 2026 (end of session — resume in a few days)  
+**Saved:** July 28, 2026 (playtest aborted — turn skip bug; fix committed)  
 **Project:** Book of Concord 4X prototype (`C:\Users\stmit\BoC4x`)  
 **Engine:** Unity 6000.5.x — scene `Assets/Scenes/SampleScene.unity`  
-**Latest commit:** (this commit) — emphasis systems, three research queues, Sustainable Wittenberg, EditMode test assembly  
-**Local changes:** Committed on `master` (still ahead of origin until you push).
+**Latest commit:** turn/unit-cycle fix after schism (stale `FinishAiTurn`); compile fixes (`EraBranchRules` Linq, capital food `out`)
 
 ---
 
 ## Resume here (next session)
 
 1. Open **`Assets/Scenes/SampleScene.unity`** → wait for recompile, then Play (solo · Grand · Archipelago · Full canon).
-2. **Test Runner:** Window → General → Test Runner → **EditMode** → expand **BoC4x.Editor.Tests** → Run (`EmphasisGateTests`, `EraBranchRulesTests`, `CityFoundingFoodTests`, `TechTreeRulesTests`).
-3. **Playtest order:** Phase **B** (Sustainable Wittenberg + districts) → **G** retest block → **C** antinomian / third schism.
-4. Mark pass/fail rows in the checklist below.
+2. **Smoke-test the turn fix first (post-schism):** End Turn several times after a schism — turn counter must advance **one** per round; banner should show `Orders X/Y of Z` when scout + missionary both need orders. Console logs `Turn advanced N → N+1`.
+3. **Test Runner:** Window → General → Test Runner → **EditMode** → **BoC4x.Editor.Tests** → Run All.
+4. **Playtest order:** Phase **B** (Sustainable Wittenberg + districts) → **G** retest block → **C** antinomian / third schism.
+5. Mark pass/fail rows in the checklist below.
 
-**Note:** Empty Test Runner was fixed by adding `BoC4x.asmdef` + `BoC4x.Editor.Tests.asmdef` (and moving `FirstSteps` / `HexGridMap` / `CameraFollow` under `Assets/Scripts/`).
+**Note:** Empty Test Runner was fixed by `BoC4x.asmdef` + `BoC4x.Editor.Tests.asmdef`. Unity AI `NoSubscription` console spam is harmless (ignore or remove AI Assistant package).
 
 **Priority unverified (coded, needs editor):**
 
 | Area | What to check |
 |------|----------------|
-| **Three research queues** | **T** → Doctrine / Culture / Secular tabs; three parallel projects; Q/E cycles tabs |
-| **Sustainable Wittenberg** | Found pop **15**; food preview on site hover; +6 urban food; 8-turn deficit grace |
-| **Emphasis / forks (Jul 27)** | Partial reception copy; study colloquy (+4 mss); dual-path full reception; Augsburg → Law +8% |
-| **Phase G** | Most rows still open — see retest block under Phase G |
+| **Turn / unit cycle (Jul 28 fix)** | No 4→6 / 8→10 skips after schism; both units in order queue |
+| **Three research queues** | **T** → Doctrine / Culture / Secular tabs; Q/E cycles tabs |
+| **Sustainable Wittenberg** | Found pop **15**; food preview; +6 urban food; 8-turn deficit grace — playtest saw odd pop/food after schism (recheck) |
+| **Emphasis / forks** | Partial/deepened/full reception; study colloquy; Augsburg → Law +8% |
+| **Phase G** | Most rows still open |
 
 **No save/load** — Play mode resets on recompile; use a fresh match for verification.
 
 ---
 
-## This session — implemented (uncommitted)
+## This session (Jul 28) — implemented
 
-- **Thematic pass:** `ConfessionalUiVocabulary` — partial / deepened / full reception language.
-- **Fork mechanics:** Study colloquy at deferred research start (2B); dual-path full reception (1C).
-- **Augsburg emphasis:** Civic restraint (Law) +8% growth — not soldier +3 (3C).
-- **Sustainable Wittenberg:** Pop 15, capital +6 food, housing ≥ pop, 8-turn deficit grace, confessional +pop only when surplus > 0, founding food preview.
-- **Three research queues:** Doctrine · Culture · Secular — separate advance, three **T** tabs, HUD shows three lines.
-- **Fix:** Removed unused `cultureTertiaryCooldownUntilTurn` (CS0414).
+- **Turn skip fix:** `SimpleAI.FinishAiTurn` ignores stale Invokes on player turn; cancel stacked Invokes; schedule with expected faction/bloc guard.
+- **Unit cycle:** Banner `Orders X/Y of Z`; no raw `EndTurn` fallback when phased end-turn is blocked; missionary still needs orders when preach-ready at 0 MP.
+- **Schism peel:** `ConvertToSchismaticBloc` re-registers unit on schismatic faction list.
+- **Compile:** `EraBranchRules` + `using System.Linq`; capital founding food assigns `foodSurplus` before early return.
+- **Playtest aborted** mid Phase B after schism — turn counter and unit cycle were broken; not a clean pass/fail session.
 
-**Key files:** `ConfessionResearchManager.cs`, `ConfessionTechPanel.cs`, `ConfessionTechId.cs`, `CityGrowthSystem.cs`, `Tier2EmphasisManager.cs`, `EraBranchRules.cs`, `ConfessionalUiVocabulary.cs`, `Assets/Editor/Tests/*`.
+**Key files:** `SimpleAI.cs`, `PlayerUnitCycle.cs`, `TurnManager.cs`, `EndTurnPhaseController.cs`, `Unit.cs`, `FirstSteps.cs`, `EraBranchRules.cs`, `CityGrowthSystem.cs`.
 
 **Still not expanded:** Full Decision 16 era forks (only Augsburg↔Gutenberg, Mission↔Bach).
 
@@ -57,7 +57,7 @@
 | Capital     | **Coastal** (for naval testing)              |
 
 
-**Resume playtest track:** Phase **B** then **G** — not a single in-progress save.
+**Resume playtest track:** Smoke-test turn fix → Phase **B** then **G** — not a single in-progress save.
 
 **Unity startup:** Hub → **BoC4x** (`6000.5.2f1`) → double-click **`Assets/Scenes/SampleScene.unity`** before Play. A blank **Untitled** scene (Main Camera only) is not the game.
 
@@ -344,6 +344,7 @@ Schismatic blocs **ignore diplomacy** in all cases.
 | —    | Augsburg emphasis → Law +8% (3C) | ✅ (needs playtest) |
 | —    | Sustainable Wittenberg (founding food) | ✅ (needs playtest) |
 | —    | Three research queues (Doctrine / Culture / Secular) | ✅ (needs playtest) |
+| —    | Post-schism turn skip / unit cycle (FinishAiTurn) | ✅ (needs retest) |
 
 
 ---

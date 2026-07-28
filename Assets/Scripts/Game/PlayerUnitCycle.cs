@@ -18,16 +18,23 @@ public class PlayerUnitCycle : MonoBehaviour
             Instance = null;
     }
 
-    void OnEnable()
-    {
-        if (TurnManager.Instance != null)
-            TurnManager.Instance.TurnStarted += OnTurnStarted;
-    }
+    void OnEnable() => TrySubscribeTurnStarted();
+
+    void Start() => TrySubscribeTurnStarted();
 
     void OnDisable()
     {
         if (TurnManager.Instance != null)
             TurnManager.Instance.TurnStarted -= OnTurnStarted;
+    }
+
+    void TrySubscribeTurnStarted()
+    {
+        if (TurnManager.Instance == null)
+            return;
+
+        TurnManager.Instance.TurnStarted -= OnTurnStarted;
+        TurnManager.Instance.TurnStarted += OnTurnStarted;
     }
 
     void Update()
@@ -67,10 +74,7 @@ public class PlayerUnitCycle : MonoBehaviour
         var actionable = GetUnitsNeedingOrders();
         if (actionable.Count == 0)
         {
-            if (EndTurnPhaseController.Instance != null &&
-                EndTurnPhaseController.Instance.TryBeginPhasedEndTurn())
-                return;
-            TurnManager.Instance.EndTurn();
+            BeginPlayerEndTurn();
             return;
         }
 
@@ -84,14 +88,23 @@ public class PlayerUnitCycle : MonoBehaviour
         int index = actionable.IndexOf(selected);
         if (index >= actionable.Count - 1)
         {
-            if (EndTurnPhaseController.Instance != null &&
-                EndTurnPhaseController.Instance.TryBeginPhasedEndTurn())
-                return;
-            TurnManager.Instance.EndTurn();
+            BeginPlayerEndTurn();
             return;
         }
 
         FocusUnit(actionable[index + 1]);
+    }
+
+    static void BeginPlayerEndTurn()
+    {
+        if (EndTurnPhaseController.Instance != null)
+        {
+            // Do not fall through to a raw EndTurn on false — false means blocked/stalled.
+            EndTurnPhaseController.Instance.TryBeginPhasedEndTurn();
+            return;
+        }
+
+        TurnManager.Instance?.EndTurn();
     }
 
     public void CycleNextUnit(bool wrapOnly = false)
@@ -130,24 +143,35 @@ public class PlayerUnitCycle : MonoBehaviour
         RefreshTurnBannerHint();
     }
 
-    List<Unit> GetUnitsNeedingOrders()
+    List<Unit> GetPlayerUnitsOnMap()
     {
         if (TurnManager.Instance == null)
             return new List<Unit>();
 
         return TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1)
-            .Where(u => u != null && u.IsOnMap && u.NeedsOrders)
+            .Where(u => u != null && u.IsOnMap && u.Faction == FactionId.LutheranSynod)
             .OrderBy(u => u.Type)
-            .ThenBy(u => (long)EntityId.ToULong(u.GetEntityId()))
+            .ThenBy(u => u.GetInstanceID())
+            .ToList();
+    }
+
+    List<Unit> GetUnitsNeedingOrders()
+    {
+        return GetPlayerUnitsOnMap()
+            .Where(u => u.NeedsOrders)
             .ToList();
     }
 
     void RefreshTurnBannerHint()
     {
-        var actionable = GetUnitsNeedingOrders();
+        var all = GetPlayerUnitsOnMap();
+        var actionable = all.Where(u => u.NeedsOrders).ToList();
         if (actionable.Count == 0)
         {
-            TurnPhaseBanner.Instance?.Refresh("End Turn to finish");
+            string idle = all.Count > 0
+                ? $"End Turn to finish  |  {all.Count} units ready"
+                : "End Turn to finish";
+            TurnPhaseBanner.Instance?.Refresh(idle);
             return;
         }
 
@@ -157,6 +181,7 @@ public class PlayerUnitCycle : MonoBehaviour
         string suffix = index >= actionable.Count
             ? "  |  End Turn again to finish turn"
             : "  |  End Turn cycles";
-        TurnPhaseBanner.Instance?.Refresh($"Unit {index}/{actionable.Count}  |  Tab next{suffix}");
+        TurnPhaseBanner.Instance?.Refresh(
+            $"Orders {index}/{actionable.Count} of {all.Count}  |  Tab next{suffix}");
     }
 }

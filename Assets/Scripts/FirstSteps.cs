@@ -425,10 +425,10 @@ public class FirstSteps : MonoBehaviour
             PlayerUnitCycle.Instance.TryEndTurnOrCycleNext();
         else if (TurnManager.Instance != null && TurnManager.Instance.IsPlayerTurn)
         {
-            if (EndTurnPhaseController.Instance != null &&
-                EndTurnPhaseController.Instance.TryBeginPhasedEndTurn())
-                return;
-            TurnManager.Instance.EndTurn();
+            if (EndTurnPhaseController.Instance != null)
+                EndTurnPhaseController.Instance.TryBeginPhasedEndTurn();
+            else
+                TurnManager.Instance.EndTurn();
         }
     }
 

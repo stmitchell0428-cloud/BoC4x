@@ -101,10 +101,18 @@ public class TurnManager : MonoBehaviour
         factionUnits.TryGetValue(faction, out var list) ? list : System.Array.Empty<Unit>();
 
     public IReadOnlyList<Unit> GetSynodUnits(SynodPlayerId playerId) =>
-        GetUnits(FactionId.LutheranSynod).Where(u => u.IsAlive && u.SynodPlayer == playerId).ToList();
+        GetUnits(FactionId.LutheranSynod)
+            .Where(u => u.IsAlive &&
+                        u.Faction == FactionId.LutheranSynod &&
+                        u.SynodPlayer == playerId)
+            .ToList();
 
     public IReadOnlyList<Unit> GetBlocUnits(SchismaticBlocId blocId) =>
-        GetUnits(FactionId.Schismatic).Where(u => u.IsAlive && u.SchismaticBloc == blocId).ToList();
+        GetUnits(FactionId.Schismatic)
+            .Where(u => u.IsAlive &&
+                        u.Faction == FactionId.Schismatic &&
+                        u.SchismaticBloc == blocId)
+            .ToList();
 
     public void BeginGame()
     {
@@ -133,9 +141,16 @@ public class TurnManager : MonoBehaviour
         HexSelectionController.Instance?.ClearHighlights();
         TerrainInfoPanel.Instance?.RefreshSelection();
 
+        int previousTurn = turnNumber;
+        var previousSlot = turnOrder[activeSlotIndex];
         activeSlotIndex = (activeSlotIndex + 1) % turnOrder.Count;
         if (activeSlotIndex == 0)
             turnNumber++;
+
+        if (turnNumber != previousTurn)
+            Debug.Log(
+                $"Turn advanced {previousTurn} → {turnNumber} " +
+                $"(after {DescribeSlot(previousSlot)}; order size {turnOrder.Count}).");
 
         StartFactionTurn();
     }
@@ -145,6 +160,8 @@ public class TurnManager : MonoBehaviour
         var slot = turnOrder[activeSlotIndex];
         foreach (var unit in GetUnits(slot.Faction).Where(u => u.IsAlive))
         {
+            if (unit.Faction != slot.Faction)
+                continue;
             if (slot.Faction == FactionId.Schismatic && unit.SchismaticBloc != slot.BlocId)
                 continue;
             if (slot.Faction == FactionId.LutheranSynod && unit.SynodPlayer != slot.SynodPlayer)
@@ -163,6 +180,13 @@ public class TurnManager : MonoBehaviour
         }
         else if (slot.Faction == FactionId.Schismatic)
             SimpleAI.Instance?.PlayTurn(slot.BlocId);
+    }
+
+    static string DescribeSlot(TurnSlot slot)
+    {
+        if (slot.Faction == FactionId.LutheranSynod)
+            return $"synod {slot.SynodPlayer}";
+        return $"schism {slot.BlocId}";
     }
 
     void AdvancePendingPlayerMoveOrders()

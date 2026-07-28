@@ -6,10 +6,16 @@ public class SimpleAI : MonoBehaviour
 {
     public static SimpleAI Instance { get; private set; }
 
+    FactionId pendingFinishFaction = FactionId.LutheranSynod;
+    SynodPlayerId pendingFinishSynod = SynodPlayerId.None;
+    SchismaticBlocId pendingFinishBloc = SchismaticBlocId.None;
+
     void Awake() => Instance = this;
 
     public void PlaySynodTurn(SynodPlayerId playerId)
     {
+        CancelInvoke(nameof(FinishAiTurn));
+
         if (MatchController.Instance != null && MatchController.Instance.IsMatchOver)
         {
             TurnManager.Instance?.EndTurn();
@@ -93,7 +99,7 @@ public class SimpleAI : MonoBehaviour
         MatchController.Instance?.EvaluateConditions();
         CityLoyaltySystem.ProcessEndTurnOccupation(FactionId.LutheranSynod);
         AiSynodCrisisManager.ProcessEndTurn(playerId);
-        Invoke(nameof(FinishAiTurn), 0.4f);
+        ScheduleFinishAiTurn(FactionId.LutheranSynod, playerId, SchismaticBlocId.None);
     }
 
     static List<Unit> CollectSynodAiTargets(SynodPlayerId self, TurnManager tm)
@@ -299,6 +305,8 @@ public class SimpleAI : MonoBehaviour
 
     public void PlayTurn(SchismaticBlocId blocId)
     {
+        CancelInvoke(nameof(FinishAiTurn));
+
         if (MatchController.Instance != null && MatchController.Instance.IsMatchOver)
         {
             TurnManager.Instance?.EndTurn();
@@ -381,7 +389,7 @@ public class SimpleAI : MonoBehaviour
 
         MatchController.Instance?.EvaluateConditions();
         CityLoyaltySystem.ProcessEndTurnOccupation(FactionId.Schismatic);
-        Invoke(nameof(FinishAiTurn), 0.4f);
+        ScheduleFinishAiTurn(FactionId.Schismatic, SynodPlayerId.None, blocId);
     }
 
     void ManageAiCityProduction(SchismaticBlocId blocId)
@@ -632,7 +640,52 @@ public class SimpleAI : MonoBehaviour
         return unit.TryMoveTo(best.Value);
     }
 
-    void FinishAiTurn() => TurnManager.Instance?.EndTurn();
+    void ScheduleFinishAiTurn(FactionId faction, SynodPlayerId synodPlayer, SchismaticBlocId blocId)
+    {
+        CancelInvoke(nameof(FinishAiTurn));
+        pendingFinishFaction = faction;
+        pendingFinishSynod = synodPlayer;
+        pendingFinishBloc = blocId;
+        Invoke(nameof(FinishAiTurn), 0.4f);
+    }
+
+    void FinishAiTurn()
+    {
+        var tm = TurnManager.Instance;
+        if (tm == null)
+            return;
+
+        // Stale Invoke after a skipped/nested AI turn must not end the player's turn
+        // (that was advancing the counter by 2 and skipping unit refresh/phases).
+        if (tm.IsPlayerTurn)
+        {
+            Debug.LogWarning("SimpleAI.FinishAiTurn ignored — player turn already active.");
+            return;
+        }
+
+        if (tm.ActiveFaction != pendingFinishFaction)
+        {
+            Debug.LogWarning(
+                $"SimpleAI.FinishAiTurn ignored — expected {pendingFinishFaction}, active {tm.ActiveFaction}.");
+            return;
+        }
+
+        if (pendingFinishFaction == FactionId.LutheranSynod &&
+            tm.ActiveSynodPlayer != pendingFinishSynod)
+        {
+            Debug.LogWarning("SimpleAI.FinishAiTurn ignored — synod slot mismatch.");
+            return;
+        }
+
+        if (pendingFinishFaction == FactionId.Schismatic &&
+            tm.ActiveSchismaticBloc != pendingFinishBloc)
+        {
+            Debug.LogWarning("SimpleAI.FinishAiTurn ignored — bloc slot mismatch.");
+            return;
+        }
+
+        tm.EndTurn();
+    }
 
     static Unit FindNearestEnemy(Unit self, List<Unit> enemies, HexGridMap map)
     {

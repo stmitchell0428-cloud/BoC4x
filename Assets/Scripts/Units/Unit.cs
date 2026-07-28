@@ -68,8 +68,8 @@ public class Unit : MonoBehaviour
     }
 
     public bool CanPreachOrHymnWithoutMoving =>
-        IsAlive && !HasPreached && Type is UnitType.Chaplain or UnitType.Cantor or UnitType.Pastor
-            or UnitType.Bishop or UnitType.Archbishop or UnitType.Deaconess;
+        IsAlive && !HasPreached && Type is UnitType.Missionary or UnitType.Chaplain or UnitType.Cantor
+            or UnitType.Pastor or UnitType.Bishop or UnitType.Archbishop or UnitType.Deaconess;
 
     public bool CanAct =>
         IsAlive && (MovementRemaining > 0 || CanAttackWithoutMoving || CanPreachOrHymnWithoutMoving);
@@ -659,8 +659,12 @@ public class Unit : MonoBehaviour
 
     public void ConvertToSchismaticBloc(SchismaticBlocId blocId)
     {
+        var tm = TurnManager.Instance;
+        tm?.UnregisterUnit(this);
         Faction = FactionId.Schismatic;
+        SynodPlayer = SynodPlayerId.None;
         SetSchismaticBloc(blocId);
+        tm?.RegisterUnit(this);
         ApplyArtEraVisuals();
         TerrainInfoPanel.Instance?.RefreshUnitDisplay();
     }
