@@ -430,6 +430,21 @@ public class City : MonoBehaviour
         RefreshAppearance();
     }
 
+    public string FormatOwnerLabel()
+    {
+        if (Faction == FactionId.Schismatic)
+        {
+            if (SchismaticBloc != SchismaticBlocId.None && SchismaticBlocRegistry.Instance != null)
+                return SchismaticBlocRegistry.Instance.ProfileForBloc(SchismaticBloc).DisplayName;
+            return "Schismatic dissent";
+        }
+
+        if (Faction == FactionId.LutheranSynod)
+            return SynodPlayerDatabase.DisplayName(SynodPlayer);
+
+        return Faction.ToString();
+    }
+
     static Sprite diamondSprite;
     static Sprite houseSprite;
     static Sprite circleSprite;

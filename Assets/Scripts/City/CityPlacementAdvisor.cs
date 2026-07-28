@@ -14,6 +14,9 @@ public struct CityPlacementScore
     public int TerritoryPassableCount;
     public int ManuscriptTilesNearby;
     public string HighlightResource;
+    public int ProjectedFoodProduced;
+    public int ProjectedFoodConsumed;
+    public int ProjectedFoodSurplus;
 
     public string Rating => !IsValid ? "Invalid" : Score switch
     {
@@ -46,6 +49,15 @@ public struct CityPlacementScore
             sb.Append(" | 4-hex lands ").Append(TerritoryTotal.FormatCompact());
         if (ManuscriptTilesNearby > 0)
             sb.Append(" | <color=#EECC66>").Append(ManuscriptTilesNearby).Append(" mss tile(s)</color>");
+        if (ProjectedFoodConsumed > 0)
+        {
+            string foodColor = ProjectedFoodSurplus >= 0 ? "#88DDAA" : "#FF9988";
+            string sign = ProjectedFoodSurplus >= 0 ? "+" : "";
+            sb.Append(" | <color=").Append(foodColor).Append(">~")
+                .Append(ProjectedFoodProduced).Append(" food / ")
+                .Append(ProjectedFoodConsumed).Append(" mouths (")
+                .Append(sign).Append(ProjectedFoodSurplus).Append(")</color>");
+        }
         return sb.ToString();
     }
 
@@ -149,6 +161,14 @@ public static class CityPlacementAdvisor
         score += result.ManuscriptTilesNearby * 10;
         score += result.AdjacentTotal.Food;
         score += result.CenterYield.Production * 2;
+
+        CityGrowthSystem.ProjectCapitalFoundingFood(
+            hex,
+            out result.ProjectedFoodProduced,
+            out result.ProjectedFoodConsumed,
+            out result.ProjectedFoodSurplus);
+        score += result.ProjectedFoodSurplus * 10;
+
         result.Score = score;
         return result;
     }

@@ -34,8 +34,23 @@ public class MatchLobbyPanel : MonoBehaviour
         var (w, h) = MapSizePresets.Dimensions(mapPreset);
         draft.MapWidth = w;
         draft.MapHeight = h;
+    }
+
+    void Start() => EnsureUiBuilt();
+
+    public bool EnsureUiBuilt()
+    {
+        if (panelRoot != null)
+            return true;
+
         BuildUI();
-        panelRoot.SetActive(false);
+        if (panelRoot != null)
+            panelRoot.SetActive(false);
+
+        if (panelRoot == null)
+            Debug.LogError("MatchLobbyPanel: failed to build UI  -  no Canvas available.");
+
+        return panelRoot != null;
     }
 
     void OnDestroy()
@@ -46,8 +61,10 @@ public class MatchLobbyPanel : MonoBehaviour
 
     void BuildUI()
     {
-        var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas == null) return;
+        GameUiRoot.EnsureEventSystem();
+        var canvas = GameUiRoot.GetCanvas();
+        if (canvas == null)
+            return;
 
         panelRoot = new GameObject("MatchLobbyPanel");
         panelRoot.transform.SetParent(canvas.transform, false);
@@ -344,7 +361,11 @@ public class MatchLobbyPanel : MonoBehaviour
     static void CopyFont(TextMeshProUGUI tmp)
     {
         var existing = FindAnyObjectByType<TextMeshProUGUI>();
-        if (existing != null) tmp.font = existing.font;
+        if (existing != null && existing.font != null)
+            tmp.font = existing.font;
+        else if (TMP_Settings.defaultFontAsset != null)
+            tmp.font = TMP_Settings.defaultFontAsset;
+
         tmp.color = new Color(0.92f, 0.9f, 0.85f);
     }
 
@@ -437,9 +458,12 @@ public class MatchLobbyPanel : MonoBehaviour
 
     public void Show()
     {
+        if (!EnsureUiBuilt())
+            return;
+
         SetHudVisible(false);
-        if (panelRoot != null)
-            panelRoot.SetActive(true);
+        panelRoot.SetActive(true);
+        panelRoot.transform.SetAsLastSibling();
     }
 
     public void Hide()

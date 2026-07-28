@@ -7,17 +7,40 @@ public enum TechTrack
 
 public enum TechTreeCategory
 {
-    Spiritual,
+    Doctrine,
+    Culture,
     Secular
 }
 
 public static class TechTreeRules
 {
-    public static TechTreeCategory CategoryFor(TechTrack track) =>
-        track == TechTrack.Secular ? TechTreeCategory.Secular : TechTreeCategory.Spiritual;
+    public static TechTreeCategory CategoryFor(TechTrack track) => track switch
+    {
+        TechTrack.Doctrine => TechTreeCategory.Doctrine,
+        TechTrack.Culture => TechTreeCategory.Culture,
+        TechTrack.Secular => TechTreeCategory.Secular,
+        _ => TechTreeCategory.Doctrine
+    };
 
     public static TechTreeCategory CategoryFor(ConfessionTechId id) =>
         CategoryFor(ConfessionTechDatabase.Get(id).Track);
+
+    public static TechTrack TrackForCategory(TechTreeCategory category) => category switch
+    {
+        TechTreeCategory.Doctrine => TechTrack.Doctrine,
+        TechTreeCategory.Culture => TechTrack.Culture,
+        _ => TechTrack.Secular
+    };
+
+    public static bool RequiresAdherence(TechTreeCategory category) =>
+        category != TechTreeCategory.Secular;
+
+    public static string DisplayName(TechTreeCategory category) => category switch
+    {
+        TechTreeCategory.Doctrine => "Doctrine",
+        TechTreeCategory.Culture => "Culture",
+        _ => "Secular"
+    };
 }
 
 public enum ConfessionTechId
@@ -33,6 +56,8 @@ public enum ConfessionTechId
     OrderedCreation,
 
     // Tier 2  -  Lutheran confessions & early arts / science
+    ConfessionalEmphasis,
+    ConfessionsCultureEmphasis,
     AugsburgConfession,
     SmalcaldArticles,
     FormulaOfConcord,
@@ -49,6 +74,7 @@ public enum ConfessionTechId
     GregorMendel,
 
     // Tier 4  -  Synodical era
+    SynodicalEmphasis,
     WaltherPastoralTheology,
     FrancisPieper,
     MissionarySending,
@@ -101,5 +127,6 @@ public enum ConfessionTechStatus
     Available,
     Researching,
     Unlocked,
-    AdherenceLocked
+    AdherenceLocked,
+    EraForkLocked
 }

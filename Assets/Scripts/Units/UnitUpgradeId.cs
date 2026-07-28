@@ -30,7 +30,9 @@ public enum UnitUpgradeStatus
 
     InsufficientManuscripts,
 
-    ClergySlotsFull
+    ClergySlotsFull,
+
+    NeedsParishChurch
 
 }
 

@@ -5,7 +5,11 @@ public class TurnPhaseBanner : MonoBehaviour
 {
     public static TurnPhaseBanner Instance { get; private set; }
 
+    RectTransform bannerRect;
     TextMeshProUGUI bannerText;
+
+    const float RightInset = 16f;
+    const float BannerHeight = 52f;
 
     void Awake()
     {
@@ -22,7 +26,16 @@ public class TurnPhaseBanner : MonoBehaviour
             TurnManager.Instance.TurnStarted -= OnTurnStarted;
             TurnManager.Instance.TurnStarted += OnTurnStarted;
         }
+        ApplyHudClearanceFromLayout();
         Refresh();
+    }
+
+    void ApplyHudClearanceFromLayout()
+    {
+        if (GameHUD.Instance != null)
+            ApplyHudClearance(GameHUD.Instance.QueuePanelRightEdge + 8f, GameHUD.Instance.topPadding);
+        else
+            ApplyHudClearance(424f, 12f);
     }
 
     void OnDestroy()
@@ -40,24 +53,40 @@ public class TurnPhaseBanner : MonoBehaviour
 
         var go = new GameObject("TurnPhaseBanner");
         go.transform.SetParent(canvas.transform, false);
-        var rect = go.AddComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 1f);
-        rect.anchorMax = new Vector2(0.5f, 1f);
-        rect.pivot = new Vector2(0.5f, 1f);
-        rect.anchoredPosition = new Vector2(0f, -8f);
-        rect.sizeDelta = new Vector2(900f, 36f);
+        bannerRect = go.AddComponent<RectTransform>();
 
         bannerText = go.AddComponent<TextMeshProUGUI>();
         var existing = FindAnyObjectByType<TextMeshProUGUI>();
         if (existing != null) bannerText.font = existing.font;
-        bannerText.fontSize = 20f;
+        bannerText.fontSize = 18f;
         bannerText.alignment = TextAlignmentOptions.Center;
         bannerText.richText = true;
         bannerText.color = new Color(0.95f, 0.92f, 0.82f);
         bannerText.raycastTarget = false;
+        bannerText.textWrappingMode = TextWrappingModes.Normal;
+        bannerText.overflowMode = TextOverflowModes.Overflow;
     }
 
-    void OnTurnStarted() => Refresh();
+    /// <summary>Keep the banner in the top-center band, to the right of the queue panel.</summary>
+    public void ApplyHudClearance(float leftInset, float topOffset = 8f)
+    {
+        if (bannerRect == null)
+            return;
+
+        bannerRect.anchorMin = new Vector2(0f, 1f);
+        bannerRect.anchorMax = new Vector2(1f, 1f);
+        bannerRect.pivot = new Vector2(0.5f, 1f);
+        bannerRect.offsetMin = new Vector2(leftInset, -topOffset - BannerHeight);
+        bannerRect.offsetMax = new Vector2(-RightInset, -topOffset);
+    }
+
+    void OnTurnStarted()
+    {
+        if (TurnManager.Instance != null && TurnManager.Instance.IsPlayerTurn)
+            Refresh(ActionQueueHud.FormatTurnBannerReminder());
+        else
+            Refresh();
+    }
 
     public void Refresh(string extra = null)
     {
@@ -88,7 +117,7 @@ public class TurnPhaseBanner : MonoBehaviour
         string progress = MatchController.Instance?.VictoryProgressLabel() ?? "";
         string artEra = ArtEraVisualController.FormatEraLabel();
         if (!string.IsNullOrEmpty(extra))
-            bannerText.text = TmpTextSanitizer.Sanitize($"{phase}  |  {extra}");
+            bannerText.text = TmpTextSanitizer.Sanitize($"{phase}\n{extra}");
         else if (!string.IsNullOrEmpty(progress))
             bannerText.text = TmpTextSanitizer.Sanitize($"{phase}  |  {progress}  |  {artEra}");
         else

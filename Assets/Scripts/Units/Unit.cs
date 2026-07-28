@@ -47,10 +47,32 @@ public class Unit : MonoBehaviour
          Type == UnitType.Pastor || Type == UnitType.Bishop || Type == UnitType.Archbishop ||
          Type == UnitType.Deaconess);
     public bool CanLeadHymn => IsAlive && Type == UnitType.Cantor;
-    public bool CanAct => IsAlive && (MovementRemaining > 0 || !HasAttacked ||
-        (Type is UnitType.Chaplain or UnitType.Cantor or UnitType.Pastor or UnitType.Bishop
-            or UnitType.Archbishop or UnitType.Deaconess
-            && !HasPreached));
+
+    public bool CanAttackWithoutMoving =>
+        IsAlive && !HasAttacked && (MovementRemaining > 0 || HasEnemyInAttackRange());
+
+    bool HasEnemyInAttackRange()
+    {
+        if (TurnManager.Instance == null || HexGridMap.Instance == null)
+            return false;
+
+        foreach (var enemy in TurnManager.Instance.GetUnits(FactionId.Schismatic))
+        {
+            if (!enemy.IsAlive || !enemy.IsOnMap)
+                continue;
+            if (CombatSystem.AreInAttackRange(HexPosition, enemy.HexPosition, this))
+                return true;
+        }
+
+        return false;
+    }
+
+    public bool CanPreachOrHymnWithoutMoving =>
+        IsAlive && !HasPreached && Type is UnitType.Chaplain or UnitType.Cantor or UnitType.Pastor
+            or UnitType.Bishop or UnitType.Archbishop or UnitType.Deaconess;
+
+    public bool CanAct =>
+        IsAlive && (MovementRemaining > 0 || CanAttackWithoutMoving || CanPreachOrHymnWithoutMoving);
 
     public bool NeedsOrders
     {
@@ -66,7 +88,7 @@ public class Unit : MonoBehaviour
                 return true;
             if (CanAct)
                 return true;
-            if (Type == UnitType.Missionary && CanPreach &&
+            if (Type == UnitType.Missionary && CanPreach && !HasPreached &&
                 FirstSteps.Instance != null &&
                 (FirstSteps.Instance.ScriptureManuscripts > 0 || FirstSteps.Instance.BoundCatechisms > 0))
                 return true;
@@ -781,6 +803,7 @@ public class Unit : MonoBehaviour
         ClearTile();
         TurnManager.Instance?.UnregisterUnit(this);
         Destroy(gameObject);
+        MatchController.Instance?.EvaluateConditions();
     }
 
     public void SetEmbarkedOn(Unit galley)
@@ -876,6 +899,21 @@ public class Unit : MonoBehaviour
     };
 
     public void SetSynodPlayer(SynodPlayerId playerId) => SynodPlayer = playerId;
+
+    public string FormatOwnerLabel()
+    {
+        if (Faction == FactionId.Schismatic)
+        {
+            if (SchismaticBloc != SchismaticBlocId.None && SchismaticBlocRegistry.Instance != null)
+                return SchismaticBlocRegistry.Instance.ProfileForBloc(SchismaticBloc).DisplayName;
+            return "Schismatic dissent";
+        }
+
+        if (Faction == FactionId.LutheranSynod)
+            return SynodPlayerDatabase.DisplayName(SynodPlayer);
+
+        return Faction.ToString();
+    }
 
     public static string TypeDisplayName(UnitType type) => type switch
     {

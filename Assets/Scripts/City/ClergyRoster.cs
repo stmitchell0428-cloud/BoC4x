@@ -242,6 +242,42 @@ public static class ClergyRoster
 
 
 
+    public static int GetPastorCap(City city)
+
+    {
+
+        var root = GetControllingRoot(city);
+
+        if (root == null)
+
+            return 0;
+
+
+
+        int fromChurches = CountParishChurchesInCluster(root);
+
+        if (fromChurches > 0)
+
+            return fromChurches;
+
+
+
+        if (!root.IsHamlet &&
+
+            (root.Production?.HasBuilding(CityBuildId.BuildSeminary) == true ||
+
+             root.Production?.HasBuilding(CityBuildId.BuildCathedral) == true))
+
+            return 1;
+
+
+
+        return 0;
+
+    }
+
+
+
     public static int GetRoleCap(City city, ClergyRole role)
 
     {
@@ -258,7 +294,7 @@ public static class ClergyRoster
 
         {
 
-            ClergyRole.Pastor => CountParishChurchesInCluster(root),
+            ClergyRole.Pastor => GetPastorCap(city),
 
             ClergyRole.Bishop => 1,
 
@@ -586,7 +622,7 @@ public static class ClergyRoster
 
             var root = GetControllingRoot(city);
 
-            if (root == null || CountParishChurchesInCluster(root) <= CountRole(root, ClergyRole.Pastor))
+            if (root == null || GetPastorCap(root) <= CountRole(root, ClergyRole.Pastor))
 
                 return false;
 

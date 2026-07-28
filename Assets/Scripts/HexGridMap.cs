@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public readonly struct FactionSpawnLayout
@@ -130,12 +131,22 @@ public class HexGridMap : MonoBehaviour
             gameObject.AddComponent<CrisisCardPanel>();
         if (FindAnyObjectByType<LegacySlotPickerPanel>() == null)
             gameObject.AddComponent<LegacySlotPickerPanel>();
+        if (FindAnyObjectByType<SynodBriefPanel>() == null)
+            gameObject.AddComponent<SynodBriefPanel>();
         if (FindAnyObjectByType<EndTurnPhaseController>() == null)
             gameObject.AddComponent<EndTurnPhaseController>();
         if (FindAnyObjectByType<PlayerUnitCycle>() == null)
             gameObject.AddComponent<PlayerUnitCycle>();
         if (FindAnyObjectByType<CrisisManager>() == null)
             gameObject.AddComponent<CrisisManager>();
+        if (FindAnyObjectByType<PastoralBriefingManager>() == null)
+            gameObject.AddComponent<PastoralBriefingManager>();
+        if (FindAnyObjectByType<SynodicalEmphasisManager>() == null)
+            gameObject.AddComponent<SynodicalEmphasisManager>();
+        if (FindAnyObjectByType<Tier2EmphasisManager>() == null)
+            gameObject.AddComponent<Tier2EmphasisManager>();
+        if (FindAnyObjectByType<MatchHistory>() == null)
+            gameObject.AddComponent<MatchHistory>();
         if (FindAnyObjectByType<SynodLegacyManager>() == null)
             gameObject.AddComponent<SynodLegacyManager>();
         if (FindAnyObjectByType<IdentityPickerPanel>() == null)
@@ -156,10 +167,10 @@ public class HexGridMap : MonoBehaviour
             gameObject.AddComponent<AppealOverlayController>();
         if (FindAnyObjectByType<LoadingScreenPanel>() == null)
             gameObject.AddComponent<LoadingScreenPanel>();
-        if (FindAnyObjectByType<MatchLobbyController>() == null)
-            gameObject.AddComponent<MatchLobbyController>();
         if (FindAnyObjectByType<MatchLobbyPanel>() == null)
             gameObject.AddComponent<MatchLobbyPanel>();
+        if (FindAnyObjectByType<MatchLobbyController>() == null)
+            gameObject.AddComponent<MatchLobbyController>();
         if (FindAnyObjectByType<ArtEraVisualController>() == null)
             gameObject.AddComponent<ArtEraVisualController>();
         if (GetComponent<MapWrapVisuals>() == null)
@@ -188,7 +199,10 @@ public class HexGridMap : MonoBehaviour
     public IEnumerator GenerateMapAsync(System.Action<float> onProgress = null)
     {
         if (hexPrefabBlueprint == null)
+        {
+            Debug.LogError("HexGridMap: hexPrefabBlueprint is not assigned  -  cannot generate the map.");
             yield break;
+        }
 
         onProgress?.Invoke(0.02f);
         yield return null;
@@ -875,36 +889,30 @@ public class HexGridMap : MonoBehaviour
         Debug.Log($"Spawn layout: nomadic synod {synodCapital}+{synodScout} (schismatics emerge later from dissent).");
     }
 
-    public bool TryPickSchismSite(HexCoordinates near, out HexCoordinates capital, out HexCoordinates soldierHex, out HexCoordinates missionaryHex)
+    public bool TryPickSchismSite(
+        HexCoordinates near,
+        out HexCoordinates capital,
+        out HexCoordinates soldierHex,
+        out HexCoordinates missionaryHex,
+        IReadOnlyList<HexCoordinates> avoidHexes = null)
     {
         capital = default;
         soldierHex = default;
         missionaryHex = default;
 
-        var candidates = new List<HexCoordinates>();
-        const int minDistance = 6;
-        int maxDistance = Mathf.Max(14, Mathf.Max(gridWidthCols, gridHeightRows) / 2);
+        const int minDistance = 10;
+        const int minFromAvoid = 8;
+        int maxDistance = Mathf.Max(18, Mathf.Max(gridWidthCols, gridHeightRows) / 2);
 
-        for (int q = 0; q < gridWidthCols; q++)
+        var candidates = CollectSchismCandidates(near, minDistance, maxDistance, minFromAvoid, avoidHexes);
+        if (TryPickFarthestSchismSite(candidates, near, out capital, out soldierHex, out missionaryHex))
+            return true;
+
+        var relaxed = CollectSchismCandidates(near, 8, maxDistance, 6, avoidHexes);
+        if (TryPickFarthestSchismSite(relaxed, near, out capital, out soldierHex, out missionaryHex))
         {
-            for (int r = 0; r < gridHeightRows; r++)
-            {
-                var coords = new HexCoordinates(q, r);
-                int dist = WrappedDistance(coords, near);
-                if (dist < minDistance || dist > maxDistance)
-                    continue;
-                if (!IsValidCapitalSite(coords))
-                    continue;
-                candidates.Add(coords);
-            }
-        }
-
-        Shuffle(candidates);
-
-        foreach (var site in candidates)
-        {
-            if (TryAssignSchismSite(site, out capital, out soldierHex, out missionaryHex))
-                return true;
+            Debug.LogWarning($"Schism site used relaxed distance (8+ hexes from capital) at {capital}.");
+            return true;
         }
 
         var fallback = new List<HexCoordinates>();
@@ -913,7 +921,9 @@ public class HexGridMap : MonoBehaviour
             for (int r = 0; r < gridHeightRows; r++)
             {
                 var coords = new HexCoordinates(q, r);
-                if (WrappedDistance(coords, near) < minDistance)
+                if (WrappedDistance(coords, near) < 8)
+                    continue;
+                if (!IsTooCloseToAvoidHexes(coords, avoidHexes, 6))
                     continue;
                 if (!IsValidCapitalSite(coords))
                     continue;
@@ -921,18 +931,89 @@ public class HexGridMap : MonoBehaviour
             }
         }
 
-        Shuffle(fallback);
-        foreach (var site in fallback)
+        if (TryPickFarthestSchismSite(fallback, near, out capital, out soldierHex, out missionaryHex))
         {
-            if (TryAssignSchismSite(site, out capital, out soldierHex, out missionaryHex))
-            {
-                Debug.LogWarning($"Schism site fallback used at {site} (no ideal pocket in {minDistance}-{maxDistance} hex range).");
-                return true;
-            }
+            Debug.LogWarning($"Schism site fallback used at {capital} (limited valid pockets on the map).");
+            return true;
         }
 
         return false;
     }
+
+    static bool IsTooCloseToAvoidHexes(HexCoordinates coords, IReadOnlyList<HexCoordinates> avoidHexes, int minDistance)
+    {
+        if (avoidHexes == null || avoidHexes.Count == 0 || HexGridMap.Instance == null)
+            return false;
+
+        foreach (var avoid in avoidHexes)
+        {
+            if (HexGridMap.Instance.WrappedDistance(coords, avoid) < minDistance)
+                return true;
+        }
+
+        return false;
+    }
+
+    List<HexCoordinates> CollectSchismCandidates(
+        HexCoordinates near,
+        int minDistance,
+        int maxDistance,
+        int minFromAvoid,
+        IReadOnlyList<HexCoordinates> avoidHexes)
+    {
+        var candidates = new List<HexCoordinates>();
+        for (int q = 0; q < gridWidthCols; q++)
+        {
+            for (int r = 0; r < gridHeightRows; r++)
+            {
+                var coords = new HexCoordinates(q, r);
+                int dist = WrappedDistance(coords, near);
+                if (dist < minDistance || dist > maxDistance)
+                    continue;
+                if (IsTooCloseToAvoidHexes(coords, avoidHexes, minFromAvoid))
+                    continue;
+                if (!IsValidCapitalSite(coords))
+                    continue;
+                candidates.Add(coords);
+            }
+        }
+
+        return candidates;
+    }
+
+    bool TryPickFarthestSchismSite(
+        List<HexCoordinates> candidates,
+        HexCoordinates near,
+        out HexCoordinates capital,
+        out HexCoordinates soldierHex,
+        out HexCoordinates missionaryHex)
+    {
+        capital = default;
+        soldierHex = default;
+        missionaryHex = default;
+
+        if (candidates == null || candidates.Count == 0)
+            return false;
+
+        var ranked = candidates
+            .OrderByDescending(coords => WrappedDistance(coords, near))
+            .ToList();
+
+        int poolSize = Mathf.Max(1, ranked.Count / 4);
+        Shuffle(ranked);
+        int tryCount = Mathf.Min(poolSize, ranked.Count);
+        for (int i = 0; i < tryCount; i++)
+        {
+            if (TryAssignSchismSite(ranked[i], out capital, out soldierHex, out missionaryHex))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Legacy overload for callers without avoid list.</summary>
+    public bool TryPickSchismSite(HexCoordinates near, out HexCoordinates capital, out HexCoordinates soldierHex, out HexCoordinates missionaryHex) =>
+        TryPickSchismSite(near, out capital, out soldierHex, out missionaryHex, null);
 
     /// <summary>Picks a rival capital away from the synod and other existing capitals.</summary>
     public bool TryPickRivalSpawnSite(

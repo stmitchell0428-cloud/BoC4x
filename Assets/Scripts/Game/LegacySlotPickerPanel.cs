@@ -13,11 +13,15 @@ public class LegacySlotPickerPanel : MonoBehaviour
     SynodLegacyTraitId pendingTrait;
     readonly List<GameObject> dynamicButtons = new();
 
-    void Awake()
+    void Awake() => Instance = this;
+
+    public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
+
+    void Start()
     {
-        Instance = this;
-        BuildUI();
-        panelRoot.SetActive(false);
+        EnsureUI();
+        if (panelRoot != null)
+            panelRoot.SetActive(false);
     }
 
     void OnDestroy()
@@ -26,11 +30,23 @@ public class LegacySlotPickerPanel : MonoBehaviour
             Instance = null;
     }
 
-    void BuildUI()
+    void EnsureUI()
     {
-        var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas == null) return;
+        if (panelRoot != null && bodyText != null)
+            return;
 
+        var canvas = GameUiRoot.GetModalCanvas();
+        if (canvas == null)
+        {
+            Debug.LogWarning("LegacySlotPickerPanel: no canvas available.");
+            return;
+        }
+
+        BuildUI(canvas);
+    }
+
+    void BuildUI(Canvas canvas)
+    {
         panelRoot = new GameObject("LegacySlotPickerPanel");
         panelRoot.transform.SetParent(canvas.transform, false);
 
@@ -48,7 +64,7 @@ public class LegacySlotPickerPanel : MonoBehaviour
         var boxRect = box.AddComponent<RectTransform>();
         boxRect.anchorMin = new Vector2(0.5f, 0.5f);
         boxRect.anchorMax = new Vector2(0.5f, 0.5f);
-        boxRect.sizeDelta = new Vector2(520f, 360f);
+        boxRect.sizeDelta = new Vector2(560f, 460f);
         box.AddComponent<Image>().color = new Color(0.08f, 0.1f, 0.14f, 0.98f);
 
         var titleGo = new GameObject("Title");
@@ -123,14 +139,19 @@ public class LegacySlotPickerPanel : MonoBehaviour
 
     public void Show(SynodLegacyTraitId newTrait)
     {
+        EnsureUI();
+        if (panelRoot == null || bodyText == null)
+        {
+            Debug.LogWarning("LegacySlotPickerPanel.Show failed — UI could not be built.");
+            return;
+        }
+
         pendingTrait = newTrait;
-        if (bodyText == null) return;
 
         ClearDynamicButtons();
         bodyText.text = TmpTextSanitizer.Sanitize(
-            $"<b>New trait earned:</b> {SynodLegacyTraitDatabase.DisplayName(newTrait)}\n" +
-            $"<i>{SynodLegacyTraitDatabase.Description(newTrait)}</i>\n\n" +
-            "Choose a slot to replace (3 active max):\n");
+            $"<b>New trait earned</b>\n{SynodLegacyTraitDatabase.FormatDetailBlock(newTrait)}\n\n" +
+            "<b>Active slots</b>  -  choose one to replace (3 max):\n");
 
         var box = panelRoot.transform.Find("Box");
         if (box == null) return;
@@ -139,11 +160,13 @@ public class LegacySlotPickerPanel : MonoBehaviour
         int index = 0;
         foreach (var id in active ?? System.Array.Empty<SynodLegacyTraitId>())
         {
-            CreateSlotButton(box, id, 56f + index * 48f);
+            AppendActiveSlotSummary(id);
+            CreateSlotButton(box, id, 72f + index * 52f);
             index++;
         }
 
         panelRoot.SetActive(true);
+        TurnPhaseBanner.Instance?.Refresh("<color=#DDCC88><b>Legacy slot full</b></color>  -  replace a trait or keep current");
     }
 
     void CreateSlotButton(Transform box, SynodLegacyTraitId replaceId, float y)
@@ -154,7 +177,7 @@ public class LegacySlotPickerPanel : MonoBehaviour
         rect.anchorMin = new Vector2(0.5f, 0f);
         rect.anchorMax = new Vector2(0.5f, 0f);
         rect.pivot = new Vector2(0.5f, 0f);
-        rect.sizeDelta = new Vector2(460f, 44f);
+        rect.sizeDelta = new Vector2(500f, 48f);
         rect.anchoredPosition = new Vector2(0f, y);
 
         var img = btnGo.AddComponent<Image>();
@@ -173,11 +196,19 @@ public class LegacySlotPickerPanel : MonoBehaviour
         var tmp = labelGo.AddComponent<TextMeshProUGUI>();
         CopyFont(tmp);
         tmp.alignment = TextAlignmentOptions.Center;
-        tmp.fontSize = 14f;
-        tmp.text = TmpTextSanitizer.Sanitize($"Replace {SynodLegacyTraitDatabase.DisplayName(replaceId)}");
+        tmp.fontSize = 13f;
+        tmp.text = TmpTextSanitizer.Sanitize(
+            $"Replace {SynodLegacyTraitDatabase.DisplayName(replaceId)}\n" +
+            $"<size=11><color=#BBDDAA>{SynodLegacyTraitDatabase.FormatGameplayEffects(replaceId)}</color></size>");
         tmp.raycastTarget = false;
 
         dynamicButtons.Add(btnGo);
+    }
+
+    void AppendActiveSlotSummary(SynodLegacyTraitId id)
+    {
+        bodyText.text += TmpTextSanitizer.Sanitize(
+            $"\n<size=12>• {SynodLegacyTraitDatabase.FormatCompactLabel(id)}</size>");
     }
 
     void ConfirmReplace(SynodLegacyTraitId replaceId)

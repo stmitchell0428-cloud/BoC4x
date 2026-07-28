@@ -13,11 +13,12 @@ public class DistrictOfferPanel : MonoBehaviour
 
     public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
 
-    void Awake()
+    void Awake() => Instance = this;
+
+    void Start()
     {
-        Instance = this;
-        BuildUI();
-        panelRoot.SetActive(false);
+        EnsureUI();
+        Hide();
     }
 
     void OnDestroy()
@@ -26,10 +27,17 @@ public class DistrictOfferPanel : MonoBehaviour
             Instance = null;
     }
 
-    void BuildUI()
+    void EnsureUI()
     {
-        var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas == null) return;
+        if (panelRoot != null && bodyText != null)
+            return;
+
+        var canvas = GameUiRoot.GetModalCanvas();
+        if (canvas == null)
+        {
+            Debug.LogWarning("DistrictOfferPanel: no canvas available.");
+            return;
+        }
 
         panelRoot = new GameObject("DistrictOfferPanel");
         panelRoot.transform.SetParent(canvas.transform, false);
@@ -60,8 +68,7 @@ public class DistrictOfferPanel : MonoBehaviour
         bodyRect.sizeDelta = new Vector2(540f, 150f);
         bodyRect.anchoredPosition = new Vector2(0f, -48f);
         bodyText = bodyGo.AddComponent<TextMeshProUGUI>();
-        var existing = FindAnyObjectByType<TextMeshProUGUI>();
-        if (existing != null) bodyText.font = existing.font;
+        CopyFont(bodyText);
         bodyText.fontSize = 14f;
         bodyText.color = Color.white;
         bodyText.alignment = TextAlignmentOptions.TopLeft;
@@ -82,6 +89,13 @@ public class DistrictOfferPanel : MonoBehaviour
 
     public void Show(CityGrowthSystem.DistrictSiteOffer offer)
     {
+        EnsureUI();
+        if (panelRoot == null || bodyText == null)
+        {
+            Debug.LogWarning("DistrictOfferPanel.Show failed — UI could not be built.");
+            return;
+        }
+
         currentOffer = offer;
         string terrain = "land";
         if (HexGridMap.Instance != null && HexGridMap.Instance.TryGetTile(offer.Hex, out var tile))
@@ -95,6 +109,7 @@ public class DistrictOfferPanel : MonoBehaviour
             "<size=12><color=#99AABB>Accept to found the district (you may confirm or change specialty).</color></size>");
 
         panelRoot.SetActive(true);
+        TurnPhaseBanner.Instance?.Refresh("<color=#AADDFF><b>District offer</b></color>  -  accept, defer, or decline");
         CameraFollow.Instance?.PanToHex(offer.Hex, 6f);
     }
 
@@ -140,8 +155,7 @@ public class DistrictOfferPanel : MonoBehaviour
         rect.sizeDelta = new Vector2(540f, 28f);
         rect.anchoredPosition = pos;
         var tmp = go.AddComponent<TextMeshProUGUI>();
-        var existing = FindAnyObjectByType<TextMeshProUGUI>();
-        if (existing != null) tmp.font = existing.font;
+        CopyFont(tmp);
         tmp.text = TmpTextSanitizer.Sanitize(text);
         tmp.fontSize = size;
         tmp.fontStyle = style;
@@ -149,5 +163,12 @@ public class DistrictOfferPanel : MonoBehaviour
         tmp.alignment = TextAlignmentOptions.TopLeft;
         tmp.richText = true;
         return tmp;
+    }
+
+    static void CopyFont(TextMeshProUGUI target)
+    {
+        var existing = Object.FindAnyObjectByType<TextMeshProUGUI>();
+        if (existing != null)
+            target.font = existing.font;
     }
 }

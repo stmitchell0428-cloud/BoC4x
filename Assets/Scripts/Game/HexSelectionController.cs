@@ -165,6 +165,7 @@ public class HexSelectionController : MonoBehaviour
             tm.SelectUnit(null);
             GalleyCargoPanel.Instance?.Hide();
             TerrainInfoPanel.Instance?.RefreshSelection();
+            RefreshNomadicCapitalHighlights();
             return;
         }
 
@@ -235,6 +236,7 @@ public class HexSelectionController : MonoBehaviour
             tm.SelectUnit(null);
             GalleyCargoPanel.Instance?.Hide();
             TerrainInfoPanel.Instance?.RefreshSelection();
+            RefreshNomadicCapitalHighlights();
             return;
         }
 
@@ -331,20 +333,46 @@ public class HexSelectionController : MonoBehaviour
 
     void HighlightPlacementRecommendations(Unit selected)
     {
-        if (selected == null || HexGridMap.Instance == null) return;
+        if (NomadicFoundingGate.IsNomadicPhase)
+            HighlightCapitalFoundingSites();
+    }
 
-        if (selected.Type == UnitType.Settler && selected.IsNomadicFounder &&
-            NomadicFoundingGate.IsNomadicPhase && NomadicFoundingGate.RequirementsMet)
+    public void HighlightCapitalFoundingSites()
+    {
+        if (!NomadicFoundingGate.IsNomadicPhase || HexGridMap.Instance == null)
+            return;
+
+        var top = CityPlacementAdvisor.GetTopCapitalSites(3);
+        foreach (var entry in top)
         {
-            var top = CityPlacementAdvisor.GetTopCapitalSites(3);
-            foreach (var entry in top)
-            {
-                int tier = CityPlacementAdvisor.GetPlacementHighlightTier(entry.hex, top);
-                if (tier == 0) continue;
-                MarkHighlight(entry.hex, tier >= 2 ? HighlightKind.PlacementExcellent : HighlightKind.PlacementGood);
-            }
+            if (FogOfWarManager.Instance != null &&
+                FogOfWarManager.Instance.GetVisibility(entry.hex) == FogVisibility.Unexplored)
+                continue;
+
+            int tier = CityPlacementAdvisor.GetPlacementHighlightTier(entry.hex, top);
+            if (tier == 0)
+                continue;
+
+            MarkHighlight(
+                entry.hex,
+                tier >= 2 ? HighlightKind.PlacementExcellent : HighlightKind.PlacementGood);
+        }
+    }
+
+    public void RefreshNomadicCapitalHighlights()
+    {
+        if (!NomadicFoundingGate.IsNomadicPhase)
+            return;
+
+        var selected = TurnManager.Instance?.SelectedUnit;
+        if (selected != null && selected.IsOnMap)
+        {
+            ShowReachable(selected);
             return;
         }
+
+        ClearHighlights();
+        HighlightCapitalFoundingSites();
     }
 
     void HighlightMoveOrderPath(Unit selected)

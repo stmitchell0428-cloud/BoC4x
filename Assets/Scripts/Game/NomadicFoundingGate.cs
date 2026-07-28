@@ -75,6 +75,25 @@ public static class NomadicFoundingGate
         return true;
     }
 
+    public static string FormatBriefSection()
+    {
+        if (!IsNomadicPhase)
+            return "";
+
+        var lines = new System.Collections.Generic.List<string>
+        {
+            "<size=13>Found <b>Wittenberg</b> only after the wandering synod completes these steps:</size>",
+            "<size=12>1. <b>Preach</b> once  -  Space with the settler selected</size>",
+            "<size=12>2. <b>Scout survey</b>  -  move the scout or settler through 10 unique hexes</size>",
+            $"<size=12>3. <b>Bind a catechism</b>  -  B key ({BindCatechismManuscriptCost} manuscripts)</size>",
+            "<size=12>4. <b>Found the capital</b>  -  F on land with the settler when all checks pass</size>",
+            "",
+            FormatProgressLine() ?? ""
+        };
+
+        return string.Join("\n", lines);
+    }
+
     public static string FormatProgressLine()
     {
         if (!IsNomadicPhase)

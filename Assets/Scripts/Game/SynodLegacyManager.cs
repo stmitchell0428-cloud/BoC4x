@@ -52,7 +52,12 @@ public class SynodLegacyManager : MonoBehaviour
 
     void ApplyAwardEffects(SynodLegacyTraitId id)
     {
-        Debug.Log($"Legacy trait active: {SynodLegacyTraitDatabase.DisplayName(id)}");
+        string name = SynodLegacyTraitDatabase.DisplayName(id);
+        string effects = SynodLegacyTraitDatabase.FormatGameplayEffects(id);
+        Debug.Log($"Legacy trait active: {name}  -  {effects}");
+        TurnPhaseBanner.Instance?.Refresh(
+            $"<color=#DDCC88><b>Legacy trait:</b></color> {name}\n" +
+            $"<size=13><color=#CCEEBB>{effects}</color></size>");
         ConfessionResearchManager.Instance?.ApplyBonusesToAllPlayerUnits();
         FirstSteps.Instance?.RefreshDashboard();
     }
@@ -79,11 +84,19 @@ public class SynodLegacyManager : MonoBehaviour
     public string FormatLegacyLine()
     {
         if (activeSlots.Count == 0)
-            return earned.Count > 0 ? "Legacy traits: earned (choose slots)" : "Legacy traits: none yet";
+            return "";
 
-        var names = new List<string>();
+        var lines = new List<string>
+        {
+            $"<color=#DDCC88><b>Legacy traits ({activeSlots.Count}/{MaxActiveSlots})</b></color>"
+        };
         foreach (var id in activeSlots)
-            names.Add(SynodLegacyTraitDatabase.DisplayName(id));
-        return $"Legacy ({activeSlots.Count}/{MaxActiveSlots}): " + string.Join(", ", names);
+        {
+            lines.Add(
+                $"<size=12>• <b>{SynodLegacyTraitDatabase.DisplayName(id)}</b>  -  " +
+                $"<color=#BBDDAA>{SynodLegacyTraitDatabase.FormatGameplayEffects(id)}</color></size>");
+        }
+
+        return string.Join("\n", lines);
     }
 }

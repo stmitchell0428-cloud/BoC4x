@@ -7,6 +7,10 @@ using UnityEngine;
 public static class CityGrowthSystem
 {
     public const int FoodConsumptionPerPop = 1;
+    public const int UrbanFoodBaseline = 4;
+    public const int CapitalUrbanFoodBaseline = 6;
+    public const int FoundingCapitalPopulation = 15;
+    public const int CapitalDeficitGraceTurns = 8;
     public const float MigrationAppealThreshold = 22f;
     public const int MinSurplusStreakForDistrict = 2;
     public const int MaxMigrationPerCityPerTurn = 4;
@@ -158,7 +162,70 @@ public static class CityGrowthSystem
         foreach (var hamlet in GetChildDistricts(root))
             food += GetBuildingFoodBonus(hamlet.Production);
 
+        if (!city.IsHamlet && city.IsIndependentCity)
+            food += GetUrbanFoodBaseline(city);
+
         return food;
+    }
+
+    static int GetUrbanFoodBaseline(City city)
+    {
+        if (city == null || city.IsHamlet || !city.IsIndependentCity)
+            return 0;
+        return city.IsCapital ? CapitalUrbanFoodBaseline : UrbanFoodBaseline;
+    }
+
+    /// <summary>Estimate turn-1 food at founding (worked-tile priority, no buildings).</summary>
+    public static void ProjectCapitalFoundingFood(
+        HexCoordinates hex,
+        out int foodProduced,
+        out int foodConsumed,
+        out int foodSurplus)
+    {
+        foodConsumed = FoundingCapitalPopulation;
+        foodProduced = CapitalUrbanFoodBaseline;
+        int workerCap = Mathf.Max(1, FoundingCapitalPopulation / WorkerPopulationDivisor);
+
+        if (HexGridMap.Instance == null)
+            return;
+
+        hex = HexGridMap.Instance.Wrap(hex);
+        var candidates = new List<(int food, int prod, int mss, bool isCenter)>();
+
+        var visited = new HashSet<HexCoordinates>();
+        var queue = new Queue<(HexCoordinates coords, int dist)>();
+        queue.Enqueue((hex, 0));
+
+        while (queue.Count > 0)
+        {
+            var (coords, dist) = queue.Dequeue();
+            if (!visited.Add(coords))
+                continue;
+            if (dist > CityManager.MaxTerritoryRadius)
+                continue;
+            if (!HexGridMap.Instance.TryGetTile(coords, out var tile))
+                continue;
+            if (!TerrainRules.IsPassable(tile.Terrain))
+                continue;
+
+            var yield = TileYieldDatabase.GetVisibleTileYield(tile);
+            candidates.Add((yield.Food, yield.Production, yield.Manuscripts, coords == hex));
+
+            if (dist >= CityManager.MaxTerritoryRadius)
+                continue;
+            foreach (var n in HexGridMap.Instance.GetWrappedNeighbors(coords))
+                queue.Enqueue((n, dist + 1));
+        }
+
+        foreach (var entry in candidates
+                     .OrderByDescending(c => c.food)
+                     .ThenByDescending(c => c.prod)
+                     .ThenByDescending(c => c.mss)
+                     .ThenByDescending(c => c.isCenter)
+                     .Take(workerCap))
+            foodProduced += entry.food;
+
+        foodSurplus = foodProduced - foodConsumed;
     }
 
     static int GetBuildingFoodBonus(CityProduction production)
@@ -243,6 +310,9 @@ public static class CityGrowthSystem
 
         foreach (var d in GetChildDistricts(root))
             cap += 5 + d.Population / 4;
+
+        if (root.IsIndependentCity)
+            cap = Mathf.Max(cap, root.Population);
 
         return cap;
     }
@@ -452,11 +522,14 @@ public static class CityGrowthSystem
         return count;
     }
 
+    public static int RequiredSurplusStreakForDistrict(City parent) =>
+        CountChildDistricts(parent) == 0 ? 1 : MinSurplusStreakForDistrict;
+
     public static DistrictSiteOffer? FindBestDistrictOffer(City parent, int surplusStreak)
     {
         if (parent == null || parent.IsHamlet || CityManager.Instance == null || HexGridMap.Instance == null)
             return null;
-        if (surplusStreak < MinSurplusStreakForDistrict)
+        if (surplusStreak < RequiredSurplusStreakForDistrict(parent))
             return null;
 
         if (CountChildDistricts(parent) >= GetMaxDistrictCount(parent))
@@ -591,7 +664,7 @@ public static class CityGrowthSystem
             return;
 
         if (root.IsCapital && TurnManager.Instance != null &&
-            TurnManager.Instance.TurnNumber - root.FoundedOnTurn < 3)
+            TurnManager.Instance.TurnNumber - root.FoundedOnTurn < CapitalDeficitGraceTurns)
             return;
 
         int remaining = Mathf.CeilToInt(-snap.FoodSurplus / 2f);
@@ -643,6 +716,21 @@ public static class CityGrowthSystem
         sb.Append($"  |  appeal {s.BlendedAppeal:F0} (L{s.SecularAppeal:F0}/G{s.SpiritualAppeal:F0})");
         sb.Append($"  |  housing {city.Population}/{s.HousingCap}");
         sb.Append($"  |  workers {s.AvailableWorkers}/{s.TotalWorkers}");
+
+        int streak = CityGrowthManager.Instance?.GetSurplusStreak(city) ?? 0;
+        int streakNeed = RequiredSurplusStreakForDistrict(city);
+        if (CountChildDistricts(city) < GetMaxDistrictCount(city))
+        {
+            if (s.FoodSurplus > 0 && streak > 0)
+            {
+                sb.Append(streak >= streakNeed
+                    ? "  |  <color=#DDEE88>district offer ready</color>"
+                    : $"  |  district streak {streak}/{streakNeed}");
+            }
+            else if (s.FoodSurplus <= 0)
+                sb.Append("  |  <color=#99AABB>need food surplus for districts</color>");
+        }
+
         if (s.TensionLabel != "Balanced")
             sb.Append($"  |  <color=#FFCC88>{s.TensionLabel}</color>");
         return sb.ToString();

@@ -53,9 +53,14 @@ public static class UnitUpgradeService
             !ClergyRoster.CanUpgradeToClergy(city, UnitType.Archbishop, def.FromType))
             return UnitUpgradeStatus.ClergySlotsFull;
 
-        if (def.ToType == UnitType.Pastor &&
-            !ClergyRoster.CanUpgradeToClergy(city, UnitType.Pastor, def.FromType))
-            return UnitUpgradeStatus.ClergySlotsFull;
+        if (def.ToType == UnitType.Pastor)
+        {
+            int pastorCap = ClergyRoster.GetRoleCap(city, ClergyRole.Pastor);
+            if (pastorCap <= 0)
+                return UnitUpgradeStatus.NeedsParishChurch;
+            if (ClergyRoster.CountRole(city, ClergyRole.Pastor) >= pastorCap)
+                return UnitUpgradeStatus.ClergySlotsFull;
+        }
 
         if (def.ToType == UnitType.Chaplain &&
             !ClergyRoster.CanUpgradeToClergy(city, UnitType.Chaplain, def.FromType))
@@ -81,7 +86,7 @@ public static class UnitUpgradeService
         var status = GetStatus(unit, id);
         if (status != UnitUpgradeStatus.Available)
         {
-            Debug.LogWarning($"Upgrade failed ({id}): {status}");
+            Debug.LogWarning($"Upgrade failed ({id}): {FormatFailureReason(status, id, unit)}");
             return false;
         }
 
@@ -106,6 +111,26 @@ public static class UnitUpgradeService
         PlayerUnitCycle.Instance?.OnUnitOrdersChanged();
         TurnPhaseBanner.Instance?.Refresh($"Upgraded: {Unit.TypeDisplayName(def.ToType)}");
         return true;
+    }
+
+    public static string FormatFailureReason(UnitUpgradeStatus status, UnitUpgradeId id, Unit unit = null)
+    {
+        var city = unit != null ? CityManager.Instance?.GetCityForUnit(unit) : null;
+        var def = UnitUpgradeDatabase.Get(id);
+
+        return status switch
+        {
+            UnitUpgradeStatus.NeedsParishChurch =>
+                "Need Parish Church, Seminary, or Cathedral in this city cluster (1 pastor per church)",
+            UnitUpgradeStatus.ClergySlotsFull when def.ToType == UnitType.Pastor =>
+                $"All pastor slots filled ({ClergyRoster.GetRoleCap(city, ClergyRole.Pastor)} max) — build another Parish Church",
+            UnitUpgradeStatus.ClergySlotsFull =>
+                "Clergy roster full — free a slot or expand the cluster",
+            UnitUpgradeStatus.InsufficientManuscripts => "Not enough manuscripts",
+            UnitUpgradeStatus.NotOnCity => "Unit must stand on the city hex",
+            UnitUpgradeStatus.Locked => "Tech or building requirement not met",
+            _ => status.ToString()
+        };
     }
 
     public static bool SelectedUnitCanUpgrade(out UnitUpgradeId? firstAvailable)

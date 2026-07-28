@@ -26,8 +26,21 @@ public class GameBootstrap : MonoBehaviour
             MatchLobbyController.Instance.MatchStartedEvent -= OnStarted;
         }
 
+        int waitTurns = 0;
+        const int maxWaitTurns = 600;
         while (HexGridMap.Instance == null || !HexGridMap.Instance.TryGetTile(new HexCoordinates(0, 0), out _))
+        {
+            waitTurns++;
+            if (waitTurns >= maxWaitTurns)
+            {
+                Debug.LogError(
+                    "Book of Concord: map generation did not finish  -  check HexGridMap.hexPrefabBlueprint is assigned.");
+                LoadingScreenPanel.Instance?.NotifyLoadComplete();
+                yield break;
+            }
+
             yield return null;
+        }
 
         yield return null;
         SetupMatch();

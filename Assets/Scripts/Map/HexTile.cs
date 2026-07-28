@@ -125,9 +125,9 @@ public class HexTile : MonoBehaviour
         if (IsWorked && FogVisibility == FogVisibility.Visible)
             display = display * 0.88f + Color.white * 0.12f;
 
-        if (currentHighlight != HighlightKind.None && FogVisibility == FogVisibility.Visible)
+        if (ShouldDrawHighlight(FogVisibility, currentHighlight))
         {
-            spriteRenderer.color = currentHighlight switch
+            Color highlight = currentHighlight switch
             {
                 HighlightKind.Move => HighlightMove,
                 HighlightKind.MovePath => HighlightMovePath,
@@ -139,6 +139,16 @@ public class HexTile : MonoBehaviour
                 HighlightKind.AppealGood => HighlightAppealGood,
                 _ => display
             };
+
+            if (FogVisibility == FogVisibility.Explored)
+            {
+                Color explored = TerrainRules.IsWater(Terrain)
+                    ? display * 0.82f + Color.black * 0.18f
+                    : display * 0.62f + Color.black * 0.38f;
+                spriteRenderer.color = Color.Lerp(explored, highlight, 0.82f);
+            }
+            else
+                spriteRenderer.color = highlight;
         }
         else
         {
@@ -265,6 +275,18 @@ public class HexTile : MonoBehaviour
 
     static Color TerrainColor(TerrainType terrain) =>
         ArtEraPalette.TerrainColor(terrain, VisualArtEra.WoodcutPaper);
+
+    static bool IsAppealHighlight(HighlightKind kind) =>
+        kind is HighlightKind.AppealExcellent or HighlightKind.AppealGood;
+
+    static bool IsPlacementHighlight(HighlightKind kind) =>
+        kind is HighlightKind.PlacementExcellent or HighlightKind.PlacementGood;
+
+    static bool ShouldDrawHighlight(FogVisibility visibility, HighlightKind kind) =>
+        kind != HighlightKind.None &&
+        (visibility == FogVisibility.Visible ||
+         IsAppealHighlight(kind) ||
+         IsPlacementHighlight(kind));
 }
 
 public enum HighlightKind

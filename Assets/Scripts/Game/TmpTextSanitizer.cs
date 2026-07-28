@@ -9,6 +9,7 @@ public static class TmpTextSanitizer
             return text;
 
         return TransliterateUmlauts(text)
+            .Replace("&amp;", "&")
             .Replace('\u25C0', '<')
             .Replace('\u25B6', '>')
             .Replace('\u25B2', '^')

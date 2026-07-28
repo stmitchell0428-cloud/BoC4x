@@ -202,6 +202,48 @@ public class CityManager : MonoBehaviour
         return parts.Count > 0 ? string.Join("  |  ", parts) : "idle";
     }
 
+    public string FormatProminentBuildQueueBlock()
+    {
+        var lines = new List<string>();
+        foreach (var city in cities)
+        {
+            if (city.Faction != FactionId.LutheranSynod)
+                continue;
+            if (city.Production == null || !city.Production.IsProducing)
+                continue;
+
+            lines.Add(
+                $"  <color=#FFE8AA>{city.CityName}</color>  " +
+                $"<color=#FFFFFF>{city.Production.ActiveBuildHudLabel()}</color>");
+        }
+
+        if (lines.Count == 0)
+        {
+            return "<size=21><color=#FFAA66><b>BUILD</b></color></size>  " +
+                   "<color=#FF9988>none queued</color>  <size=15><color=#99AABB>(C — city screen)</color></size>";
+        }
+
+        return "<size=21><color=#FFCC55><b>BUILD</b></color></size>\n" + string.Join("\n", lines);
+    }
+
+    public string FormatCompactBuildSummary()
+    {
+        var parts = new List<string>();
+        foreach (var city in cities)
+        {
+            if (city.Faction != FactionId.LutheranSynod)
+                continue;
+            if (city.Production == null || !city.Production.IsProducing)
+                continue;
+
+            parts.Add($"{city.CityName}: {city.Production.ActiveBuildHudLabel()}");
+        }
+
+        return parts.Count > 0
+            ? string.Join("  ·  ", parts)
+            : "<color=#FFAA88>build idle</color>";
+    }
+
     public string FormatPlayerCityStatusLine()
     {
         string queue = FormatPlayerProductionQueueLine();
@@ -367,7 +409,13 @@ public class CityManager : MonoBehaviour
 
         var go = new GameObject($"City_{cityName}");
         go.transform.SetParent(transform);
-        go.AddComponent<City>().Initialize(settler.Faction, hex, cityName, isCapital: true, synodPlayer: settler.SynodPlayer);
+        go.AddComponent<City>().Initialize(
+            settler.Faction,
+            hex,
+            cityName,
+            isCapital: true,
+            startingPopulation: CityGrowthSystem.FoundingCapitalPopulation,
+            synodPlayer: settler.SynodPlayer);
 
         settler.ConvertToMissionaryAfterFounding();
 
@@ -380,7 +428,18 @@ public class CityManager : MonoBehaviour
         TerrainInfoPanel.Instance?.RefreshCityYield();
         TerrainInfoPanel.Instance?.RefreshMissionaryTile();
         FogOfWarManager.Instance?.Refresh();
-        Debug.Log($"Founded {cityName}. The nomadic settler is now a missionary.");
+        CityGrowthSystem.ProjectCapitalFoundingFood(
+            hex,
+            out int foodProduced,
+            out int foodConsumed,
+            out int foodSurplus);
+        string foodNote = foodSurplus >= 0
+            ? $"+{foodSurplus} food surplus"
+            : $"{foodSurplus} food (deficit grace {CityGrowthSystem.CapitalDeficitGraceTurns} turns)";
+        Debug.Log(
+            $"Founded {cityName} (pop {CityGrowthSystem.FoundingCapitalPopulation}). " +
+            $"Turn-1 food: {foodProduced}/{foodConsumed} ({foodNote}). The nomadic settler is now a missionary.");
+        TurnPhaseBanner.Instance?.Refresh();
         return true;
     }
 

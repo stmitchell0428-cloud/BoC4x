@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 using TMPro;
 using UnityEngine.InputSystem;
@@ -10,6 +11,7 @@ public class FirstSteps : MonoBehaviour
     public static FirstSteps Instance { get; private set; }
 
     [Header("UI")]
+    public TextMeshProUGUI queueReviewUIText;
     public TextMeshProUGUI populationUIText;
     public TextMeshProUGUI adherenceUIText;
     public TextMeshProUGUI manuscriptUIText;
@@ -73,6 +75,15 @@ public class FirstSteps : MonoBehaviour
     public const float MaxCrisisAdherenceFloor = 0f;
 
     public float EffectiveMinAdherenceFloor => 0f;
+
+    static bool ConfessionalPopulationGrowthAllowed()
+    {
+        var city = CityManager.Instance?.GetPrimaryPlayerCity();
+        if (city == null)
+            return true;
+
+        return CityGrowthSystem.Evaluate(city).FoodSurplus > 0;
+    }
 
     public HexCoordinates? SynodAnchorHex
     {
@@ -150,6 +161,9 @@ public class FirstSteps : MonoBehaviour
 
         if (Keyboard.current.dKey.wasPressedThisFrame)
             DiplomacyPanel.Instance?.Toggle();
+
+        if (Keyboard.current.yKey.wasPressedThisFrame)
+            SynodBriefPanel.Instance?.Toggle();
     }
 
     void TryEmbarkSelectedUnit()
@@ -283,6 +297,48 @@ public class FirstSteps : MonoBehaviour
 
     public void BindPlayerUnit(Unit unit) => trackedUnit = unit;
 
+    /// <summary>
+    /// Unit whose tile drives end-turn wilderness/settlement manuscripts and the Missionary tile HUD.
+    /// Prefer missionary/clergy over whichever unit was last selected.
+    /// </summary>
+    public Unit GetFieldSynodUnit()
+    {
+        if (TurnManager.Instance == null)
+            return trackedUnit != null && trackedUnit.IsAlive && trackedUnit.IsOnMap ? trackedUnit : null;
+
+        foreach (var unit in TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1))
+        {
+            if (!unit.IsAlive || !unit.IsOnMap)
+                continue;
+            if (unit.Type == UnitType.Settler && unit.IsNomadicFounder)
+                return unit;
+        }
+
+        foreach (var unit in TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1))
+        {
+            if (!unit.IsAlive || !unit.IsOnMap)
+                continue;
+            if (unit.Type == UnitType.Missionary)
+                return unit;
+        }
+
+        foreach (var unit in TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1))
+        {
+            if (!unit.IsAlive || !unit.IsOnMap)
+                continue;
+            if (ClergyRoster.IsClergyUnit(unit.Type))
+                return unit;
+        }
+
+        if (trackedUnit != null && trackedUnit.IsAlive && trackedUnit.IsOnMap &&
+            trackedUnit.Faction == FactionId.LutheranSynod &&
+            trackedUnit.SynodPlayer == SynodPlayerId.Player1)
+            return trackedUnit;
+
+        return TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1)
+            .FirstOrDefault(u => u.IsAlive && u.IsOnMap);
+    }
+
     public void RefreshDashboard()
     {
         ResolveDashboardRefs();
@@ -293,62 +349,59 @@ public class FirstSteps : MonoBehaviour
             ? $"Lutheran Synod  |  Turn {turn}"
             : $"Turn {turn}";
 
-        string researchLine = ConfessionResearchManager.Instance != null
-            ? ConfessionResearchManager.Instance.ActiveResearchLabel()
-            : "idle";
-
-        string cityQueueLine = CityManager.Instance != null
-            ? CityManager.Instance.FormatPlayerProductionQueueLine()
-            : "idle";
+        if (queueReviewUIText != null)
+            queueReviewUIText.text = TmpTextSanitizer.Sanitize(ActionQueueHud.FormatDashboardBlock());
 
         if (populationUIText != null)
         {
-            string cityYield = CityManager.Instance != null
-                ? CityManager.Instance.FormatPlayerCityYieldLine()
-                : "";
+            int cityPop = PopulationSync.SumSynodPopulation();
             populationUIText.text = TmpTextSanitizer.Sanitize(
                 $"{factionLine}\n" +
-                $"{synodStatus}  |  Population {population}\n" +
-                $"<b>Production</b>  {cityQueueLine}\n" +
-                cityYield);
+                $"<b>Synod population {population}</b>" +
+                (cityPop != population ? $"  (cities total {cityPop})" : "") + "\n" +
+                $"{synodStatus}");
         }
         if (adherenceUIText != null)
         {
-            string victoryHint = MatchController.Instance != null
-                ? MatchController.Instance.AdherenceVictoryProgress()
-                : "";
-            adherenceUIText.text = TmpTextSanitizer.Sanitize(string.IsNullOrEmpty(victoryHint)
-                ? $"Confessional Adherence  {confessionalAdherence:F1}%"
-                : $"Confessional Adherence  {confessionalAdherence:F1}%  |  {victoryHint}");
+            adherenceUIText.text = TmpTextSanitizer.Sanitize(
+                $"Confessional Adherence  {confessionalAdherence:F1}%  |  " +
+                $"<color=#99AABB>win paths in <b>Y</b> brief</color>");
         }
         if (manuscriptUIText != null)
         {
+            int legacyCount = SynodLegacyManager.Instance?.ActiveSlots.Count ?? 0;
+            string legacyHint = legacyCount > 0
+                ? $"  |  <color=#99AABB>{legacyCount} legacy</color>"
+                : "";
             string potency = ConfessionResearchManager.Instance != null
                 ? ConfessionResearchManager.Instance.AdherencePotencyLabel()
                 : "";
             manuscriptUIText.text = TmpTextSanitizer.Sanitize(
                 $"Scripture Manuscripts  {scriptureManuscripts}  |  Catechisms  {boundCatechisms}\n" +
-                $"Confessional Fame  {confessionalFame}" +
-                (confessionalIdentity != ConfessionalIdentityId.None
-                    ? $"  |  {ConfessionalIdentityDatabase.DisplayName(confessionalIdentity)}"
-                    : "") +
-                $"\n<b>Research</b>  {researchLine}\n" +
-                ArtEraVisualController.FormatEraLabel() + "\n" +
+                $"Confessional Fame  {confessionalFame}{legacyHint}  |  " +
+                $"<color=#99AABB><b>Y</b> synod brief</color>\n" +
                 potency);
-            string legacy = SynodLegacyManager.Instance?.FormatLegacyLine() ?? "";
-            if (!string.IsNullOrEmpty(legacy))
-                manuscriptUIText.text += TmpTextSanitizer.Sanitize($"\n{legacy}");
         }
         if (waltherDashboardUIText != null)
         {
             string crisis = CrisisManager.Instance?.FormatCrisisLine();
             if (string.IsNullOrEmpty(crisis))
+                crisis = PastoralBriefingManager.Instance?.FormatStatusLine();
+            if (string.IsNullOrEmpty(crisis))
                 crisis = FormatWaltherCrisisWarning();
             waltherDashboardUIText.text = TmpTextSanitizer.Sanitize(
-                "Walther Dialectic  (T tech  |  C city  |  F found capital)\n" +
+                "Walther Dialectic  (T tech  |  C city  |  Y brief)\n" +
                 $"  Civic Restraint (Law)  {civicRestraint:F0}%\n" +
                 $"  Spiritual Comfort (Gospel)  {spiritualComfort:F0}%" +
                 (string.IsNullOrEmpty(crisis) ? "" : $"\n  {crisis}"));
+
+            string tier2 = Tier2EmphasisManager.Instance?.FormatStatusLine();
+            if (!string.IsNullOrEmpty(tier2))
+                waltherDashboardUIText.text = TmpTextSanitizer.Sanitize(waltherDashboardUIText.text + $"\n  {tier2}");
+
+            string synodical = SynodicalEmphasisManager.Instance?.FormatStatusLine();
+            if (!string.IsNullOrEmpty(synodical))
+                waltherDashboardUIText.text = TmpTextSanitizer.Sanitize(waltherDashboardUIText.text + $"\n  {synodical}");
         }
 
         GameHUD.Instance?.Relayout();
@@ -357,7 +410,8 @@ public class FirstSteps : MonoBehaviour
     void ResolveDashboardRefs()
     {
         if (populationUIText != null && adherenceUIText != null &&
-            manuscriptUIText != null && waltherDashboardUIText != null)
+            manuscriptUIText != null && waltherDashboardUIText != null &&
+            queueReviewUIText != null)
             return;
 
         GameHUD.Instance?.ResolveReferences();
@@ -443,8 +497,9 @@ public class FirstSteps : MonoBehaviour
 
         string activeTerrainType = "SETTLEMENT";
         TerrainType missionaryTerrain = TerrainType.Pasture;
-        if (HexGridMap.Instance != null && trackedUnit != null &&
-            HexGridMap.Instance.TryGetTile(trackedUnit.HexPosition, out var missionaryTile))
+        var fieldUnit = GetFieldSynodUnit();
+        if (HexGridMap.Instance != null && fieldUnit != null &&
+            HexGridMap.Instance.TryGetTile(fieldUnit.HexPosition, out var missionaryTile))
         {
             missionaryTerrain = missionaryTile.Terrain;
             activeTerrainType = HexGridMap.GameplayTerrainCategory(missionaryTerrain).ToUpperInvariant();
@@ -452,15 +507,17 @@ public class FirstSteps : MonoBehaviour
 
         float drift = mods.LawGospelDriftMultiplier;
         float legalismDrift = mods.LegalismDriftMultiplier;
-        civicRestraint = Mathf.Clamp(civicRestraint + Random.Range(-4f, 4f) * drift * legalismDrift + 0.35f, 0f, 100f);
+        float lawDelta = (Random.Range(-4f, 4f) * drift * legalismDrift + 0.35f) * mods.CivicRestraintGrowthMultiplier;
+        civicRestraint = Mathf.Clamp(civicRestraint + lawDelta, 0f, 100f);
         spiritualComfort = Mathf.Clamp(
             spiritualComfort + Random.Range(-3f, 5f) * drift + mods.SpiritualComfortTurnBonus + 0.25f, 0f, 100f);
 
         if (CityManager.Instance?.HasAnyPlayerBuilding(CityBuildId.BuildOrphanage) == true)
             spiritualComfort = Mathf.Clamp(spiritualComfort + 2f, 0f, 100f);
 
-        float randomDecay = Random.Range(2f, 6f) * mods.AdherenceDecayMultiplier + 0.5f;
+        float randomDecay = Random.Range(3f, 7f) * mods.AdherenceDecayMultiplier + 0.75f;
         int randomPopulationChange = Random.Range(0, 3) + mods.PopulationGrowthBonus;
+        int terrainManuscriptGain = 0;
         string terrainNarrativeLog;
 
         if (missionaryTerrain == TerrainType.Pasture || missionaryTerrain == TerrainType.Shore)
@@ -468,9 +525,10 @@ public class FirstSteps : MonoBehaviour
             randomDecay -= 2f;
             randomDecay *= mods.SettlementAdherenceDecayMultiplier;
             if (randomDecay < 0f) randomDecay = 0f;
-            scriptureManuscripts += mods.SettlementManuscriptBonus;
+            terrainManuscriptGain = mods.SettlementManuscriptBonus;
             if (missionaryTerrain == TerrainType.Shore)
-                scriptureManuscripts += 1;
+                terrainManuscriptGain += 1;
+            scriptureManuscripts += terrainManuscriptGain;
             randomPopulationChange += mods.SettlementPopulationBonus;
             terrainNarrativeLog = missionaryTerrain == TerrainType.Shore
                 ? "Coastal shore: trade scrolls and steady parish life."
@@ -479,18 +537,39 @@ public class FirstSteps : MonoBehaviour
         else if (!TerrainRules.IsWater(missionaryTerrain))
         {
             randomDecay += 3f * mods.AdherenceDecayMultiplier;
-            scriptureManuscripts += 1 + mods.WildernessManuscriptBonus;
+            terrainManuscriptGain = 1 + mods.WildernessManuscriptBonus;
+            scriptureManuscripts += terrainManuscriptGain;
             randomPopulationChange -= 1;
-            terrainNarrativeLog = "Wilderness hardship: manuscripts found, extra doctrinal drift.";
+            terrainNarrativeLog =
+                $"Wilderness hardship on {HexGridMap.TerrainDisplayName(missionaryTerrain)}: manuscripts found, extra doctrinal drift.";
         }
         else
         {
             terrainNarrativeLog = "Waters unfit for encampment.";
         }
 
+        string manuscriptNote = terrainManuscriptGain > 0
+            ? $" (+{terrainManuscriptGain} mss → {scriptureManuscripts} held)"
+            : "";
+        string fieldUnitNote = fieldUnit != null
+            ? $" [{Unit.TypeDisplayName(fieldUnit.Type)} on {HexGridMap.TerrainDisplayName(missionaryTerrain)}]"
+            : "";
+
+        if (terrainManuscriptGain > 0)
+        {
+            Debug.Log(
+                $"Turn {turn}: Field encampment{fieldUnitNote} yielded +{terrainManuscriptGain} manuscripts " +
+                $"({scriptureManuscripts} held).");
+        }
+
         confessionalAdherence = Mathf.Clamp(confessionalAdherence - randomDecay, EffectiveMinAdherenceFloor, 100f);
         if (randomPopulationChange != 0)
-            PopulationSync.ApplyDeltaToPrimaryCity(randomPopulationChange);
+        {
+            if (randomPopulationChange > 0 && !ConfessionalPopulationGrowthAllowed())
+                randomPopulationChange = 0;
+            if (randomPopulationChange != 0)
+                PopulationSync.ApplyDeltaToPrimaryCity(randomPopulationChange);
+        }
 
         if (civicRestraint > 68f && spiritualComfort < 45f)
         {
@@ -520,7 +599,7 @@ public class FirstSteps : MonoBehaviour
                 confessionalAdherence = Mathf.Clamp(confessionalAdherence + 8f, 0f, 100f);
                 spiritualComfort = 55f;
                 CrisisManager.Instance?.HandleAntinomianCrisis(hadGuard: true);
-                Debug.LogWarning($"Turn {turn}: Formula of Concord checked antinomian drift.");
+                Debug.LogWarning($"Turn {turn}: Formula emphasis checked antinomian drift.");
                 return;
             }
 
@@ -537,7 +616,7 @@ public class FirstSteps : MonoBehaviour
             return;
         }
 
-        Debug.Log($"Turn {turn}: {terrainNarrativeLog} Pop {population} | Adherence {confessionalAdherence:F1}%");
+        Debug.Log($"Turn {turn}: {terrainNarrativeLog}{manuscriptNote}{fieldUnitNote} Pop {population} | Adherence {confessionalAdherence:F1}%");
         PopulationSync.SyncPlayerFactionFromCities();
     }
 
@@ -567,31 +646,33 @@ public class FirstSteps : MonoBehaviour
 
         float preachBonus = preacher.Type switch
         {
-            UnitType.Chaplain => ChaplainSpecialty.GetPreachAdherenceBonus(preacher) + Modifiers.PreachAdherenceBonus * 0.5f,
-            UnitType.Pastor => 4f + Modifiers.PreachAdherenceBonus * 0.5f,
-            UnitType.Bishop => 5f + Modifiers.PreachAdherenceBonus * 0.55f,
-            UnitType.Archbishop => 6f + Modifiers.PreachAdherenceBonus * 0.6f,
-            UnitType.Deaconess => 2f + Modifiers.PreachAdherenceBonus * 0.35f,
-            UnitType.Settler => Modifiers.PreachAdherenceBonus + 1f,
-            _ => Modifiers.PreachAdherenceBonus
+            UnitType.Chaplain => ChaplainSpecialty.GetPreachAdherenceBonus(preacher) + Modifiers.PreachAdherenceBonus * 0.35f,
+            UnitType.Pastor => 2f + Modifiers.PreachAdherenceBonus * 0.35f,
+            UnitType.Bishop => 3f + Modifiers.PreachAdherenceBonus * 0.4f,
+            UnitType.Archbishop => 4f + Modifiers.PreachAdherenceBonus * 0.45f,
+            UnitType.Deaconess => 1f + Modifiers.PreachAdherenceBonus * 0.25f,
+            UnitType.Settler => Modifiers.PreachAdherenceBonus * 0.45f + 0.5f,
+            UnitType.Missionary => Modifiers.PreachAdherenceBonus * 0.55f,
+            _ => Modifiers.PreachAdherenceBonus * 0.5f
         };
 
         float parishBonus = ClergyRoster.GetParishPreachBonus(preacher);
         if (parishBonus > 0f)
-            preachBonus += parishBonus;
+            preachBonus += parishBonus * 0.5f;
 
         float oversightBonus = EpiscopalOversight.GetPassivePreachBonus(preacher);
         if (oversightBonus > 0f)
-            preachBonus += oversightBonus;
+            preachBonus += oversightBonus * 0.5f;
 
         if (useCatechism)
         {
             boundCatechisms -= 1;
-            preachBonus += 4f;
+            preachBonus += 2f;
         }
         else if (!freePreach)
             scriptureManuscripts -= 1;
 
+        preachBonus = ScalePreachAdherenceGain(preachBonus, confessionalAdherence);
         confessionalAdherence = Mathf.Clamp(confessionalAdherence + preachBonus, EffectiveMinAdherenceFloor, 100f);
         float comfortBonus = Modifiers.PreachSpiritualComfortBonus + (preacher.Type == UnitType.Deaconess ? 3f : 0f);
         spiritualComfort = Mathf.Clamp(spiritualComfort + comfortBonus, 0f, 100f);
@@ -635,6 +716,9 @@ public class FirstSteps : MonoBehaviour
 
         if (nomadicPreach)
             NomadicFoundingGate.MarkPreachCompleted();
+
+        if (!freePreach && preacher.CanPreach)
+            preacher.MarkPreached();
 
         AddFame(2);
         CityManager.Instance?.TryPreachCityAt(preacher, preacher.HexPosition);
@@ -681,16 +765,133 @@ public class FirstSteps : MonoBehaviour
         return null;
     }
 
+    static float ScalePreachAdherenceGain(float bonus, float currentAdherence)
+    {
+        if (bonus <= 0f)
+            return bonus;
+
+        float scaled = bonus * 0.55f;
+
+        if (currentAdherence >= 95f)
+            scaled *= 0.25f;
+        else if (currentAdherence >= 90f)
+            scaled *= 0.4f;
+        else if (currentAdherence >= 80f)
+            scaled *= 0.65f;
+
+        return Mathf.Max(0.5f, scaled);
+    }
+
+    string FormatLegacyFameHint()
+    {
+        if (SynodLegacyManager.Instance == null)
+            return "";
+
+        if (SynodLegacyManager.Instance.ActiveSlots.Count > 0)
+            return "";
+
+        if (confessionalFame >= 25)
+            return "";
+
+        return "25 fame: Confessional Witness  |  55 fame: Synod Repute";
+    }
+
+    public string FormatSynodBriefContent()
+    {
+        var sections = new System.Collections.Generic.List<string>();
+
+        sections.Add("");
+        sections.Add("<color=#DDCC88><b>VICTORY & DEFEAT</b></color>");
+        if (MatchController.Instance != null)
+            sections.Add(MatchController.Instance.FormatVictoryBriefSection());
+        else
+            sections.Add("<size=13>Victory tracking unavailable.</size>");
+
+        if (NomadicFoundingGate.IsNomadicPhase)
+        {
+            sections.Add("");
+            sections.Add("<color=#DDCC88><b>NOMADIC FOUNDING</b></color>");
+            sections.Add(NomadicFoundingGate.FormatBriefSection());
+        }
+
+        sections.Add("");
+        sections.Add("<color=#DDCC88><b>LEGACY TRAITS</b></color>");
+        string legacy = SynodLegacyManager.Instance?.FormatLegacyLine();
+        if (string.IsNullOrEmpty(legacy) || legacy.Contains("none yet"))
+        {
+            sections.Add("<size=13>No active legacy traits yet.</size>");
+            sections.Add($"<size=12><color=#AABBCC>{FormatLegacyFameHint()}</color></size>");
+            sections.Add("<size=12><color=#AABBCC>Crisis traits (Gerhard, Concord, Crisis Survivor) unlock by surviving Walther crises.</color></size>");
+        }
+        else
+            sections.Add(legacy);
+
+        sections.Add("");
+        sections.Add("<color=#DDCC88><b>CONFESSIONAL IDENTITY</b></color>");
+        if (confessionalIdentity != ConfessionalIdentityId.None)
+        {
+            sections.Add(
+                $"<b>{ConfessionalIdentityDatabase.DisplayName(confessionalIdentity)}</b>\n" +
+                $"<size=12><color=#AABBCC><i>{ConfessionalIdentityDatabase.Description(confessionalIdentity)}</i></color></size>\n" +
+                $"<size=13><color=#DDEEAA>{ConfessionalIdentityDatabase.FormatGameplayEffects(confessionalIdentity)}</color></size>");
+        }
+        else
+            sections.Add("<size=13>Not chosen yet  -  pick when Wittenberg is founded (I to respec later).</size>");
+
+        sections.Add("");
+        sections.Add("<color=#DDCC88><b>RESEARCH ERA</b></color>");
+        sections.Add(ArtEraVisualController.FormatEraLabel());
+
+        sections.Add("");
+        sections.Add("<color=#DDCC88><b>CITY YIELDS</b></color>");
+        if (CityManager.Instance != null)
+        {
+            string yields = CityManager.Instance.FormatPlayerCityYieldLine();
+            sections.Add(string.IsNullOrWhiteSpace(yields) || yields.Contains(" - ")
+                ? "<size=13>No city production yet.</size>"
+                : yields);
+        }
+
+        sections.Add("");
+        sections.Add("<color=#DDCC88><b>TRADE & DIPLOMACY</b></color>");
+        string trade = SynodTradeSystem.FormatNetworkSummary(SynodPlayerId.Player1);
+        if (!string.IsNullOrEmpty(trade))
+            sections.Add(trade);
+        string diplomacy = SynodDiplomacyManager.Instance?.FormatSummaryLine();
+        if (!string.IsNullOrEmpty(diplomacy))
+            sections.Add(diplomacy);
+        if (string.IsNullOrEmpty(trade) && string.IsNullOrEmpty(diplomacy))
+            sections.Add("<size=13>No trade links or rival diplomacy yet.</size>");
+
+        sections.Add("");
+        sections.Add("<color=#DDCC88><b>WALTHER DIALECTIC</b></color>");
+        string crisis = CrisisManager.Instance?.FormatCrisisLine();
+        if (string.IsNullOrEmpty(crisis))
+            crisis = PastoralBriefingManager.Instance?.FormatStatusLine();
+        if (string.IsNullOrEmpty(crisis))
+            crisis = FormatWaltherCrisisWarning();
+        sections.Add($"Civic Restraint (Law)  {civicRestraint:F0}%  |  Spiritual Comfort (Gospel)  {spiritualComfort:F0}%");
+        if (!string.IsNullOrEmpty(crisis))
+            sections.Add(crisis);
+        sections.Add("<size=12><color=#AABBCC>High Law + low Gospel risks legalism; high Gospel + low adherence risks antinomian schism.</color></size>");
+        sections.Add("<size=12><color=#AABBCC>Pastoral briefings (Luther, Walther, Gerhard, etc.) appear every few turns when Law and Gospel drift — choose a response to steer the dialectic.</color></size>");
+        string emphasis = SynodicalEmphasisManager.Instance?.FormatStatusLine();
+        if (!string.IsNullOrEmpty(emphasis))
+            sections.Add(emphasis);
+        string tier2 = Tier2EmphasisManager.Instance?.FormatStatusLine();
+        if (!string.IsNullOrEmpty(tier2))
+            sections.Add(tier2);
+
+        return string.Join("\n", sections);
+    }
+
     string FormatSynodStatusLine()
     {
         if (SchismaticBlocRegistry.Instance != null && SchismaticBlocRegistry.Instance.HasAnySchism)
             return SchismaticBlocRegistry.Instance.FormatStatusLine();
 
         if (CityManager.Instance?.GetPrimaryPlayerCity() == null)
-        {
-            string progress = NomadicFoundingGate.FormatProgressLine();
-            return progress ?? "<color=#FFDD88>Nomadic  -  preparing to found Wittenberg</color>";
-        }
+            return "<color=#FFDD88>Wandering synod  -  found Wittenberg to settle</color>";
 
         string diplomacy = SynodDiplomacyManager.Instance?.FormatSummaryLine();
         if (!string.IsNullOrEmpty(diplomacy))
@@ -704,13 +905,16 @@ public class FirstSteps : MonoBehaviour
         if (CrisisManager.Instance != null && CrisisManager.Instance.IsAwaitingPlayerChoice)
             return "";
 
+        if (PastoralBriefingManager.Instance != null && PastoralBriefingManager.Instance.IsAwaitingPlayerChoice)
+            return "";
+
         var mods = Modifiers;
 
         if (civicRestraint > 62f && spiritualComfort < 52f && !mods.LegalismGuard)
             return "<color=#FFAA66><b>Warning:</b> legalism risk  -  Law high, Gospel low (schism)</color>";
 
         if (spiritualComfort > 58f && confessionalAdherence < 72f && !mods.AntinomianGuard)
-            return "<color=#FFAA66><b>Warning:</b> antinomian drift  -  comfort without adherence (schism)</color>";
+            return "<color=#FFAA66><b>Warning:</b> antinomian drift — take Formula emphasis or preach (schism risk)</color>";
 
         if (confessionalAdherence <= 58f)
             return "<color=#FFAA66><b>Warning:</b> adherence falling  -  dissent may split the synod</color>";

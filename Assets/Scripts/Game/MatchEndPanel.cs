@@ -125,9 +125,15 @@ public class MatchEndPanel : MonoBehaviour
     public void Show(MatchResult result, string detail)
     {
         if (bodyText == null) return;
-        string headline = result == MatchResult.SynodVictory
-            ? "<color=#88CC88><b>Sola Gratia  -  Synod Victory</b></color>"
-            : "<color=#CC6666><b>Schismatic Victory</b></color>";
+        string headline = result switch
+        {
+            MatchResult.SynodVictory =>
+                "<color=#88CC88><b>Sola Gratia  -  Synod Victory</b></color>",
+            MatchResult.SchismaticVictory =>
+                "<color=#CC6666><b>Schismatic Victory</b></color>",
+            _ =>
+                "<color=#CC6666><b>Synod Defeat</b></color>"
+        };
         bodyText.text = TmpTextSanitizer.Sanitize($"{headline}\n\n{detail}\n\nThe match has ended.");
         panelRoot.SetActive(true);
     }

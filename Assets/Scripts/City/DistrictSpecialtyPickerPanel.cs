@@ -10,11 +10,13 @@ public class DistrictSpecialtyPickerPanel : MonoBehaviour
     GameObject panelRoot;
     City pendingDistrict;
 
-    void Awake()
+    void Awake() => Instance = this;
+
+    void Start()
     {
-        Instance = this;
-        BuildUI();
-        panelRoot.SetActive(false);
+        EnsureUI();
+        if (panelRoot != null)
+            panelRoot.SetActive(false);
     }
 
     void OnDestroy()
@@ -23,11 +25,27 @@ public class DistrictSpecialtyPickerPanel : MonoBehaviour
             Instance = null;
     }
 
-    void BuildUI()
-    {
-        var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas == null) return;
+    HamletSpecialty suggestedSpecialty = HamletSpecialty.None;
 
+    public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
+
+    void EnsureUI()
+    {
+        if (panelRoot != null)
+            return;
+
+        var canvas = GameUiRoot.GetModalCanvas();
+        if (canvas == null)
+        {
+            Debug.LogWarning("DistrictSpecialtyPickerPanel: no canvas available.");
+            return;
+        }
+
+        BuildUI(canvas);
+    }
+
+    void BuildUI(Canvas canvas)
+    {
         panelRoot = new GameObject("DistrictSpecialtyPickerPanel");
         panelRoot.transform.SetParent(canvas.transform, false);
 
@@ -60,17 +78,23 @@ public class DistrictSpecialtyPickerPanel : MonoBehaviour
         }
     }
 
-    HamletSpecialty suggestedSpecialty = HamletSpecialty.None;
-
     public void Show(City district, HamletSpecialty suggested = HamletSpecialty.None)
     {
         if (district == null || !district.IsHamlet || district.HasChosenSpecialty)
             return;
 
+        EnsureUI();
+        if (panelRoot == null)
+        {
+            Debug.LogWarning("DistrictSpecialtyPickerPanel.Show failed — UI could not be built.");
+            return;
+        }
+
         pendingDistrict = district;
         suggestedSpecialty = suggested;
         UpdateSuggestionHint();
         panelRoot.SetActive(true);
+        TurnPhaseBanner.Instance?.Refresh("<color=#DDEE88><b>Choose district specialty</b></color>");
     }
 
     void UpdateSuggestionHint()

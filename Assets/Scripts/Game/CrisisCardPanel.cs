@@ -30,6 +30,7 @@ public class CrisisCardPanel : MonoBehaviour
     TextMeshProUGUI bodyText;
     Transform buttonRow;
     readonly List<GameObject> choiceButtons = new();
+    IChoiceCardPresenter activePresenter;
 
     void Awake()
     {
@@ -264,13 +265,15 @@ public class CrisisCardPanel : MonoBehaviour
         tmp.raycastTarget = false;
     }
 
-    public bool Show(string title, string body, IReadOnlyList<CrisisCardChoice> choices)
+    public bool Show(string title, string body, IReadOnlyList<CrisisCardChoice> choices, IChoiceCardPresenter presenter = null)
     {
         if (choices == null || choices.Count == 0)
         {
             Debug.LogError("CrisisCardPanel.Show failed  -  no choices supplied.");
             return false;
         }
+
+        activePresenter = presenter ?? CrisisManager.Instance;
 
         for (int attempt = 0; attempt < 3 && !IsUiReady; attempt++)
             EnsureUI();
@@ -381,13 +384,17 @@ public class CrisisCardPanel : MonoBehaviour
 
     void ForceDismiss()
     {
-        Dismiss();
-        CrisisManager.Instance?.CancelPendingCardChoice();
+        var presenter = activePresenter;
+        activePresenter = null;
+        Hide();
+        presenter?.OnChoiceCardCancelled();
     }
 
     void Dismiss()
     {
+        var presenter = activePresenter;
+        activePresenter = null;
         Hide();
-        CrisisManager.Instance?.NotifyCardDismissed();
+        presenter?.OnChoiceCardDismissed();
     }
 }

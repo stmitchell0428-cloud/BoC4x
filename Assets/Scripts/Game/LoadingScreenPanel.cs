@@ -23,11 +23,23 @@ public class LoadingScreenPanel : MonoBehaviour
 
     public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
 
-    void Awake()
+    void Awake() => Instance = this;
+
+    void Start() => EnsureUiBuilt();
+
+    public bool EnsureUiBuilt()
     {
-        Instance = this;
+        if (panelRoot != null)
+            return true;
+
         BuildUI();
-        panelRoot.SetActive(false);
+        if (panelRoot != null)
+            panelRoot.SetActive(false);
+
+        if (panelRoot == null)
+            Debug.LogError("LoadingScreenPanel: failed to build UI  -  no Canvas available.");
+
+        return panelRoot != null;
     }
 
     void OnDestroy()
@@ -64,8 +76,10 @@ public class LoadingScreenPanel : MonoBehaviour
 
     void BuildUI()
     {
-        var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas == null) return;
+        GameUiRoot.EnsureEventSystem();
+        var canvas = GameUiRoot.GetCanvas();
+        if (canvas == null)
+            return;
 
         panelRoot = new GameObject("LoadingScreenPanel");
         panelRoot.transform.SetParent(canvas.transform, false);
@@ -210,7 +224,9 @@ public class LoadingScreenPanel : MonoBehaviour
 
     public void Show()
     {
-        if (panelRoot == null) return;
+        if (!EnsureUiBuilt())
+            return;
+
         panelRoot.transform.SetAsLastSibling();
         beatIndex = 0;
         loadComplete = false;
@@ -342,7 +358,11 @@ public class LoadingScreenPanel : MonoBehaviour
     static void CopyFont(TextMeshProUGUI tmp)
     {
         var existing = Object.FindAnyObjectByType<TextMeshProUGUI>();
-        if (existing != null) tmp.font = existing.font;
+        if (existing != null && existing.font != null)
+            tmp.font = existing.font;
+        else if (TMP_Settings.defaultFontAsset != null)
+            tmp.font = TMP_Settings.defaultFontAsset;
+
         tmp.color = new Color(0.92f, 0.9f, 0.85f);
         tmp.raycastTarget = false;
     }

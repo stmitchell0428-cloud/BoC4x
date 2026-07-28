@@ -122,5 +122,18 @@ public static class ConfessionalIdentityDatabase
 
     };
 
+    public static string FormatGameplayEffects(ConfessionalIdentityId id) => id switch
+    {
+        ConfessionalIdentityId.MissionarySending =>
+            "+1 missionary movement; +3 preach adherence; +1 wilderness manuscripts",
+        ConfessionalIdentityId.Magisterial =>
+            "+2 soldier defense; 10% slower adherence decay",
+        ConfessionalIdentityId.PastoralCare =>
+            "+4 Gospel comfort per turn; +8 preach comfort; +1 settlement population growth",
+        ConfessionalIdentityId.ChemnitzConfessional =>
+            "+2 preach adherence; 12% slower decay; +1 settlement manuscripts; +1 missionary movement",
+        _ => ""
+    };
+
 }
 

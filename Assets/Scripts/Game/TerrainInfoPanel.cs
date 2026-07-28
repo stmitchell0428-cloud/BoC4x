@@ -13,11 +13,17 @@ public class TerrainInfoPanel : MonoBehaviour
     TextMeshProUGUI selectionText;
     RectTransform rootRect;
     GameObject rootObject;
+    RectMask2D rootMask;
     HexCoordinates? hoveredHex;
 
     const float LegendHeight = 28f;
     const float RowGap = 4f;
     const float PanelWidth = 720f;
+    const float BottomPadding = 12f;
+    const float TopHudGap = 20f;
+    const float MinPanelHeight = 96f;
+
+    float topHudClearance = 280f;
 
     void Awake()
     {
@@ -44,8 +50,9 @@ public class TerrainInfoPanel : MonoBehaviour
         rootRect.anchorMin = Vector2.zero;
         rootRect.anchorMax = Vector2.zero;
         rootRect.pivot = Vector2.zero;
-        rootRect.anchoredPosition = new Vector2(12f, 12f);
+        rootRect.anchoredPosition = new Vector2(12f, BottomPadding);
         rootRect.sizeDelta = new Vector2(PanelWidth, 168f);
+        rootMask = root.AddComponent<RectMask2D>();
 
         selectionText = CreateText(root.transform, "SelectionText", 16f);
         cityYieldText = CreateText(root.transform, "CityYieldText", 15f);
@@ -113,28 +120,113 @@ public class TerrainInfoPanel : MonoBehaviour
             tmp.text = TmpTextSanitizer.Sanitize(text);
     }
 
+    void Start()
+    {
+        if (GameHUD.Instance != null)
+            ApplyTopHudClearance(GameHUD.Instance.DashboardBottomY);
+        else
+            RelayoutPanel();
+    }
+
+    public void ApplyTopHudClearance(float dashboardBottomFromTop)
+    {
+        topHudClearance = dashboardBottomFromTop + TopHudGap;
+        RelayoutPanel();
+    }
+
     void RelayoutPanel()
     {
         if (rootRect == null) return;
 
-        float y = LegendHeight + RowGap;
-        y = StackRow(hoverText, y);
-        y = StackRow(missionaryText, y);
-        y = StackRow(cityYieldText, y);
-        y = StackRow(selectionText, y);
-        rootRect.sizeDelta = new Vector2(PanelWidth, y + RowGap);
+        float canvasHeight = GetCanvasHeight();
+        float maxHeight = Mathf.Max(MinPanelHeight, canvasHeight - topHudClearance - BottomPadding);
+
+        float rowsHeight = MeasureRowsHeight();
+        bool showLegend = rowsHeight + LegendHeight + RowGap <= maxHeight;
+        SetLegendVisible(showLegend);
+
+        float contentHeight = rowsHeight + (showLegend ? LegendHeight + RowGap : 0f);
+        float panelHeight = Mathf.Min(contentHeight + RowGap, maxHeight);
+
+        float yTop = panelHeight - RowGap;
+        yTop = StackRowFromTop(hoverText, yTop);
+        yTop = StackRowFromTop(selectionText, yTop);
+        yTop = StackRowFromTop(missionaryText, yTop);
+        StackRowFromTop(cityYieldText, yTop);
+
+        PositionLegend(showLegend);
+
+        rootRect.anchoredPosition = new Vector2(12f, BottomPadding);
+        rootRect.sizeDelta = new Vector2(PanelWidth, panelHeight);
     }
 
-    static float StackRow(TextMeshProUGUI tmp, float y)
+    float MeasureRowsHeight()
     {
-        if (tmp == null) return y;
+        float height = 0f;
+        height = MeasureRowHeight(hoverText, height);
+        height = MeasureRowHeight(selectionText, height);
+        height = MeasureRowHeight(missionaryText, height);
+        height = MeasureRowHeight(cityYieldText, height);
+        return height + RowGap;
+    }
+
+    static float MeasureRowHeight(TextMeshProUGUI tmp, float accumulated)
+    {
+        if (tmp == null)
+            return accumulated;
 
         tmp.ForceMeshUpdate();
         float height = Mathf.Max(20f, tmp.preferredHeight + 4f);
+        return accumulated + height + RowGap;
+    }
+
+    static float StackRowFromTop(TextMeshProUGUI tmp, float yTop)
+    {
+        if (tmp == null)
+            return yTop;
+
+        tmp.ForceMeshUpdate();
+        float height = Mathf.Max(20f, tmp.preferredHeight + 4f);
+        float yBottom = yTop - height;
         var rect = tmp.rectTransform;
-        rect.anchoredPosition = new Vector2(0f, y);
+        rect.pivot = Vector2.zero;
+        rect.anchoredPosition = new Vector2(0f, yBottom);
         rect.sizeDelta = new Vector2(680f, height);
-        return y + height + RowGap;
+        tmp.alignment = TextAlignmentOptions.TopLeft;
+        return yBottom - RowGap;
+    }
+
+    void PositionLegend(bool showLegend)
+    {
+        var legend1 = rootObject?.transform.Find("LegendLine1")?.GetComponent<RectTransform>();
+        var legend2 = rootObject?.transform.Find("LegendLine2")?.GetComponent<RectTransform>();
+        if (legend1 != null)
+        {
+            legend1.anchoredPosition = new Vector2(0f, 14f);
+            legend1.sizeDelta = new Vector2(PanelWidth, 14f);
+        }
+        if (legend2 != null)
+            legend2.anchoredPosition = Vector2.zero;
+    }
+
+    static float GetCanvasHeight()
+    {
+        var canvas = FindAnyObjectByType<Canvas>();
+        if (canvas == null)
+            return 1080f;
+
+        var rect = canvas.GetComponent<RectTransform>();
+        return rect != null ? rect.rect.height : 1080f;
+    }
+
+    void SetLegendVisible(bool visible)
+    {
+        var legend1 = rootObject?.transform.Find("LegendLine1");
+        var legend2 = rootObject?.transform.Find("LegendLine2");
+        if (legend1 != null)
+            legend1.gameObject.SetActive(visible);
+        if (legend2 != null)
+            legend2.gameObject.SetActive(visible);
     }
 
     public void RefreshCityYield()
@@ -316,7 +408,7 @@ public class TerrainInfoPanel : MonoBehaviour
                     : "";
                 string placementHint = FormatHoveredPlacementAdvice(hoveredHex.Value);
                 text =
-                    $"<b>{marker} {Unit.TypeDisplayName(unit.Type)}</b> ({SynodPlayerDatabase.DisplayName(unit.SynodPlayer)})  -  {unit.RoleSummary}" +
+                    $"<b>{marker} {Unit.TypeDisplayName(unit.Type)}</b> ({unit.FormatOwnerLabel()})  -  {unit.RoleSummary}" +
                     NavalMovementRules.FormatUnitNavalHint(unit) +
                     $"{actionHint}{cityHint}{placementHint}";
             }
@@ -326,7 +418,7 @@ public class TerrainInfoPanel : MonoBehaviour
                 var mssLabel = city.ManuscriptTilesLabel();
                 var selected = TurnManager.Instance?.SelectedUnit;
                 text +=
-                    $"<b>{city.SettlementDisplayName()}</b> ({SynodPlayerDatabase.DisplayName(city.SynodPlayer)}, {city.SettlementKindLabel()})  -  {city.ProductionBreakdownLabel()}\n" +
+                    $"<b>{city.SettlementDisplayName()}</b> ({city.FormatOwnerLabel()}, {city.SettlementKindLabel()})  -  {city.ProductionBreakdownLabel()}\n" +
                     $"{city.CultureSummaryLabel()}  |  {city.TerritorySummaryLabel()}  |  Queue: {city.Production?.ActiveBuildLabel() ?? "None"}\n" +
                     CityLoyaltySystem.FormatHoverLoyaltyBlock(city, selected) +
                     GarrisonBonus.FormatCityGarrisonHint(city);
@@ -372,24 +464,7 @@ public class TerrainInfoPanel : MonoBehaviour
         return "";
     }
 
-    static Unit FindLeadSynodUnit()
-    {
-        if (TurnManager.Instance == null) return null;
-        foreach (var unit in TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1))
-        {
-            if (!unit.IsAlive) continue;
-            if (unit.Type == UnitType.Settler && unit.IsNomadicFounder)
-                return unit;
-        }
-
-        foreach (var unit in TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1))
-        {
-            if (unit.Type == UnitType.Missionary && unit.IsAlive)
-                return unit;
-        }
-
-        return null;
-    }
+    static Unit FindLeadSynodUnit() => FirstSteps.Instance?.GetFieldSynodUnit();
 
     static Unit FindMissionary()
     {

@@ -169,10 +169,29 @@ public static class ConfessionTechDatabase
 
             //  -  -  Tier 2: Confessions  -  - 
             new ConfessionTechNode(
+                ConfessionTechId.ConfessionalEmphasis,
+                "Confessional Emphasis",
+                "The synod chooses whether internal concord or external confession leads this era.",
+                "Internal, Smalcald, or Augsburg emphasis (scout contact / schismatic combat)",
+                confessions, tier: 2, manuscriptCost: 2, turnsToComplete: 2, minAdherence: 48f,
+                figureName: "Book of Concord era", lifespan: "1580",
+                prerequisites: new[] { ConfessionTechId.LawAndGospel, ConfessionTechId.SacramentalLife }),
+
+            new ConfessionTechNode(
+                ConfessionTechId.ConfessionsCultureEmphasis,
+                "Confessions Culture Emphasis",
+                "The synod chooses ordered chorale life or cross-and-comfort hymnody.",
+                "Chorale or Gerhardt emphasis (Gerhardt if battle endured)",
+                confessions, tier: 2, manuscriptCost: 2, turnsToComplete: 2, track: TechTrack.Culture,
+                minAdherence: 45f,
+                figureName: "Lutheran hymnody", lifespan: "16th-17th c.",
+                prerequisites: new[] { ConfessionTechId.ReformationHymnody }),
+
+            new ConfessionTechNode(
                 ConfessionTechId.AugsburgConfession,
                 "Augsburg Confession",
                 "Present the evangelical faith before Emperor Charles V.",
-                "Soldiers +3 attack; reveals Iron",
+                "Siege pressure +1; reveals Iron",
                 confessions, tier: 2, manuscriptCost: 3, turnsToComplete: 3, minAdherence: 50f,
                 figureName: "Philip Melanchthon", lifespan: "1497-1560",
                 prerequisites: new[] { ConfessionTechId.VerbalInspiration }),
@@ -181,7 +200,7 @@ public static class ConfessionTechDatabase
                 ConfessionTechId.SmalcaldArticles,
                 "Smalcald Articles",
                 "Draw a bright line against compromise with Rome.",
-                "Wilderness yields +1 manuscript",
+                "Law/Gospel drift −15%; settlement +1 manuscript",
                 confessions, tier: 2, manuscriptCost: 3, turnsToComplete: 3, minAdherence: 45f,
                 figureName: "Martin Luther", lifespan: "1483-1546",
                 prerequisites: new[] { ConfessionTechId.LawAndGospel }),
@@ -190,7 +209,7 @@ public static class ConfessionTechDatabase
                 ConfessionTechId.FormulaOfConcord,
                 "Formula of Concord",
                 "Settle internal disputes and bind the church to pure doctrine.",
-                "Antinomian crisis softened",
+                "Adherence decay −10%",
                 confessions, tier: 2, manuscriptCost: 3, turnsToComplete: 3, minAdherence: 55f,
                 figureName: "Jakob Andreae", lifespan: "1528-1590",
                 prerequisites: new[] { ConfessionTechId.SacramentalLife }),
@@ -199,7 +218,7 @@ public static class ConfessionTechDatabase
                 ConfessionTechId.PaulGerhardt,
                 "Sacred Hymnody",
                 "Hymns of cross and comfort that carried congregations through war and plague.",
-                "+5 spiritual comfort each turn",
+                "Adherence decay −10%",
                 confessions, tier: 2, manuscriptCost: 3, turnsToComplete: 3, track: TechTrack.Culture,
                 minAdherence: 45f,
                 figureName: "Paul Gerhardt", lifespan: "1607-1676",
@@ -209,7 +228,7 @@ public static class ConfessionTechDatabase
                 ConfessionTechId.ChoraleTradition,
                 "Chorale Tradition",
                 "Congregational song woven through Sunday liturgy and domestic piety.",
-                "Settlement adherence decay -20%",
+                "Cantor hymns +6 comfort",
                 confessions, tier: 2, manuscriptCost: 3, turnsToComplete: 3, track: TechTrack.Culture,
                 minAdherence: 48f,
                 figureName: "Lutheran cantors", lifespan: "16th-18th c.",
@@ -285,13 +304,22 @@ public static class ConfessionTechDatabase
 
             //  -  -  Tier 4: Synodical era  -  - 
             new ConfessionTechNode(
+                ConfessionTechId.SynodicalEmphasis,
+                "Synodical Emphasis",
+                "The immigrant synod chooses whether pastoral Law/Gospel or systematic dogmatics leads the church.",
+                "Choose Walther or Pieper emphasis (full bonus; other path later at half)",
+                synodical, tier: 4, manuscriptCost: 3, turnsToComplete: 2, minAdherence: 62f,
+                figureName: "Synodical colloquy", lifespan: "1847+",
+                prerequisites: new[] { ConfessionTechId.SmalcaldArticles, ConfessionTechId.FormulaOfConcord }),
+
+            new ConfessionTechNode(
                 ConfessionTechId.WaltherPastoralTheology,
                 "Law & Gospel in Preaching",
                 "Pastoral theology for immigrants building confessional congregations in America.",
                 "Law/Gospel drift halved each turn",
                 synodical, tier: 4, manuscriptCost: 4, turnsToComplete: 4, minAdherence: 65f,
                 figureName: "C. F. W. Walther", lifespan: "1811-1887",
-                prerequisites: new[] { ConfessionTechId.SmalcaldArticles, ConfessionTechId.FormulaOfConcord }),
+                prerequisites: new[] { ConfessionTechId.SynodicalEmphasis }),
 
             new ConfessionTechNode(
                 ConfessionTechId.FrancisPieper,
@@ -570,18 +598,24 @@ public static class ConfessionTechDatabase
 
     static void AssignEraBranches(Dictionary<ConfessionTechId, ConfessionTechNode> dict)
     {
-        SetBranch(dict, ConfessionTechId.AugsburgConfession, "Era2-Confession");
-        SetBranch(dict, ConfessionTechId.BondageOfWill, "Era2-Confession");
-        SetBranch(dict, ConfessionTechId.GutenbergPress, "Era2-Confession");
+        // Confessions era — public confession vs print culture (emphasis handles Formula/Augsburg/Smalcald).
+        SetBranch(dict, ConfessionTechId.AugsburgConfession, "confessional", "Era2-Confession");
+        SetBranch(dict, ConfessionTechId.GutenbergPress, "confessional", "Era2-Confession");
 
-        SetBranch(dict, ConfessionTechId.WaltherPastoralTheology, "Era4-Synod");
-        SetBranch(dict, ConfessionTechId.MissionarySending, "Era4-Synod");
-        SetBranch(dict, ConfessionTechId.JohannSebastianBach, "Era4-Synod");
+        // Synodical era — mission sending vs liturgical cantatas.
+        SetBranch(dict, ConfessionTechId.MissionarySending, "culture", "Era4-Synodical");
+        SetBranch(dict, ConfessionTechId.JohannSebastianBach, "culture", "Era4-Synodical");
     }
 
-    static void SetBranch(Dictionary<ConfessionTechId, ConfessionTechNode> dict, ConfessionTechId id, string group)
+    static void SetBranch(
+        Dictionary<ConfessionTechId, ConfessionTechNode> dict,
+        ConfessionTechId id,
+        string track,
+        string branchId)
     {
-        if (dict.TryGetValue(id, out var node))
-            node.EraBranchGroup = group;
+        if (!dict.TryGetValue(id, out var node))
+            return;
+
+        node.EraBranchGroup = $"{track}:{branchId}";
     }
 }

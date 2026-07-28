@@ -28,7 +28,14 @@ public class MatchLobbyController : MonoBehaviour
             return;
         }
 
-        MatchLobbyPanel.Instance?.Show();
+        if (MatchLobbyPanel.Instance == null || !MatchLobbyPanel.Instance.EnsureUiBuilt())
+        {
+            Debug.LogWarning("MatchLobbyPanel unavailable  -  starting match with default settings.");
+            BeginMatch(Current);
+            return;
+        }
+
+        MatchLobbyPanel.Instance.Show();
     }
 
     void OnDestroy()

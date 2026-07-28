@@ -3,7 +3,7 @@ public class ConfessionModifiers
 {
     public float AdherenceDecayMultiplier = 1f;
     public float SettlementAdherenceDecayMultiplier = 1f;
-    public float PreachAdherenceBonus = 15f;
+    public float PreachAdherenceBonus = 6f;
     public float PreachSpiritualComfortBonus = 16f;
     public float CantorComfortBonus = 0f;
     public float SpiritualComfortTurnBonus = 0f;
@@ -20,6 +20,7 @@ public class ConfessionModifiers
     public int TerrainMovePenaltyReduction = 0;
     public float LawGospelDriftMultiplier = 1f;
     public float LegalismDriftMultiplier = 1f;
+    public float CivicRestraintGrowthMultiplier = 1f;
     public float SchismaticDamageTakenMultiplier = 1f;
     public float PreachManuscriptRefundChance = 0f;
     public float MinAdherenceFloor = 0f;
@@ -47,6 +48,7 @@ public class ConfessionModifiers
         TerrainMovePenaltyReduction += other.TerrainMovePenaltyReduction;
         LawGospelDriftMultiplier *= other.LawGospelDriftMultiplier;
         LegalismDriftMultiplier *= other.LegalismDriftMultiplier;
+        CivicRestraintGrowthMultiplier *= other.CivicRestraintGrowthMultiplier;
         SchismaticDamageTakenMultiplier *= other.SchismaticDamageTakenMultiplier;
         PreachManuscriptRefundChance += other.PreachManuscriptRefundChance;
         MinAdherenceFloor = System.Math.Max(MinAdherenceFloor, other.MinAdherenceFloor);
@@ -81,6 +83,7 @@ public class ConfessionModifiers
             TerrainMovePenaltyReduction = ScaleInt(source.TerrainMovePenaltyReduction, potency),
             LawGospelDriftMultiplier = LerpMultiplier(1f, source.LawGospelDriftMultiplier, potency),
             LegalismDriftMultiplier = LerpMultiplier(1f, source.LegalismDriftMultiplier, potency),
+            CivicRestraintGrowthMultiplier = LerpMultiplier(1f, source.CivicRestraintGrowthMultiplier, potency),
             SchismaticDamageTakenMultiplier = LerpMultiplier(1f, source.SchismaticDamageTakenMultiplier, potency),
             PreachManuscriptRefundChance = source.PreachManuscriptRefundChance * potency,
             MinAdherenceFloor = source.MinAdherenceFloor * potency,
@@ -103,11 +106,17 @@ public class ConfessionModifiers
         ConfessionTechId.AlbrechtDurer => new ConfessionModifiers { SettlementPopulationBonus = 1 },
         ConfessionTechId.LucasCranach => new ConfessionModifiers { PreachAdherenceBonus = 5f, LegalismDriftMultiplier = 0.85f },
         ConfessionTechId.OrderedCreation => new ConfessionModifiers { TerrainMovePenaltyReduction = 1 },
-        ConfessionTechId.AugsburgConfession => new ConfessionModifiers { SoldierAttackBonus = 3 },
-        ConfessionTechId.SmalcaldArticles => new ConfessionModifiers { WildernessManuscriptBonus = 1 },
-        ConfessionTechId.FormulaOfConcord => new ConfessionModifiers { AntinomianGuard = true },
-        ConfessionTechId.PaulGerhardt => new ConfessionModifiers { SpiritualComfortTurnBonus = 5f },
-        ConfessionTechId.ChoraleTradition => new ConfessionModifiers { SettlementAdherenceDecayMultiplier = 0.8f },
+        ConfessionTechId.ConfessionalEmphasis => new ConfessionModifiers(),
+        ConfessionTechId.ConfessionsCultureEmphasis => new ConfessionModifiers(),
+        ConfessionTechId.AugsburgConfession => new ConfessionModifiers { SiegePressureBonus = 1 },
+        ConfessionTechId.SmalcaldArticles => new ConfessionModifiers
+        {
+            LawGospelDriftMultiplier = 0.85f,
+            SettlementManuscriptBonus = 1
+        },
+        ConfessionTechId.FormulaOfConcord => new ConfessionModifiers { AdherenceDecayMultiplier = 0.9f },
+        ConfessionTechId.PaulGerhardt => new ConfessionModifiers { AdherenceDecayMultiplier = 0.9f },
+        ConfessionTechId.ChoraleTradition => new ConfessionModifiers { CantorComfortBonus = 6f },
         ConfessionTechId.JohannesKepler => new ConfessionModifiers { AllUnitsMovementBonus = 1 },
         ConfessionTechId.CarlLinnaeus => new ConfessionModifiers { WildernessManuscriptBonus = 1 },
         ConfessionTechId.MartinChemnitz => new ConfessionModifiers { SoldierDefenseBonus = 2 },
@@ -115,8 +124,9 @@ public class ConfessionModifiers
         ConfessionTechId.AbrahamCalov => new ConfessionModifiers { SettlementManuscriptBonus = 1 },
         ConfessionTechId.IsaacNewton => new ConfessionModifiers { SoldierAttackBonus = 2 },
         ConfessionTechId.GregorMendel => new ConfessionModifiers { PopulationGrowthBonus = 1 },
-        ConfessionTechId.WaltherPastoralTheology => new ConfessionModifiers { LawGospelDriftMultiplier = 0.5f },
-        ConfessionTechId.FrancisPieper => new ConfessionModifiers { PreachAdherenceBonus = 10f, PreachManuscriptRefundChance = 0.25f },
+        ConfessionTechId.SynodicalEmphasis => new ConfessionModifiers(),
+        ConfessionTechId.WaltherPastoralTheology => new ConfessionModifiers { PreachSpiritualComfortBonus = 8f },
+        ConfessionTechId.FrancisPieper => new ConfessionModifiers { AdherenceDecayMultiplier = 0.9f },
         ConfessionTechId.MissionarySending => new ConfessionModifiers { MissionaryMovementBonus = 1 },
         ConfessionTechId.JohannSebastianBach => new ConfessionModifiers { SpiritualComfortTurnBonus = 8f, PreachAdherenceBonus = 5f },
         ConfessionTechId.OttoVonGuericke => new ConfessionModifiers { SoldierDefenseBonus = 2, SiegePressureBonus = 2 },
@@ -140,7 +150,7 @@ public class ConfessionModifiers
         ConfessionTechId.DavidChytraeus => new ConfessionModifiers { SoldierDefenseBonus = 1 },
         ConfessionTechId.NikolausSelnecker => new ConfessionModifiers { SpiritualComfortTurnBonus = 4f, CantorComfortBonus = 6f },
         ConfessionTechId.WilhelmLoehe => new ConfessionModifiers { MissionaryMovementBonus = 1, MissionaryAttackBonus = 1 },
-        ConfessionTechId.CTCRReports => new ConfessionModifiers { AdherenceDecayMultiplier = 0.85f },
+        ConfessionTechId.CTCRReports => new ConfessionModifiers { AdherenceDecayMultiplier = 0.85f, MinAdherenceFloor = 50f },
         ConfessionTechId.NormanNagel => new ConfessionModifiers { PreachAdherenceBonus = 8f, LawGospelDriftMultiplier = 0.7f },
         ConfessionTechId.ConcordiaPublishing => new ConfessionModifiers { SettlementManuscriptBonus = 1, PopulationGrowthBonus = 1 },
         ConfessionTechId.WernerHeisenberg => new ConfessionModifiers { SoldierAttackBonus = 1, AdherenceDecayMultiplier = 0.92f },

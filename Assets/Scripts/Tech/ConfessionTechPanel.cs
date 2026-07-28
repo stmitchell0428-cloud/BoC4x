@@ -19,10 +19,12 @@ public class ConfessionTechPanel : MonoBehaviour
     ConfessionTechId? selectedTech;
     Button startResearchButton;
     TextMeshProUGUI startResearchButtonLabel;
-    TechTreeCategory activeTree = TechTreeCategory.Spiritual;
-    Button spiritualTabButton;
+    TechTreeCategory activeTree = TechTreeCategory.Doctrine;
+    Button doctrineTabButton;
+    Button cultureTabButton;
     Button secularTabButton;
-    Image spiritualTabImage;
+    Image doctrineTabImage;
+    Image cultureTabImage;
     Image secularTabImage;
     Transform treeTabsRoot;
 
@@ -87,14 +89,14 @@ public class ConfessionTechPanel : MonoBehaviour
             if (Keyboard.current.leftBracketKey.wasPressedThisFrame ||
                 Keyboard.current.qKey.wasPressedThisFrame)
             {
-                SwitchTree(TechTreeCategory.Spiritual);
+                CycleTree(-1);
                 return;
             }
 
             if (Keyboard.current.rightBracketKey.wasPressedThisFrame ||
                 Keyboard.current.eKey.wasPressedThisFrame)
             {
-                SwitchTree(TechTreeCategory.Secular);
+                CycleTree(1);
                 return;
             }
         }
@@ -137,7 +139,7 @@ public class ConfessionTechPanel : MonoBehaviour
         detailText = UiDetailPane.CreateSidebar(
             panelRoot.transform,
             out detailScroll,
-            "Select a doctrine or culture tech.\n\nSpiritual and secular research run in parallel.",
+            "Select a doctrine tech.\n\nDoctrine, culture, and secular research each run in parallel.",
             uiFont);
         startResearchButton = UiDetailPane.CreateSidebarActionButton(
             panelRoot.transform,
@@ -190,7 +192,7 @@ public class ConfessionTechPanel : MonoBehaviour
         var title = titleGo.AddComponent<TextMeshProUGUI>();
         ApplyFont(title);
         title.raycastTarget = false;
-        title.text = "Research  (T close, Q/E or [ ] switch trees)";
+        title.text = "Research  (T close, Q/E or [ ] cycle trees)";
         title.fontSize = 20f;
         title.alignment = TextAlignmentOptions.Center;
         title.color = new Color(0.92f, 0.88f, 0.72f);
@@ -209,15 +211,16 @@ public class ConfessionTechPanel : MonoBehaviour
         tabsRect.anchoredPosition = new Vector2(-(UiDetailPane.SidebarWidth * 0.5f), -44f);
 
         var layout = tabsGo.AddComponent<HorizontalLayoutGroup>();
-        layout.spacing = 8f;
-        layout.padding = new RectOffset(16, 16, 0, 0);
+        layout.spacing = 4f;
+        layout.padding = new RectOffset(8, 8, 0, 0);
         layout.childAlignment = TextAnchor.MiddleCenter;
         layout.childControlWidth = true;
         layout.childControlHeight = true;
         layout.childForceExpandWidth = true;
         layout.childForceExpandHeight = true;
 
-        spiritualTabButton = CreateTreeTab(tabsGo.transform, "Spiritual", "Doctrine & Culture", OnSpiritualTabClicked, out spiritualTabImage);
+        doctrineTabButton = CreateTreeTab(tabsGo.transform, "Doctrine", "Confession", OnDoctrineTabClicked, out doctrineTabImage);
+        cultureTabButton = CreateTreeTab(tabsGo.transform, "Culture", "Hymnody & Life", OnCultureTabClicked, out cultureTabImage);
         secularTabButton = CreateTreeTab(tabsGo.transform, "Secular", "Science & Civic", OnSecularTabClicked, out secularTabImage);
         UpdateTreeTabVisuals();
     }
@@ -258,9 +261,17 @@ public class ConfessionTechPanel : MonoBehaviour
         return btn;
     }
 
-    void OnSpiritualTabClicked() => SwitchTree(TechTreeCategory.Spiritual);
+    void OnDoctrineTabClicked() => SwitchTree(TechTreeCategory.Doctrine);
+
+    void OnCultureTabClicked() => SwitchTree(TechTreeCategory.Culture);
 
     void OnSecularTabClicked() => SwitchTree(TechTreeCategory.Secular);
+
+    void CycleTree(int delta)
+    {
+        int next = ((int)activeTree + delta + 3) % 3;
+        SwitchTree((TechTreeCategory)next);
+    }
 
     void SwitchTree(TechTreeCategory tree)
     {
@@ -270,9 +281,7 @@ public class ConfessionTechPanel : MonoBehaviour
         UiDetailPane.SetDetailText(
             detailText,
             detailScroll,
-            activeTree == TechTreeCategory.Spiritual
-                ? "Select a doctrine or culture tech.\n\nSpiritual research runs in parallel with secular research."
-                : "Select a science or civic tech.\n\nSecular research runs in parallel with spiritual research.");
+            TreeSelectionHint(tree));
         UpdateTreeTabVisuals();
         RebuildColumnsForActiveTree();
         ResetScrollPosition();
@@ -286,21 +295,27 @@ public class ConfessionTechPanel : MonoBehaviour
         scrollRect.verticalNormalizedPosition = 1f;
     }
 
+    static string TreeSelectionHint(TechTreeCategory tree) => tree switch
+    {
+        TechTreeCategory.Doctrine =>
+            "Select a doctrine tech.\n\nDoctrine, culture, and secular research each run in parallel.",
+        TechTreeCategory.Culture =>
+            "Select a culture tech.\n\nDoctrine, culture, and secular research each run in parallel.",
+        _ =>
+            "Select a science or civic tech.\n\nSecular bonuses stay dormant until adherence exceeds 40%."
+    };
+
     void UpdateTreeTabVisuals()
     {
-        if (spiritualTabImage != null)
-        {
-            spiritualTabImage.color = activeTree == TechTreeCategory.Spiritual
-                ? new Color(0.22f, 0.34f, 0.28f, 1f)
-                : new Color(0.16f, 0.2f, 0.28f, 1f);
-        }
+        SetTabColor(doctrineTabImage, activeTree == TechTreeCategory.Doctrine, new Color(0.22f, 0.34f, 0.28f, 1f));
+        SetTabColor(cultureTabImage, activeTree == TechTreeCategory.Culture, new Color(0.34f, 0.28f, 0.16f, 1f));
+        SetTabColor(secularTabImage, activeTree == TechTreeCategory.Secular, new Color(0.18f, 0.3f, 0.38f, 1f));
+    }
 
-        if (secularTabImage != null)
-        {
-            secularTabImage.color = activeTree == TechTreeCategory.Secular
-                ? new Color(0.18f, 0.3f, 0.38f, 1f)
-                : new Color(0.16f, 0.2f, 0.28f, 1f);
-        }
+    static void SetTabColor(Image image, bool active, Color activeColor)
+    {
+        if (image == null) return;
+        image.color = active ? activeColor : new Color(0.16f, 0.2f, 0.28f, 1f);
     }
 
     void CreateScrollArea()
@@ -406,7 +421,7 @@ public class ConfessionTechPanel : MonoBehaviour
         bool fullRefund = rm.WouldCancelRefundFull(tree);
         if (rm.CancelResearch(tree))
         {
-            string treeLabel = tree == TechTreeCategory.Spiritual ? "Spiritual" : "Secular";
+            string treeLabel = TechTreeRules.DisplayName(tree);
             UiDetailPane.SetDetailText(detailText, detailScroll, fullRefund
                 ? $"{treeLabel} research cancelled.\n\nFull manuscript refund (same turn)."
                 : $"{treeLabel} research cancelled.\n\nHalf the manuscript cost was refunded.");
@@ -466,31 +481,9 @@ public class ConfessionTechPanel : MonoBehaviour
             header.color = new Color(0.7f, 0.78f, 0.95f);
             headerGo.AddComponent<LayoutElement>().preferredHeight = 24f;
 
-            if (activeTree == TechTreeCategory.Spiritual)
-            {
-                if (HasTrackForTier(tier, TechTrack.Doctrine, TechTreeCategory.Spiritual))
-                {
-                    AddTrackHeader(col.transform, "Doctrine");
-                    foreach (var node in ConfessionTechDatabase.ByTier(tier, TechTrack.Doctrine))
-                        CreateTechButton(col.transform, node);
-                }
-
-                if (HasTrackForTier(tier, TechTrack.Culture, TechTreeCategory.Spiritual))
-                {
-                    AddTrackHeader(col.transform, "Culture");
-                    foreach (var node in ConfessionTechDatabase.ByTier(tier, TechTrack.Culture))
-                        CreateTechButton(col.transform, node);
-                }
-            }
-            else
-            {
-                if (HasTrackForTier(tier, TechTrack.Secular, TechTreeCategory.Secular))
-                {
-                    AddTrackHeader(col.transform, "Science & Civic");
-                    foreach (var node in ConfessionTechDatabase.ByTier(tier, TechTrack.Secular))
-                        CreateTechButton(col.transform, node);
-                }
-            }
+            var track = TechTreeRules.TrackForCategory(activeTree);
+            foreach (var node in ConfessionTechDatabase.ByTier(tier, track))
+                CreateTechButton(col.transform, node);
         }
 
         RebuildScrollContent();
@@ -498,39 +491,9 @@ public class ConfessionTechPanel : MonoBehaviour
 
     static bool HasTreeContentForTier(int tier, TechTreeCategory tree)
     {
-        foreach (var _ in ConfessionTechDatabase.ByTier(tier, tree))
+        var track = TechTreeRules.TrackForCategory(tree);
+        foreach (var _ in ConfessionTechDatabase.ByTier(tier, track))
             return true;
-        return false;
-    }
-
-    void AddTrackHeader(Transform parent, string label)
-    {
-        var go = new GameObject($"Track_{label}");
-        go.transform.SetParent(parent, false);
-        var tmp = go.AddComponent<TextMeshProUGUI>();
-        ApplyFont(tmp);
-        tmp.raycastTarget = false;
-        tmp.text = TmpTextSanitizer.Sanitize(label);
-        tmp.fontSize = 12f;
-        tmp.fontStyle = FontStyles.Italic;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color = label switch
-        {
-            "Culture" => new Color(0.85f, 0.72f, 0.45f),
-            "Secular" or "Science & Civic" => new Color(0.55f, 0.78f, 0.88f),
-            _ => new Color(0.55f, 0.65f, 0.8f)
-        };
-        go.AddComponent<LayoutElement>().preferredHeight = 18f;
-    }
-
-    static bool HasTrackForTier(int tier, TechTrack track, TechTreeCategory tree)
-    {
-        foreach (var node in ConfessionTechDatabase.ByTier(tier, track))
-        {
-            if (TechTreeRules.CategoryFor(node.Track) == tree)
-                return true;
-        }
-
         return false;
     }
 
@@ -577,6 +540,7 @@ public class ConfessionTechPanel : MonoBehaviour
             ConfessionTechStatus.Researching => ">",
             ConfessionTechStatus.Available => "+",
             ConfessionTechStatus.AdherenceLocked => "!",
+            ConfessionTechStatus.EraForkLocked => "×",
             _ => "-"
         };
 
@@ -640,12 +604,52 @@ public class ConfessionTechPanel : MonoBehaviour
         sb.AppendLine(node.Description);
         sb.AppendLine();
         sb.AppendLine($"<b>Effect</b>\n{node.EffectSummary}");
+
+        string documentHint = EmphasisDocumentRules.DocumentEmphasisHint(id);
+        if (!string.IsNullOrEmpty(documentHint))
+        {
+            sb.AppendLine();
+            sb.AppendLine(
+                $"<size=12><color=#AABBCC><i>Emphasis is how we live; confessions are what we bind.</i> " +
+                $"{documentHint} Guards on documents stay full.</color></size>");
+        }
+
+        string branchHint = EraBranchRules.FormatBranchStatusHint(id, rm.GetStatus(id));
+        if (!string.IsNullOrEmpty(branchHint))
+        {
+            sb.AppendLine();
+            sb.AppendLine(branchHint);
+        }
+
         sb.AppendLine();
-        sb.AppendLine($"<b>Cost</b>  {node.ManuscriptCost} manuscripts, {node.TurnsToComplete} turns");
+        int studyCost = rm.GetStudyColloquyCostIfNeeded(id);
+        if (studyCost > 0)
+        {
+            sb.AppendLine(
+                $"<b>Cost</b>  {node.ManuscriptCost} manuscripts + {studyCost} study colloquy, {node.TurnsToComplete} turns");
+            sb.AppendLine(
+                $"<size=12><color=#AABBCC><i>{ConfessionalUiVocabulary.FormatStudyColloquyCost(studyCost)}. " +
+                "Completing both era paths in this branch grants full reception.</i></color></size>");
+        }
+        else
+        {
+            sb.AppendLine($"<b>Cost</b>  {node.ManuscriptCost} manuscripts, {node.TurnsToComplete} turns");
+        }
+
+        if (rm.IsIntegratedForkSibling(id) ||
+            (rm.IsTechUnlocked(id) && rm.ForkPotencyFor(id) < EraBranchRules.FullDualPathPotency - 0.01f))
+        {
+            sb.AppendLine();
+            sb.AppendLine(
+                $"<size=12><color=#AABBCC><i>Current reception: {ConfessionalUiVocabulary.FormatEraForkPotencyLabel(rm.ForkPotencyFor(id))}.</i></color></size>");
+        }
 
         if (node.MinAdherence > 0f &&
-            TechTreeRules.CategoryFor(node.Id) == TechTreeCategory.Spiritual)
-            sb.AppendLine($"<b>Adherence</b>  {node.MinAdherence:F0}%+ required (spiritual track)");
+            TechTreeRules.RequiresAdherence(TechTreeRules.CategoryFor(node.Id)))
+        {
+            float required = ConfessionResearchManager.RequiredAdherenceForSpiritual(node);
+            sb.AppendLine($"<b>Adherence</b>  {required:F0}%+ required (doctrine/culture track)");
+        }
 
         if (TechTreeRules.CategoryFor(node.Id) == TechTreeCategory.Secular)
             sb.AppendLine(
@@ -657,6 +661,65 @@ public class ConfessionTechPanel : MonoBehaviour
             sb.AppendLine("<b>Requires</b>");
             foreach (var prereq in node.Prerequisites)
                 sb.AppendLine($"* {ConfessionTechDatabase.Get(prereq).Name}");
+        }
+
+        if (id == ConfessionTechId.SynodicalEmphasis)
+        {
+            sb.AppendLine();
+            sb.AppendLine(
+                "<size=12><color=#AABBCC>Completing this tech opens a choice card: Walther (pastoral) or Pieper (dogmatic) " +
+                "emphasis at full bonus. After Johann Gerhard, the other path can be taken for 4 mss as " +
+                $"{ConfessionalUiVocabulary.SecondaryReception}.</color></size>");
+        }
+
+        if (id == ConfessionTechId.ConfessionalEmphasis)
+        {
+            sb.AppendLine();
+            sb.AppendLine(
+                "<size=12><color=#AABBCC>Opens a confessional emphasis card. Internal (Formula) is always available. " +
+                "<b>Augsburg</b> appears after scout contact with a schismatic bloc; <b>Smalcald</b> after battle with one. " +
+                "Large Catechism unlocks secondary paths; Mutual Conference unlocks integration (deepens secondary reception).</color></size>");
+        }
+
+        if (id == ConfessionTechId.ConfessionsCultureEmphasis)
+        {
+            sb.AppendLine();
+            sb.AppendLine(
+                "<size=12><color=#AABBCC>Opens a culture emphasis card. Chorale liturgy is always available. " +
+                "Gerhardt cross-comfort appears only after your units have fought (any battle). " +
+                "Chorale Tradition or Sacred Hymnody unlock secondary paths; CTCR Reports unlock integration.</color></size>");
+        }
+
+        if (id == ConfessionTechId.SynodicalGovernance)
+        {
+            sb.AppendLine();
+            sb.AppendLine(
+                "<size=12><color=#AABBCC>With primary + secondary confessional emphasis chosen, opens an integration colloquy " +
+                $"(deepens secondary reception, tertiary emphasis, {ConfessionalUiVocabulary.FormatReopenEraForkSiblings()}; " +
+                $"{EraBranchRules.ColloquyCostForTier(ConfessionTechDatabase.Get(Tier2EmphasisManager.ConfessionalIntegrationUnlockTech).Tier)} mss).</color></size>");
+        }
+
+        if (id == ConfessionTechId.CTCRReports)
+        {
+            sb.AppendLine();
+            sb.AppendLine(
+                "<size=12><color=#AABBCC>With primary + secondary culture emphasis chosen, opens an integration colloquy " +
+                $"(deepens secondary reception, {ConfessionalUiVocabulary.FormatReopenEraForkSiblings()}; " +
+                $"{EraBranchRules.ColloquyCostForTier(ConfessionTechDatabase.Get(Tier2EmphasisManager.CultureIntegrationUnlockTech).Tier)} mss).</color></size>");
+        }
+
+        string emphasisLine = SynodicalEmphasisManager.Instance?.FormatStatusLine();
+        if (!string.IsNullOrEmpty(emphasisLine))
+        {
+            sb.AppendLine();
+            sb.AppendLine(emphasisLine);
+        }
+
+        string tier2Line = Tier2EmphasisManager.Instance?.FormatStatusLine();
+        if (!string.IsNullOrEmpty(tier2Line))
+        {
+            sb.AppendLine();
+            sb.AppendLine(tier2Line);
         }
 
         sb.AppendLine();
@@ -679,11 +742,17 @@ public class ConfessionTechPanel : MonoBehaviour
             ConfessionTechStatus.Unlocked => "<color=#88CC88>Already completed.</color>",
             ConfessionTechStatus.Researching => "<color=#FFCC55>Already researching this doctrine.</color>",
             ConfessionTechStatus.AdherenceLocked =>
-                TechTreeRules.CategoryFor(id) == TechTreeCategory.Spiritual
-                    ? $"<color=#CC8866>Need {ConfessionResearchManager.BonusPotencyThreshold:F0}%+ adherence for spiritual research.</color>"
+                TechTreeRules.RequiresAdherence(TechTreeRules.CategoryFor(id))
+                    ? $"<color=#CC8866>Need {ConfessionResearchManager.RequiredAdherenceForSpiritual(ConfessionTechDatabase.Get(id)):F0}%+ adherence for this doctrine/culture tech.</color>"
                     : "<color=#CC8866>Cannot start this research.</color>",
             ConfessionTechStatus.Locked => "<color=#888888>Prerequisites not met.</color>",
-            ConfessionTechStatus.Available => "<color=#FF8888>Not enough manuscripts.</color>",
+            ConfessionTechStatus.EraForkLocked =>
+                $"<color=#CC8866>Era path closed — integration may reopen this sibling for {ConfessionalUiVocabulary.PartialReception}.</color>",
+            ConfessionTechStatus.Available =>
+                rm.RequiresStudyColloquy(id)
+                    ? $"<color=#FF8888>Need {ConfessionTechDatabase.Get(id).ManuscriptCost + rm.GetStudyColloquyCostIfNeeded(id)} mss " +
+                      $"({ConfessionTechDatabase.Get(id).ManuscriptCost} research + {rm.GetStudyColloquyCostIfNeeded(id)} study colloquy).</color>"
+                    : "<color=#FF8888>Not enough manuscripts.</color>",
             _ => "<color=#888888>Cannot start this research.</color>"
         };
     }
@@ -781,6 +850,8 @@ public class ConfessionTechPanel : MonoBehaviour
         {
             BringHeaderAboveScroll();
             UpdateTreeTabVisuals();
+            SynodicalEmphasisManager.Instance?.EnsureSecondaryChoiceVisible();
+            Tier2EmphasisManager.Instance?.EnsurePendingChoicesVisible();
             Refresh();
             RebuildScrollContent();
         }

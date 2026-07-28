@@ -154,6 +154,9 @@ public class PlayerUnitCycle : MonoBehaviour
         var selected = TurnManager.Instance?.SelectedUnit;
         int index = selected != null ? actionable.IndexOf(selected) + 1 : 0;
         if (index <= 0) index = 1;
-        TurnPhaseBanner.Instance?.Refresh($"Unit {index}/{actionable.Count}  |  Tab next  |  End Turn cycles");
+        string suffix = index >= actionable.Count
+            ? "  |  End Turn again to finish turn"
+            : "  |  End Turn cycles";
+        TurnPhaseBanner.Instance?.Refresh($"Unit {index}/{actionable.Count}  |  Tab next{suffix}");
     }
 }

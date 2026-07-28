@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>Staged crises with interactive cards before schism (Decisions 5/19).</summary>
-public class CrisisManager : MonoBehaviour
+public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
 {
     public static CrisisManager Instance { get; private set; }
 
@@ -46,6 +46,10 @@ public class CrisisManager : MonoBehaviour
     }
 
     public void NotifyCardDismissed() => IsAwaitingPlayerChoice = false;
+
+    public void OnChoiceCardDismissed() => NotifyCardDismissed();
+
+    public void OnChoiceCardCancelled() => CancelPendingCardChoice();
 
     public void CancelPendingCardChoice()
     {
@@ -109,7 +113,7 @@ public class CrisisManager : MonoBehaviour
         if (CrisisCardPanel.Instance == null)
             return false;
 
-        if (!CrisisCardPanel.Instance.Show(title, body, choices))
+        if (!CrisisCardPanel.Instance.Show(title, body, choices, this))
             return false;
 
         IsAwaitingPlayerChoice = true;
@@ -577,6 +581,15 @@ public class CrisisManager : MonoBehaviour
     void ResolveControlledSchism()
     {
         var heresy = PickHeresy(CrisisType.DoctrinalDrift);
+        var registry = SchismaticBlocRegistry.Instance;
+        if (registry != null && registry.ActiveCount >= SchismaticBlocRegistry.MaxBlocs)
+        {
+            PresentDissentOverflowCard(
+                heresy,
+                "Controlled separation sought — but no fourth dissent capital remains.");
+            return;
+        }
+
         SchismManager.Instance?.TryTriggerSchism(
             heresy,
             "Controlled separation  -  dissenting party withdrew with less turmoil.",
@@ -587,7 +600,100 @@ public class CrisisManager : MonoBehaviour
 
     void ResolveSchism(HeresyType heresy, string reason)
     {
-        SchismManager.Instance?.TryTriggerSchism(heresy, reason);
+        var registry = SchismaticBlocRegistry.Instance;
+        if (registry != null && registry.ActiveCount >= SchismaticBlocRegistry.MaxBlocs)
+        {
+            PresentDissentOverflowCard(heresy, reason);
+            return;
+        }
+
+        if (SchismManager.Instance?.TryTriggerSchism(heresy, reason) == true)
+        {
+            ClearCrisis();
+            FirstSteps.Instance?.RefreshDashboard();
+            return;
+        }
+
+        PresentDissentOverflowCard(heresy, reason);
+    }
+
+    void PresentDissentOverflowCard(HeresyType heresy, string reason)
+    {
+        var registry = SchismaticBlocRegistry.Instance;
+        var targetBloc = registry?.PickBlocForHeresy(heresy) ?? registry?.PickWeakestBloc();
+        string blocLabel = "a dissenting synod";
+        if (targetBloc != null && registry != null && registry.TryGetBloc(targetBloc.Value, out var record))
+            blocLabel = record.CapitalName;
+
+        var choices = new List<CrisisCardChoice>
+        {
+            new(
+                "Colloquy",
+                "4 mss: Law +4, Gospel +4, adherence +6",
+                () => ResolveOverflowColloquy()),
+            new(
+                $"Feed {blocLabel}",
+                "Rival grows (+pop, +unit); adherence -4",
+                () => ResolveOverflowReinforce(targetBloc, reason)),
+            new(
+                "Internal purge",
+                "Pop -2, Law +10, Gospel -5, adherence +4",
+                () => ResolveOverflowPurge())
+        };
+
+        TryPresentCard(
+            "<color=#FF8844>Crisis  -  Dissent without schism</color>",
+            "Three dissenting synods already stand abroad. The land cannot bear a fourth capital — " +
+            "unrest boils within the synod instead.\n\n" +
+            $"<i>{reason}</i>\n\n" +
+            "Choose how the synod absorbs the overflow.",
+            choices);
+    }
+
+    void ResolveOverflowColloquy()
+    {
+        var faction = FirstSteps.Instance;
+        if (faction != null)
+        {
+            if (faction.scriptureManuscripts >= 4)
+                faction.scriptureManuscripts -= 4;
+            else
+                PopulationSync.ApplyDeltaToPrimaryCity(-1);
+
+            faction.civicRestraint = Mathf.Clamp(faction.civicRestraint + 4f, 0f, 100f);
+            faction.spiritualComfort = Mathf.Clamp(faction.spiritualComfort + 4f, 0f, 100f);
+            faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 6f, 0f, 100f);
+        }
+
+        schismPressure = Mathf.Max(0, schismPressure - 15);
+        SynodLegacyManager.Instance?.TryAward(SynodLegacyTraitId.CrisisSurvivor);
+        ClearCrisis();
+        FirstSteps.Instance?.RefreshDashboard();
+    }
+
+    void ResolveOverflowReinforce(SchismaticBlocId? blocId, string reason)
+    {
+        if (blocId != null)
+            SchismManager.Instance?.ReinforceExistingBloc(blocId.Value, reason);
+        else
+            SchismManager.Instance?.ReinforceWeakestBloc(reason);
+
+        ClearCrisis();
+        FirstSteps.Instance?.RefreshDashboard();
+    }
+
+    void ResolveOverflowPurge()
+    {
+        var faction = FirstSteps.Instance;
+        if (faction != null)
+        {
+            PopulationSync.ApplyDeltaToPrimaryCity(-2);
+            faction.civicRestraint = Mathf.Clamp(faction.civicRestraint + 10f, 0f, 100f);
+            faction.spiritualComfort = Mathf.Clamp(faction.spiritualComfort - 5f, 0f, 100f);
+            faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 4f, 0f, 100f);
+        }
+
+        schismPressure = Mathf.Max(0, schismPressure - 10);
         ClearCrisis();
         FirstSteps.Instance?.RefreshDashboard();
     }

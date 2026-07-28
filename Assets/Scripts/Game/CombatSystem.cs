@@ -36,6 +36,7 @@ public static class CombatSystem
         }
 
         attacker.MarkAttacked();
+        MatchHistory.Instance?.RegisterPlayerCombat(attacker, defender);
         Debug.Log($"Combat: {attacker.Faction} {attacker.Type} hit {defender.Faction} {defender.Type} for {damage} (garrison atk +{GarrisonBonus.GetAttackBonus(attacker)}, def +{GarrisonBonus.GetDefenseBonus(defender)}).");
         MatchController.Instance?.EvaluateConditions();
         return result;

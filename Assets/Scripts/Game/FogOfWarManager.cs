@@ -56,6 +56,7 @@ public class FogOfWarManager : MonoBehaviour
             CityPlacementAdvisor.InvalidateCache();
 
         ApplyToMap();
+        HexSelectionController.Instance?.RefreshNomadicCapitalHighlights();
     }
 
     void RevealAround(HexCoordinates center, int range)
@@ -92,6 +93,31 @@ public class FogOfWarManager : MonoBehaviour
             tile.SetFogVisibility(GetVisibility(tile.Coordinates));
 
         UpdateEntityVisibility();
+        RegisterSchismaticContacts();
+    }
+
+    void RegisterSchismaticContacts()
+    {
+        if (TurnManager.Instance == null || MatchHistory.Instance == null)
+            return;
+
+        foreach (var unit in TurnManager.Instance.GetUnits(FactionId.Schismatic).Where(u => u.IsAlive))
+        {
+            if (IsVisible(unit.HexPosition))
+                MatchHistory.Instance.RegisterSchismaticBlocScoutContact(unit.SchismaticBloc);
+        }
+
+        if (CityManager.Instance == null)
+            return;
+
+        foreach (var city in CityManager.Instance.AllCities)
+        {
+            if (city.Faction != FactionId.Schismatic || city.SchismaticBloc == SchismaticBlocId.None)
+                continue;
+
+            if (IsExplored(city.HexPosition))
+                MatchHistory.Instance.RegisterSchismaticBlocScoutContact(city.SchismaticBloc);
+        }
     }
 
     void UpdateEntityVisibility()

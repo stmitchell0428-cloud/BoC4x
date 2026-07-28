@@ -88,6 +88,40 @@ public class SchismaticBlocRegistry : MonoBehaviour
         return HeresyDatabase.PickHeresyForCrisis(crisis, isRepeat, activeHeresies, pack);
     }
 
+    public SchismaticBlocId? PickBlocForHeresy(HeresyType heresy)
+    {
+        SchismaticBlocId? fallback = null;
+        foreach (var record in activeBlocs.Values)
+        {
+            fallback = record.BlocId;
+            if (record.Heresy == heresy)
+                return record.BlocId;
+        }
+
+        return fallback;
+    }
+
+    public SchismaticBlocId? PickWeakestBloc()
+    {
+        SchismaticBlocId? weakest = null;
+        int lowestPop = int.MaxValue;
+        if (CityManager.Instance == null)
+            return PickBlocForHeresy(HeresyType.None);
+
+        foreach (var record in activeBlocs.Values)
+        {
+            var city = CityManager.Instance.GetAiCity(record.BlocId);
+            int pop = city != null ? city.Population : 0;
+            if (pop < lowestPop)
+            {
+                lowestPop = pop;
+                weakest = record.BlocId;
+            }
+        }
+
+        return weakest;
+    }
+
     public string FormatStatusLine()
     {
         if (activeBlocs.Count == 0)

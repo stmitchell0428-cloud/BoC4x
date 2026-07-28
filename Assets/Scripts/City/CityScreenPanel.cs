@@ -547,6 +547,7 @@ public class CityScreenPanel : MonoBehaviour
             UnitUpgradeStatus.NotOnCity => "o",
             UnitUpgradeStatus.InsufficientManuscripts => "$",
             UnitUpgradeStatus.ClergySlotsFull => "C",
+            UnitUpgradeStatus.NeedsParishChurch => "P",
             _ => "!"
         };
         string cost = $"{def.ManuscriptCost} mss";
@@ -601,7 +602,11 @@ public class CityScreenPanel : MonoBehaviour
         UnitUpgradeStatus.NotOnCity => "<color=#FFCC88>Move selected unit onto this city's hex</color>",
         UnitUpgradeStatus.WrongUnit => "<color=#888888>Selected unit cannot take this upgrade</color>",
         UnitUpgradeStatus.InsufficientManuscripts => "<color=#FF8888>Not enough manuscripts</color>",
-        UnitUpgradeStatus.ClergySlotsFull => "<color=#FFCC88>Clergy roster full  -  replace or expand slots</color>",
+        UnitUpgradeStatus.NeedsParishChurch =>
+            "<color=#FFCC88>Build Parish Church, Seminary, or Cathedral in this cluster first</color>",
+        UnitUpgradeStatus.ClergySlotsFull when def?.ToType == UnitType.Pastor =>
+            "<color=#FFCC88>All pastor slots filled — build another Parish Church for another pastor</color>",
+        UnitUpgradeStatus.ClergySlotsFull => "<color=#FFCC88>Clergy roster full — replace or expand slots</color>",
         UnitUpgradeStatus.Locked when def != null && def.ToType is UnitType.Cantor or UnitType.Chaplain &&
             city != null && !ClergyRoster.HasSeminaryAccess(city)
             => "<color=#888888>Requires Seminary district or Seminary building in cluster</color>",
@@ -1085,6 +1090,7 @@ public class CityScreenPanel : MonoBehaviour
                 UnitUpgradeStatus.NotOnCity => new Color(0.18f, 0.16f, 0.22f, 1f),
                 UnitUpgradeStatus.InsufficientManuscripts => new Color(0.28f, 0.16f, 0.16f, 1f),
                 UnitUpgradeStatus.ClergySlotsFull => new Color(0.28f, 0.22f, 0.14f, 1f),
+                UnitUpgradeStatus.NeedsParishChurch => new Color(0.24f, 0.18f, 0.12f, 1f),
                 _ => new Color(0.14f, 0.14f, 0.16f, 1f)
             };
             if (selectedUpgrade == id)

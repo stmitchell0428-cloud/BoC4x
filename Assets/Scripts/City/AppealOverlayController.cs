@@ -7,6 +7,12 @@ public class AppealOverlayController : MonoBehaviour
 
     public bool IsActive { get; private set; }
 
+    const float ExcellentThreshold = 28f;
+    const float GoodThreshold = 16f;
+
+    int lastExcellentCount;
+    int lastGoodCount;
+
     void Awake() => Instance = this;
 
     void OnDestroy()
@@ -27,8 +33,10 @@ public class AppealOverlayController : MonoBehaviour
         if (!IsActive && selected != null)
             HexSelectionController.Instance?.ShowReachableForUnit(selected);
 
+        TurnPhaseBanner.Instance?.Refresh(IsActive ? BuildBannerMessage() : null);
+
         Debug.Log(IsActive
-            ? "Appeal overlay ON  -  gold/lavender hexes show district/growth potential (G to hide)."
+            ? "Appeal overlay ON  -  gold = best district sites, lavender = good (G to hide)."
             : "Appeal overlay OFF.");
     }
 
@@ -36,6 +44,11 @@ public class AppealOverlayController : MonoBehaviour
     {
         if (!IsActive || HexGridMap.Instance == null || CityManager.Instance == null)
             return;
+
+        HexSelectionController.Instance?.ClearHighlights();
+
+        lastExcellentCount = 0;
+        lastGoodCount = 0;
 
         foreach (var city in CityManager.Instance.GetPlayerCities())
         {
@@ -54,11 +67,32 @@ public class AppealOverlayController : MonoBehaviour
                     continue;
 
                 float score = CityGrowthSystem.ScoreLocalAppealHex(city, hex, snap);
-                if (score >= 42f)
+                if (score >= ExcellentThreshold)
+                {
                     tile.SetHighlight(HighlightKind.AppealExcellent);
-                else if (score >= 28f)
+                    lastExcellentCount++;
+                }
+                else if (score >= GoodThreshold)
+                {
                     tile.SetHighlight(HighlightKind.AppealGood);
+                    lastGoodCount++;
+                }
             }
         }
+
+        TurnPhaseBanner.Instance?.Refresh(BuildBannerMessage());
+    }
+
+    string BuildBannerMessage()
+    {
+        if (lastExcellentCount + lastGoodCount == 0)
+        {
+            return "<color=#DDCC88><b>Appeal map (G)</b></color>  -  " +
+                   "no strong sites yet; expand borders and raise food surplus first";
+        }
+
+        return "<color=#DDCC88><b>Appeal map (G)</b></color>  -  " +
+               $"<color=#EECC55>{lastExcellentCount} excellent</color>, " +
+               $"<color=#AA88DD>{lastGoodCount} good</color> district hexes in synod territory";
     }
 }

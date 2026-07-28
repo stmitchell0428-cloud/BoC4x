@@ -30,6 +30,30 @@ public static class SynodLegacyTraitDatabase
         _ => ""
     };
 
+    /// <summary>Player-facing summary of mechanical bonuses (shown in HUD and legacy picker).</summary>
+    public static string FormatGameplayEffects(SynodLegacyTraitId id) => id switch
+    {
+        SynodLegacyTraitId.GerhardLegacy =>
+            "Softens legalism crises; 15% less Law/Gospel drift each turn",
+        SynodLegacyTraitId.ConcordLegacy =>
+            "Softens antinomian crises; +2 adherence when preaching",
+        SynodLegacyTraitId.CrisisSurvivor =>
+            "8% slower adherence decay; 10% less damage from schismatic units",
+        SynodLegacyTraitId.ConfessionalWitness =>
+            "+2 adherence when preaching; +1 manuscript on settlement/shore tiles each turn",
+        SynodLegacyTraitId.SynodRepute =>
+            "+5 Gospel comfort when preaching; +1 population growth each turn",
+        _ => ""
+    };
+
+    public static string FormatDetailBlock(SynodLegacyTraitId id) =>
+        $"<b>{DisplayName(id)}</b>\n" +
+        $"<size=12><color=#AABBCC><i>{Description(id)}</i></color></size>\n" +
+        $"<size=13><color=#DDEEAA>{FormatGameplayEffects(id)}</color></size>";
+
+    public static string FormatCompactLabel(SynodLegacyTraitId id) =>
+        $"{DisplayName(id)}  -  {FormatGameplayEffects(id)}";
+
     public static ConfessionModifiers ModifiersFor(SynodLegacyTraitId id) => id switch
     {
         SynodLegacyTraitId.GerhardLegacy => new ConfessionModifiers

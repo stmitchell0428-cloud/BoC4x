@@ -118,11 +118,12 @@ public class TurnManager : MonoBehaviour
         if (MatchController.Instance != null && MatchController.Instance.IsMatchOver)
             return;
 
-        if (CrisisManager.Instance != null && CrisisManager.Instance.IsAwaitingPlayerChoice)
+        EndTurnPhaseController.SanitizeStaleChoicePanelsPublic();
+        if (EndTurnPhaseController.TryGetEndTurnBlockReason(out string blockReason))
+        {
+            Debug.LogWarning($"TurnManager.EndTurn blocked: {blockReason}");
             return;
-
-        if (CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible)
-            return;
+        }
 
         if (IsPlayerTurn)
             AdvancePendingPlayerMoveOrders();
