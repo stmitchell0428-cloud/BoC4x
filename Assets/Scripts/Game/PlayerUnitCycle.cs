@@ -151,7 +151,7 @@ public class PlayerUnitCycle : MonoBehaviour
         return TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1)
             .Where(u => u != null && u.IsOnMap && u.Faction == FactionId.LutheranSynod)
             .OrderBy(u => u.Type)
-            .ThenBy(u => u.GetInstanceID())
+            .ThenBy(u => EntityId.ToULong(u.GetEntityId()))
             .ToList();
     }
 
