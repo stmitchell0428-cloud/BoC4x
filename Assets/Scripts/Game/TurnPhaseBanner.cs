@@ -116,11 +116,30 @@ public class TurnPhaseBanner : MonoBehaviour
 
         string progress = MatchController.Instance?.VictoryProgressLabel() ?? "";
         string artEra = ArtEraVisualController.FormatEraLabel();
+        string turnBit = $"Turn {TurnManager.Instance.TurnNumber}";
+        string watch = ChurchYearFlavor.FormatWatchBannerLine();
+
         if (!string.IsNullOrEmpty(extra))
-            bannerText.text = TmpTextSanitizer.Sanitize($"{phase}\n{extra}");
+        {
+            bannerText.text = TmpTextSanitizer.Sanitize(
+                string.IsNullOrEmpty(watch)
+                    ? $"{phase}  |  {turnBit}\n{extra}"
+                    : $"{phase}  |  {turnBit}  |  {watch}\n{extra}");
+        }
+        else if (!string.IsNullOrEmpty(watch))
+        {
+            bannerText.text = TmpTextSanitizer.Sanitize(
+                !string.IsNullOrEmpty(progress)
+                    ? $"{phase}  |  {turnBit}  |  {watch}\n{progress}  |  {artEra}"
+                    : $"{phase}  |  {turnBit}  |  {watch}  |  {artEra}");
+        }
         else if (!string.IsNullOrEmpty(progress))
-            bannerText.text = TmpTextSanitizer.Sanitize($"{phase}  |  {progress}  |  {artEra}");
+        {
+            bannerText.text = TmpTextSanitizer.Sanitize($"{phase}  |  {turnBit}  |  {progress}  |  {artEra}");
+        }
         else
-            bannerText.text = TmpTextSanitizer.Sanitize($"{phase}  |  Turn {TurnManager.Instance.TurnNumber}  |  {artEra}");
+        {
+            bannerText.text = TmpTextSanitizer.Sanitize($"{phase}  |  {turnBit}  |  {artEra}");
+        }
     }
 }

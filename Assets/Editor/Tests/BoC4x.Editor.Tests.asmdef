@@ -4,6 +4,8 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI",
         "BoC4x"
     ],
     "includePlatforms": [

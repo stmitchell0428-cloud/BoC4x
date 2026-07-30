@@ -279,8 +279,29 @@ public class TerrainInfoPanel : MonoBehaviour
             NavalMovementRules.FormatUnitNavalHint(selected) +
             AmphibiousTransport.FormatGalleyCargoHint(selected) +
             AmphibiousTransport.FormatEmbarkHint(selected) +
-            FormatPlacementSelectionAdvice(selected));
+            FormatPlacementSelectionAdvice(selected) +
+            FormatParishCareHint(selected));
         RelayoutPanel();
+    }
+
+    static string FormatParishCareHint(Unit selected)
+    {
+        if (selected == null || !selected.IsAlive || selected.Health >= selected.MaxHealth)
+            return "";
+        if (HexGridMap.Instance == null ||
+            !HexGridMap.Instance.TryGetTile(selected.HexPosition, out var tile) ||
+            tile.Settlement == null)
+            return "";
+
+        var settlement = tile.Settlement;
+        if (settlement.Faction != selected.Faction)
+            return "";
+        if (selected.Faction == FactionId.LutheranSynod && settlement.SynodPlayer != selected.SynodPlayer)
+            return "";
+        if (selected.Faction == FactionId.Schismatic && settlement.SchismaticBloc != selected.SchismaticBloc)
+            return "";
+
+        return $"\n<color=#88CCAA>Parish care: +{UnitRecovery.CityHexHeal} HP at end of turn while resting here.</color>";
     }
 
     static string FormatPlacementSelectionAdvice(Unit selected)
@@ -421,7 +442,8 @@ public class TerrainInfoPanel : MonoBehaviour
                     $"<b>{city.SettlementDisplayName()}</b> ({city.FormatOwnerLabel()}, {city.SettlementKindLabel()})  -  {city.ProductionBreakdownLabel()}\n" +
                     $"{city.CultureSummaryLabel()}  |  {city.TerritorySummaryLabel()}  |  Queue: {city.Production?.ActiveBuildLabel() ?? "None"}\n" +
                     CityLoyaltySystem.FormatHoverLoyaltyBlock(city, selected) +
-                    GarrisonBonus.FormatCityGarrisonHint(city);
+                    GarrisonBonus.FormatCityGarrisonHint(city) +
+                    FormatMilitiaHint(city);
                 if (!string.IsNullOrEmpty(mssLabel))
                     text += $"\n{mssLabel}";
                 text += city.Faction == FactionId.LutheranSynod && city.SynodPlayer == SynodPlayerId.Player1
@@ -462,6 +484,27 @@ public class TerrainInfoPanel : MonoBehaviour
         }
 
         return "";
+    }
+
+    static string FormatMilitiaHint(City city)
+    {
+        if (city == null || city.IsHamlet || HexGridMap.Instance == null)
+            return "";
+
+        int hostiles = 0;
+        foreach (var neighbor in HexGridMap.Instance.GetWrappedNeighbors(city.HexPosition))
+        {
+            if (!HexGridMap.Instance.TryGetTile(neighbor, out var tile))
+                continue;
+            var foe = tile.Occupant;
+            if (foe != null && foe.IsAlive && FactionRelations.IsHostileToCity(foe, city))
+                hostiles++;
+        }
+
+        if (hostiles <= 0)
+            return "\n<color=#BBBBAA>Militia: strikes adjacent hostiles at end of turn.</color>";
+
+        return $"\n<color=#FFCC66>Militia ready: {hostiles} adjacent hostile(s) — citizens will take up arms.</color>";
     }
 
     static Unit FindLeadSynodUnit() => FirstSteps.Instance?.GetFieldSynodUnit();

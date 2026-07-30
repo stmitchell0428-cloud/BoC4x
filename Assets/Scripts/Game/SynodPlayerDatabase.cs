@@ -50,11 +50,11 @@ public static class SynodPlayerDatabase
 
     public static Color ColorFor(SynodPlayerId id) => id switch
     {
-        SynodPlayerId.Player1 => new Color(0.25f, 0.45f, 0.85f),
-        SynodPlayerId.Player2 => new Color(0.18f, 0.58f, 0.78f),
-        SynodPlayerId.Player3 => new Color(0.32f, 0.36f, 0.82f),
-        SynodPlayerId.Player4 => new Color(0.22f, 0.62f, 0.68f),
-        _ => new Color(0.25f, 0.45f, 0.85f)
+        SynodPlayerId.Player1 => new Color(0.18f, 0.52f, 0.98f),
+        SynodPlayerId.Player2 => new Color(0.12f, 0.68f, 0.88f),
+        SynodPlayerId.Player3 => new Color(0.28f, 0.42f, 0.95f),
+        SynodPlayerId.Player4 => new Color(0.16f, 0.72f, 0.76f),
+        _ => new Color(0.18f, 0.52f, 0.98f)
     };
 
     /// <summary>Thematic AI production/combat bias for lobby rival synods.</summary>

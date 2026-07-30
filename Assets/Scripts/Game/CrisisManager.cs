@@ -91,6 +91,8 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
             return false;
         }
 
+        body = ChurchYearFlavor.EnrichEventBody(body, saturatedEmphasis: IsSchismSaturated);
+
         if (TryShowCardImmediate(title, body, choices))
             return true;
 
@@ -363,9 +365,36 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
         PresentDriftCard(stage);
     }
 
+    static bool IsSchismSaturated =>
+        SchismaticBlocRegistry.Instance != null &&
+        SchismaticBlocRegistry.Instance.ActiveCount >= SchismaticBlocRegistry.MaxBlocs;
+
     void PresentLegalismCard()
     {
-        var choices = new List<CrisisCardChoice>
+        if (IsSchismSaturated)
+        {
+            var choices = new List<CrisisCardChoice>
+            {
+                new("Concede discipline", "Pop -2, Law -10, Gospel +8  -  hold the synod",
+                    () => ResolveLegalismConcede()),
+                new("Public debate", "+6 adherence, -5 comfort  -  feeds strongest dissent",
+                    () => ResolveSaturatedRiskChoice(
+                        HeresyType.Legalism,
+                        "Debate over law and gospel fed an existing dissenting party.")),
+                new("Ignore complaints", "Unrest joins an existing dissenting synod",
+                    () => ResolveSchism(HeresyType.Legalism, "Legalistic preaching drove unrest into an existing dissent."))
+            };
+
+            TryPresentCard(
+                "<color=#FF8866>Crisis  -  Legalism (saturated)</color>",
+                "Civic restraint has crushed gospel comfort — and three dissenting synods already stand abroad. " +
+                "There is no fourth capital left to found.\n\n" +
+                "<i>How will the synod absorb this unrest?</i>",
+                choices);
+            return;
+        }
+
+        var openChoices = new List<CrisisCardChoice>
         {
             new("Concede discipline", "Pop -2, Law -10, Gospel +8  -  hold the synod",
                 () => ResolveLegalismConcede()),
@@ -379,12 +408,35 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
             "<color=#FF8866>Crisis  -  Legalism</color>",
             "Civic restraint has crushed gospel comfort. Pastors report empty pews and harsh catechism classes.\n\n" +
             "<i>How will the synod respond?</i>",
-            choices);
+            openChoices);
     }
 
     void PresentAntinomianCard()
     {
-        var choices = new List<CrisisCardChoice>
+        if (IsSchismSaturated)
+        {
+            var choices = new List<CrisisCardChoice>
+            {
+                new("Pastoral counsel", "Pop halved, +12 adherence, comfort reset  -  painful reunion",
+                    () => ResolveAntinomianCounsel()),
+                new("Synod rebuke", "+8 adherence  -  feeds strongest dissent (no new schism)",
+                    () => ResolveSaturatedRiskChoice(
+                        HeresyType.Antinomian,
+                        "Synod rebuke drove unrest into an existing antinomian party.")),
+                new("Let them depart", "Libertines join an existing dissenting synod",
+                    () => ResolveSchism(HeresyType.Antinomian, "Antinomian fracture joined an existing dissent."))
+            };
+
+            TryPresentCard(
+                "<color=#FF8866>Crisis  -  Antinomian drift (saturated)</color>",
+                "Grace without repentance stirs again — but the land already bears three dissenting capitals. " +
+                "A walkout strengthens sisters in error; it cannot found a fourth.\n\n" +
+                "<i>How will the synod respond?</i>",
+                choices);
+            return;
+        }
+
+        var openChoices = new List<CrisisCardChoice>
         {
             new("Pastoral counsel", "Pop halved, +12 adherence, comfort reset  -  painful reunion",
                 () => ResolveAntinomianCounsel()),
@@ -398,7 +450,7 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
             "<color=#FF8866>Crisis  -  Antinomian drift</color>",
             "Spiritual comfort runs high while confessional adherence collapses. Some preach grace without repentance.\n\n" +
             "<i>How will the synod respond?</i>",
-            choices);
+            openChoices);
     }
 
     void PresentDriftCard(CrisisStage stage)
@@ -443,23 +495,50 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
             return;
         }
 
-        var breakingChoices = new List<CrisisCardChoice>
+        if (stage == CrisisStage.Breaking)
         {
-            new("Final appeal", "+6 adherence  -  35% chance to reunite",
-                () => ResolveDriftFinalAppeal()),
-            new("Let them go", "Controlled schism  -  smaller split",
-                () => ResolveControlledSchism()),
-            new("Ignore the split", "Full schism at breaking point",
-                () => ResolveSchism(
-                    PickHeresy(CrisisType.DoctrinalDrift),
-                    $"Doctrinal drift reached breaking point (adherence {FirstSteps.Instance?.ConfessionalAdherence:F0}%)."))
-        };
+            if (IsSchismSaturated)
+            {
+                var saturatedBreaking = new List<CrisisCardChoice>
+                {
+                    new("Final appeal", "+6 adherence  -  35% calm unrest; else feed dissent",
+                        () => ResolveDriftFinalAppeal()),
+                    new("Channel the split", "Unrest reinforces an existing dissenting synod",
+                        () => ResolveControlledSchism()),
+                    new("Ignore the split", "Overflow into existing dissent",
+                        () => ResolveSchism(
+                            PickHeresy(CrisisType.DoctrinalDrift),
+                            $"Doctrinal drift overflowed (adherence {FirstSteps.Instance?.ConfessionalAdherence:F0}%)."))
+                };
 
-        TryPresentCard(
-            "<color=#FF6644>Crisis  -  Breaking point</color>",
-            "The synod cannot hold. Delegates pack their bags. A dissenting capital will be founded unless you act now.\n\n" +
-            "<i>This is the last chance before schism.</i>",
-            breakingChoices);
+                TryPresentCard(
+                    "<color=#FF6644>Crisis  -  Breaking point (saturated)</color>",
+                    "The synod cannot hold — yet three dissenting capitals already stand. " +
+                    "This unrest will strengthen sisters in error, not found a fourth synod.\n\n" +
+                    "<i>Choose how the overflow is absorbed.</i>",
+                    saturatedBreaking);
+                return;
+            }
+
+            var breakingChoices = new List<CrisisCardChoice>
+            {
+                new("Final appeal", "+6 adherence  -  35% chance to reunite",
+                    () => ResolveDriftFinalAppeal()),
+                new("Let them go", "Controlled schism  -  smaller split",
+                    () => ResolveControlledSchism()),
+                new("Ignore the split", "Full schism at breaking point",
+                    () => ResolveSchism(
+                        PickHeresy(CrisisType.DoctrinalDrift),
+                        $"Doctrinal drift reached breaking point (adherence {FirstSteps.Instance?.ConfessionalAdherence:F0}%)."))
+            };
+
+            TryPresentCard(
+                "<color=#FF6644>Crisis  -  Breaking point</color>",
+                "The synod cannot hold. Delegates pack their bags. A dissenting capital will be founded unless you act now.\n\n" +
+                "<i>This is the last chance before schism.</i>",
+                breakingChoices);
+            return;
+        }
     }
 
     void ResolveLegalismConcede()
@@ -484,12 +563,30 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
             faction.spiritualComfort = Mathf.Clamp(faction.spiritualComfort - 5f, 0f, 100f);
         }
 
-        if (Random.value < 0.65f)
+        if (IsSchismSaturated || Random.value < 0.65f)
             ResolveSchism(HeresyType.Legalism, "Debate over law and gospel failed  -  Pharisaic synod schisms.");
         else
         {
             schismPressure = Mathf.Max(0, schismPressure - 20);
             SynodLegacyManager.Instance?.TryAward(SynodLegacyTraitId.CrisisSurvivor);
+            ClearCrisis();
+        }
+
+        FirstSteps.Instance?.RefreshDashboard();
+    }
+
+    void ResolveAntinomianRebuke()
+    {
+        var faction = FirstSteps.Instance;
+        if (faction != null)
+            faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 8f, 0f, 100f);
+
+        if (IsSchismSaturated || Random.value < 0.55f)
+            ResolveSchism(HeresyType.Antinomian, "Synod rebuke provoked antinomian schism.");
+        else
+        {
+            schismPressure = Mathf.Max(0, schismPressure - 20);
+            FirstSteps.Instance?.AddFame(4);
             ClearCrisis();
         }
 
@@ -510,21 +607,15 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
         FirstSteps.Instance?.RefreshDashboard();
     }
 
-    void ResolveAntinomianRebuke()
+    /// <summary>At max blocs: always apply adherence buff then overflow — never a free "no schism" win.</summary>
+    void ResolveSaturatedRiskChoice(HeresyType heresy, string reason)
     {
         var faction = FirstSteps.Instance;
         if (faction != null)
             faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 8f, 0f, 100f);
 
-        if (Random.value < 0.55f)
-            ResolveSchism(HeresyType.Antinomian, "Synod rebuke provoked antinomian schism.");
-        else
-        {
-            schismPressure = Mathf.Max(0, schismPressure - 20);
-            FirstSteps.Instance?.AddFame(4);
-            ClearCrisis();
-        }
-
+        UnionStrifeManager.AddStrife(12);
+        ResolveSchism(heresy, reason);
         FirstSteps.Instance?.RefreshDashboard();
     }
 
@@ -568,6 +659,13 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
             SynodLegacyManager.Instance?.TryAward(SynodLegacyTraitId.CrisisSurvivor);
             ClearCrisis();
         }
+        else if (IsSchismSaturated)
+        {
+            UnionStrifeManager.AddStrife(10);
+            ResolveSchism(
+                PickHeresy(CrisisType.DoctrinalDrift),
+                "Final appeal failed — unrest joined an existing dissent.");
+        }
         else
         {
             ResolveSchism(
@@ -575,6 +673,118 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
                 "Final appeal failed  -  doctrinal dissent schisms.");
         }
 
+        FirstSteps.Instance?.RefreshDashboard();
+    }
+
+    void PresentDissentOverflowCard(HeresyType heresy, string reason)
+    {
+        var registry = SchismaticBlocRegistry.Instance;
+        var targetBloc = registry?.PickBlocForHeresy(heresy) ?? registry?.PickWeakestBloc();
+        string blocLabel = "a dissenting synod";
+        if (targetBloc != null && registry != null && registry.TryGetBloc(targetBloc.Value, out var record))
+            blocLabel = record.CapitalName;
+
+        var weakest = registry?.PickWeakestBloc();
+        bool canReconcile = weakest != null && UnionStrifeManager.CanOfferReconciliation(weakest.Value);
+
+        var choices = new List<CrisisCardChoice>
+        {
+            new(
+                "Colloquy",
+                "6 mss: Law +3, Gospel +3, adherence +4; strife eases",
+                () => ResolveOverflowColloquy()),
+            new(
+                $"Feed {blocLabel}",
+                "Rival grows near you (+pop, +raid unit); adherence -6",
+                () => ResolveOverflowReinforce(targetBloc, reason)),
+            new(
+                "Internal purge",
+                "Pop -3, Law +12, Gospel -8, adherence +3",
+                () => ResolveOverflowPurge())
+        };
+
+        if (canReconcile)
+        {
+            string weakName = registry.TryGetBloc(weakest.Value, out var weakRec)
+                ? weakRec.CapitalName
+                : "weak dissent";
+            choices.Add(new(
+                $"Reconcile {weakName}",
+                "8 mss + adherence check — dissolve weak bloc or they grow stronger",
+                () => ResolveOverflowReconcile(weakest.Value)));
+        }
+
+        TryPresentCard(
+            "<color=#FF8844>Crisis  -  Dissent without schism</color>",
+            "Three dissenting synods already stand abroad. The land cannot bear a fourth capital — " +
+            "unrest boils within the synod and strengthens sisters in error.\n\n" +
+            $"<i>{reason}</i>\n\n" +
+            "Choose how the synod absorbs the overflow.",
+            choices);
+    }
+
+    void ResolveOverflowColloquy()
+    {
+        var faction = FirstSteps.Instance;
+        if (faction != null)
+        {
+            if (faction.scriptureManuscripts >= 6)
+                faction.scriptureManuscripts -= 6;
+            else
+            {
+                PopulationSync.ApplyDeltaToPrimaryCity(-2);
+                faction.scriptureManuscripts = 0;
+            }
+
+            faction.civicRestraint = Mathf.Clamp(faction.civicRestraint + 3f, 0f, 100f);
+            faction.spiritualComfort = Mathf.Clamp(faction.spiritualComfort + 3f, 0f, 100f);
+            faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 4f, 0f, 100f);
+        }
+
+        schismPressure = Mathf.Max(0, schismPressure - 12);
+        UnionStrifeManager.AddStrife(-8);
+        SynodLegacyManager.Instance?.TryAward(SynodLegacyTraitId.CrisisSurvivor);
+        ClearCrisis();
+        FirstSteps.Instance?.RefreshDashboard();
+    }
+
+    void ResolveOverflowReinforce(SchismaticBlocId? blocId, string reason)
+    {
+        if (blocId != null)
+            SchismManager.Instance?.ReinforceExistingBloc(blocId.Value, reason, nearPlayer: true);
+        else
+            SchismManager.Instance?.ReinforceWeakestBloc(reason);
+
+        UnionStrifeManager.AddStrife(8);
+        var faction = FirstSteps.Instance;
+        if (faction != null)
+            faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence - 6f, 0f, 100f);
+
+        ClearCrisis();
+        FirstSteps.Instance?.RefreshDashboard();
+    }
+
+    void ResolveOverflowPurge()
+    {
+        var faction = FirstSteps.Instance;
+        if (faction != null)
+        {
+            PopulationSync.ApplyDeltaToPrimaryCity(-3);
+            faction.civicRestraint = Mathf.Clamp(faction.civicRestraint + 12f, 0f, 100f);
+            faction.spiritualComfort = Mathf.Clamp(faction.spiritualComfort - 8f, 0f, 100f);
+            faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 3f, 0f, 100f);
+        }
+
+        schismPressure = Mathf.Max(0, schismPressure - 8);
+        UnionStrifeManager.AddStrife(6);
+        ClearCrisis();
+        FirstSteps.Instance?.RefreshDashboard();
+    }
+
+    void ResolveOverflowReconcile(SchismaticBlocId blocId)
+    {
+        UnionStrifeManager.TryReconcileBloc(blocId);
+        ClearCrisis();
         FirstSteps.Instance?.RefreshDashboard();
     }
 
@@ -615,87 +825,6 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
         }
 
         PresentDissentOverflowCard(heresy, reason);
-    }
-
-    void PresentDissentOverflowCard(HeresyType heresy, string reason)
-    {
-        var registry = SchismaticBlocRegistry.Instance;
-        var targetBloc = registry?.PickBlocForHeresy(heresy) ?? registry?.PickWeakestBloc();
-        string blocLabel = "a dissenting synod";
-        if (targetBloc != null && registry != null && registry.TryGetBloc(targetBloc.Value, out var record))
-            blocLabel = record.CapitalName;
-
-        var choices = new List<CrisisCardChoice>
-        {
-            new(
-                "Colloquy",
-                "4 mss: Law +4, Gospel +4, adherence +6",
-                () => ResolveOverflowColloquy()),
-            new(
-                $"Feed {blocLabel}",
-                "Rival grows (+pop, +unit); adherence -4",
-                () => ResolveOverflowReinforce(targetBloc, reason)),
-            new(
-                "Internal purge",
-                "Pop -2, Law +10, Gospel -5, adherence +4",
-                () => ResolveOverflowPurge())
-        };
-
-        TryPresentCard(
-            "<color=#FF8844>Crisis  -  Dissent without schism</color>",
-            "Three dissenting synods already stand abroad. The land cannot bear a fourth capital — " +
-            "unrest boils within the synod instead.\n\n" +
-            $"<i>{reason}</i>\n\n" +
-            "Choose how the synod absorbs the overflow.",
-            choices);
-    }
-
-    void ResolveOverflowColloquy()
-    {
-        var faction = FirstSteps.Instance;
-        if (faction != null)
-        {
-            if (faction.scriptureManuscripts >= 4)
-                faction.scriptureManuscripts -= 4;
-            else
-                PopulationSync.ApplyDeltaToPrimaryCity(-1);
-
-            faction.civicRestraint = Mathf.Clamp(faction.civicRestraint + 4f, 0f, 100f);
-            faction.spiritualComfort = Mathf.Clamp(faction.spiritualComfort + 4f, 0f, 100f);
-            faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 6f, 0f, 100f);
-        }
-
-        schismPressure = Mathf.Max(0, schismPressure - 15);
-        SynodLegacyManager.Instance?.TryAward(SynodLegacyTraitId.CrisisSurvivor);
-        ClearCrisis();
-        FirstSteps.Instance?.RefreshDashboard();
-    }
-
-    void ResolveOverflowReinforce(SchismaticBlocId? blocId, string reason)
-    {
-        if (blocId != null)
-            SchismManager.Instance?.ReinforceExistingBloc(blocId.Value, reason);
-        else
-            SchismManager.Instance?.ReinforceWeakestBloc(reason);
-
-        ClearCrisis();
-        FirstSteps.Instance?.RefreshDashboard();
-    }
-
-    void ResolveOverflowPurge()
-    {
-        var faction = FirstSteps.Instance;
-        if (faction != null)
-        {
-            PopulationSync.ApplyDeltaToPrimaryCity(-2);
-            faction.civicRestraint = Mathf.Clamp(faction.civicRestraint + 10f, 0f, 100f);
-            faction.spiritualComfort = Mathf.Clamp(faction.spiritualComfort - 5f, 0f, 100f);
-            faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 4f, 0f, 100f);
-        }
-
-        schismPressure = Mathf.Max(0, schismPressure - 10);
-        ClearCrisis();
-        FirstSteps.Instance?.RefreshDashboard();
     }
 
     HeresyType PickHeresy(CrisisType crisis)

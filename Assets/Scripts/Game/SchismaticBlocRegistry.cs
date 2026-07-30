@@ -78,6 +78,37 @@ public class SchismaticBlocRegistry : MonoBehaviour
         return null;
     }
 
+    public bool TryDissolveBloc(SchismaticBlocId blocId)
+    {
+        if (!activeBlocs.TryGetValue(blocId, out var record))
+            return false;
+
+        if (TurnManager.Instance != null)
+        {
+            foreach (var unit in TurnManager.Instance.GetUnits(FactionId.Schismatic))
+            {
+                if (unit == null || !unit.IsAlive || unit.SchismaticBloc != blocId)
+                    continue;
+                unit.TakeDamage(unit.MaxHealth);
+            }
+        }
+
+        var city = CityManager.Instance?.GetAiCity(blocId);
+        if (city != null && city.Faction == FactionId.Schismatic)
+            city.Capture(FactionId.LutheranSynod, SynodPlayerId.Player1);
+
+        activeBlocs.Remove(blocId);
+        Debug.LogWarning($"Schismatic bloc {blocId} ({record.CapitalName}) dissolved.");
+        return true;
+    }
+
+    public void UnregisterBloc(SchismaticBlocId blocId)
+    {
+        if (blocId == SchismaticBlocId.None)
+            return;
+        activeBlocs.Remove(blocId);
+    }
+
     public HeresyType PickHeresyForCrisis(CrisisType crisis, bool isRepeat)
     {
         var activeHeresies = new HashSet<HeresyType>();

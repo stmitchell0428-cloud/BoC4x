@@ -528,7 +528,9 @@ public static class CityGrowthSystem
 
     public static DistrictSiteOffer? FindBestDistrictOffer(City parent, int surplusStreak)
     {
-        if (parent == null || parent.IsHamlet || CityManager.Instance == null || HexGridMap.Instance == null)
+        if (parent == null || parent.IsHamlet ||
+            CityManager.Instance == null || HexGridMap.Instance == null ||
+            TerritoryManager.Instance == null)
             return null;
         if (surplusStreak < RequiredSurplusStreakForDistrict(parent))
             return null;
@@ -540,13 +542,14 @@ public static class CityGrowthSystem
         if (snap.FoodSurplus <= 0 || snap.BlendedAppeal < MigrationAppealThreshold)
             return null;
 
+        var territory = TerritoryManager.Instance.GetTerritory(parent);
+        if (territory == null || territory.Count == 0)
+            return null;
+
         DistrictSiteOffer? best = null;
         float bestScore = 0f;
 
-        if (!TerritoryManager.Instance.GetTerritory(parent).Any())
-            return null;
-
-        foreach (var hex in TerritoryManager.Instance.GetTerritory(parent))
+        foreach (var hex in territory)
         {
             if (!CityManager.Instance.IsValidHamletDistrictSite(hex, parent))
                 continue;

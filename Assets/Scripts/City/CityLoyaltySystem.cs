@@ -62,7 +62,63 @@ public static class CityLoyaltySystem
             return false;
 
         var occupier = tile.Occupant;
-        return occupier != null && occupier.IsAlive && FactionRelations.IsHostileToCity(occupier, city);
+        if (occupier != null && occupier.IsAlive && FactionRelations.IsHostileToCity(occupier, city))
+            return true;
+
+        // Walled cities are besieged from adjacent hexes.
+        if (CityDefenses.HasWalls(city))
+        {
+            foreach (var neighbor in HexGridMap.Instance.GetWrappedNeighbors(city.HexPosition))
+            {
+                if (!HexGridMap.Instance.TryGetTile(neighbor, out var nTile))
+                    continue;
+                var foe = nTile.Occupant;
+                if (foe != null && foe.IsAlive && FactionRelations.IsHostileToCity(foe, city) &&
+                    IsMartialOccupier(foe))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static void ProcessEndTurnOccupation(FactionId occupierFaction)
+    {
+        if (HexGridMap.Instance == null || CityManager.Instance == null || TurnManager.Instance == null)
+            return;
+
+        foreach (var unit in TurnManager.Instance.GetUnits(occupierFaction))
+        {
+            if (!unit.IsAlive || !IsMartialOccupier(unit))
+                continue;
+
+            if (!HexGridMap.Instance.TryGetTile(unit.HexPosition, out var tile))
+                continue;
+
+            if (tile.Settlement != null &&
+                tile.Settlement.Faction != occupierFaction &&
+                tile.Occupant == unit &&
+                CityDefenses.CanPressCityFrom(unit, tile.Settlement))
+            {
+                TryApplyPressure(unit, tile.Settlement, isPreach: false);
+                continue;
+            }
+
+            // Adjacent pressure vs walled cities.
+            foreach (var neighbor in HexGridMap.Instance.GetWrappedNeighbors(unit.HexPosition))
+            {
+                if (!HexGridMap.Instance.TryGetTile(neighbor, out var nTile) || nTile.Settlement == null)
+                    continue;
+                var city = nTile.Settlement;
+                if (city.Faction == occupierFaction)
+                    continue;
+                if (!CityDefenses.CanPressCityFrom(unit, city))
+                    continue;
+
+                TryApplyPressure(unit, city, isPreach: false);
+                break;
+            }
+        }
     }
 
     public static float DisplayLoyalty(City city)
@@ -146,29 +202,6 @@ public static class CityLoyaltySystem
         return false;
     }
 
-    public static void ProcessEndTurnOccupation(FactionId occupierFaction)
-    {
-        if (HexGridMap.Instance == null || CityManager.Instance == null || TurnManager.Instance == null)
-            return;
-
-        foreach (var unit in TurnManager.Instance.GetUnits(occupierFaction))
-        {
-            if (!unit.IsAlive || !IsMartialOccupier(unit))
-                continue;
-
-            if (!HexGridMap.Instance.TryGetTile(unit.HexPosition, out var tile) || tile.Settlement == null)
-                continue;
-
-            var city = tile.Settlement;
-            if (city.Faction == occupierFaction)
-                continue;
-            if (tile.Occupant != unit)
-                continue;
-
-            TryApplyPressure(unit, city, isPreach: false);
-        }
-    }
-
     public static string FormatLoyaltyBar(float loyalty, int width = 10)
     {
         loyalty = Mathf.Clamp(loyalty, 0f, 100f);
@@ -190,6 +223,8 @@ public static class CityLoyaltySystem
         if (city.Faction != FactionId.LutheranSynod)
         {
             sb.Append("  -  siege or preach to capture");
+            if (CityDefenses.HasWalls(city))
+                sb.Append("\n<size=11><color=#AABBCC>Walls hold — besiege from adjacent hexes until loyalty falls.</color></size>");
             float fortMod = GetFortificationModifier(city);
             if (fortMod < 1f)
             {
@@ -199,6 +234,8 @@ public static class CityLoyaltySystem
         }
         else if (IsCityUnderEnemyOccupation(city))
             sb.Append("  -  <color=#FFCC66>under siege</color>");
+        else if (CityDefenses.HasWalls(city))
+            sb.Append("\n<size=11><color=#AABBCC>Walls hold — hostiles cannot enter until loyalty falls.</color></size>");
 
         if (selectedUnit != null && selectedUnit.Faction == FactionId.LutheranSynod && city.Faction != selectedUnit.Faction)
         {

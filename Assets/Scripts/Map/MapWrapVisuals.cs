@@ -9,8 +9,9 @@ public class MapWrapVisuals : MonoBehaviour
 {
     public static MapWrapVisuals Instance { get; private set; }
 
-    const int MinEdgeMargin = 8;
-    const int MaxEdgeMargin = 16;
+    const int MinEdgeMargin = 6;
+    const int MaxEdgeMargin = 10;
+    const float ViewPaddingHexes = 3f;
 
     Transform wrapRoot;
     readonly Dictionary<HexTile, List<TileClone>> tileClones = new();
@@ -21,6 +22,7 @@ public class MapWrapVisuals : MonoBehaviour
         public SpriteRenderer Terrain;
         public SpriteRenderer Resource;
         public SpriteRenderer Worked;
+        public Vector3 LocalOffset;
     }
 
     struct EntityClone
@@ -72,18 +74,22 @@ public class MapWrapVisuals : MonoBehaviour
         var srcTerrain = tile.GetComponent<SpriteRenderer>();
         var srcResource = FindChildSprite(tile.transform, "ResourceMarker");
         var srcWorked = FindChildSprite(tile.transform, "WorkedRing");
+        var map = HexGridMap.Instance;
 
         foreach (var clone in clones)
         {
+            bool inView = map != null && IsCloneNearCamera(tile.transform.position + map.transform.TransformVector(clone.LocalOffset));
+
             if (srcTerrain != null && clone.Terrain != null)
             {
                 clone.Terrain.sprite = srcTerrain.sprite;
                 clone.Terrain.color = srcTerrain.color;
                 clone.Terrain.sortingOrder = srcTerrain.sortingOrder;
+                clone.Terrain.enabled = inView && srcTerrain.enabled;
             }
 
-            SyncOptionalSprite(clone.Resource, srcResource);
-            SyncOptionalSprite(clone.Worked, srcWorked);
+            SyncOptionalSprite(clone.Resource, srcResource, inView);
+            SyncOptionalSprite(clone.Worked, srcWorked, inView);
         }
     }
 
@@ -96,6 +102,10 @@ public class MapWrapVisuals : MonoBehaviour
         var live = new HashSet<Transform>();
         int margin = ComputeEdgeMargin(map);
         Vector3 period = map.WrapPeriodLocal;
+
+        // Keep tile clone visibility tied to the current camera each frame.
+        foreach (var pair in tileClones)
+            SyncTile(pair.Key);
 
         foreach (var unit in FindObjectsByType<Unit>())
         {
@@ -158,22 +168,24 @@ public class MapWrapVisuals : MonoBehaviour
         for (int i = 0; i < offsets.Count; i++)
         {
             var clone = clones[i];
-            clone.Root.localPosition = map.transform.InverseTransformPoint(source.position) + offsets[i];
+            var localPos = map.transform.InverseTransformPoint(source.position) + offsets[i];
+            clone.Root.localPosition = localPos;
             clone.Root.localRotation = source.localRotation;
             clone.Root.localScale = source.lossyScale;
             clone.Sprite.sprite = srcSprite.sprite;
             clone.Sprite.color = srcSprite.color;
             clone.Sprite.sortingOrder = srcSprite.sortingOrder + 1;
-            clone.Sprite.enabled = srcSprite.enabled;
+            bool inView = IsCloneNearCamera(map.transform.TransformPoint(localPos));
+            clone.Sprite.enabled = srcSprite.enabled && inView;
         }
     }
 
-    static void SyncOptionalSprite(SpriteRenderer clone, SpriteRenderer source)
+    static void SyncOptionalSprite(SpriteRenderer clone, SpriteRenderer source, bool inView)
     {
         if (clone == null)
             return;
 
-        if (source == null || !source.enabled)
+        if (!inView || source == null || !source.enabled)
         {
             clone.enabled = false;
             return;
@@ -226,7 +238,13 @@ public class MapWrapVisuals : MonoBehaviour
             worked.sortingOrder = srcWorked.sortingOrder;
         }
 
-        return new TileClone { Terrain = terrain, Resource = resource, Worked = worked };
+        return new TileClone
+        {
+            Terrain = terrain,
+            Resource = resource,
+            Worked = worked,
+            LocalOffset = localOffset
+        };
     }
 
     static List<Vector3> CollectOffsets(HexCoordinates coords, int margin, Vector3 period, HexGridMap map)
@@ -274,14 +292,32 @@ public class MapWrapVisuals : MonoBehaviour
     static int ComputeEdgeMargin(HexGridMap map)
     {
         var cam = Camera.main;
-        if (cam == null || !cam.orthographic)
-            return 12;
+        int margin = 8;
+        if (cam != null && cam.orthographic)
+        {
+            float halfH = cam.orthographicSize;
+            float halfW = halfH * cam.aspect;
+            int marginQ = Mathf.CeilToInt(halfW / (map.HexSize * 1.5f)) + 2;
+            int marginR = Mathf.CeilToInt(halfH / (map.HexSize * Mathf.Sqrt(3f))) + 2;
+            margin = Mathf.Max(marginQ, marginR);
+        }
 
-        float halfH = cam.orthographicSize;
+        // Never clone more than ~1/5 of the map — large margins look like duplicate worlds.
+        int maxByMap = Mathf.Max(MinEdgeMargin, Mathf.Min(map.gridWidthCols, map.gridHeightRows) / 5);
+        return Mathf.Clamp(margin, MinEdgeMargin, Mathf.Min(MaxEdgeMargin, maxByMap));
+    }
+
+    static bool IsCloneNearCamera(Vector3 worldPos)
+    {
+        var cam = Camera.main;
+        if (cam == null || !cam.orthographic)
+            return true;
+
+        float pad = ViewPaddingHexes * (HexGridMap.Instance != null ? HexGridMap.Instance.HexSize : 1f);
+        float halfH = cam.orthographicSize + pad;
         float halfW = halfH * cam.aspect;
-        int marginQ = Mathf.CeilToInt(halfW / (map.HexSize * 1.5f)) + 3;
-        int marginR = Mathf.CeilToInt(halfH / (map.HexSize * Mathf.Sqrt(3f))) + 3;
-        return Mathf.Clamp(Mathf.Max(marginQ, marginR), MinEdgeMargin, MaxEdgeMargin);
+        var c = cam.transform.position;
+        return Mathf.Abs(worldPos.x - c.x) <= halfW && Mathf.Abs(worldPos.y - c.y) <= halfH;
     }
 
     void EnsureWrapRoot(Transform parent)

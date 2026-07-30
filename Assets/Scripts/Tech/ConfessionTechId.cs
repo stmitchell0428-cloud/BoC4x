@@ -38,8 +38,16 @@ public static class TechTreeRules
     public static string DisplayName(TechTreeCategory category) => category switch
     {
         TechTreeCategory.Doctrine => "Doctrine",
-        TechTreeCategory.Culture => "Culture",
-        _ => "Secular"
+        TechTreeCategory.Culture => "Hymnody",
+        _ => "Civic"
+    };
+
+    /// <summary>Longer flavor for tooltips / detail text; HUD and tabs use <see cref="DisplayName"/>.</summary>
+    public static string FlavorSubtitle(TechTreeCategory category) => category switch
+    {
+        TechTreeCategory.Doctrine => "Confessions & doctrine",
+        TechTreeCategory.Culture => "Hymnody & life",
+        _ => "Science & civic vocation"
     };
 }
 
@@ -93,6 +101,7 @@ public enum ConfessionTechId
 
     // Tier 1  -  Civic crafts (traditional 4X)
     EarthenVessels,
+    ParishWalls,
     // Tier 2  -  Civic economy & early war
     ParishGranary,
     ShepherdsSling,

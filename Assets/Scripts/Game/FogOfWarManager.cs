@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using UnityEngine;
 
 public class FogOfWarManager : MonoBehaviour
@@ -8,6 +9,7 @@ public class FogOfWarManager : MonoBehaviour
 
     readonly HashSet<HexCoordinates> explored = new();
     readonly HashSet<HexCoordinates> visible = new();
+    readonly HashSet<ulong> previouslyVisibleHostiles = new();
 
     void Awake() => Instance = this;
 
@@ -124,6 +126,9 @@ public class FogOfWarManager : MonoBehaviour
     {
         if (TurnManager.Instance == null) return;
 
+        var currentlyVisibleHostiles = new HashSet<ulong>();
+        var newlySighted = new List<Unit>();
+
         foreach (var faction in new[] { FactionId.LutheranSynod, FactionId.Schismatic })
         {
             foreach (var unit in TurnManager.Instance.GetUnits(faction).Where(u => u.IsAlive))
@@ -133,8 +138,21 @@ public class FogOfWarManager : MonoBehaviour
                         unit.SynodPlayer != SynodPlayerId.Player1 &&
                         !IsVisible(unit.HexPosition);
                 unit.SetFogHidden(hide);
+
+                if (IsHostileToPlayer(unit) && !hide)
+                {
+                    ulong id = EntityId.ToULong(unit.GetEntityId());
+                    currentlyVisibleHostiles.Add(id);
+                    if (!previouslyVisibleHostiles.Contains(id))
+                        newlySighted.Add(unit);
+                }
             }
         }
+
+        AnnounceNewlySightedHostiles(newlySighted);
+        previouslyVisibleHostiles.Clear();
+        foreach (var id in currentlyVisibleHostiles)
+            previouslyVisibleHostiles.Add(id);
 
         if (CityManager.Instance == null) return;
 
@@ -146,5 +164,33 @@ public class FogOfWarManager : MonoBehaviour
                     !IsExplored(city.HexPosition);
             city.SetFogHidden(hide);
         }
+    }
+
+    static bool IsHostileToPlayer(Unit unit) =>
+        unit != null &&
+        (unit.Faction == FactionId.Schismatic ||
+         (unit.Faction == FactionId.LutheranSynod && unit.SynodPlayer != SynodPlayerId.Player1));
+
+    static void AnnounceNewlySightedHostiles(List<Unit> newlySighted)
+    {
+        if (newlySighted == null || newlySighted.Count == 0)
+            return;
+
+        var sb = new StringBuilder();
+        sb.Append("<color=#FF6644><b>Enemy sighted!</b></color>  ");
+        for (int i = 0; i < newlySighted.Count; i++)
+        {
+            var unit = newlySighted[i];
+            if (i > 0) sb.Append("  |  ");
+            sb.Append(unit.FormatOwnerLabel())
+                .Append(' ')
+                .Append(Unit.TypeDisplayName(unit.Type))
+                .Append(" at ")
+                .Append(unit.HexPosition);
+            Debug.LogWarning(
+                $"Enemy sighted: {unit.FormatOwnerLabel()} {Unit.TypeDisplayName(unit.Type)} at {unit.HexPosition}.");
+        }
+
+        TurnPhaseBanner.Instance?.Refresh(sb.ToString());
     }
 }

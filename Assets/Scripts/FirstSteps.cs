@@ -119,14 +119,42 @@ public class FirstSteps : MonoBehaviour
 
     void Awake() => Instance = this;
 
+    void OnEnable() => TrySubscribeTurnStarted();
+
+    void Start()
+    {
+        TrySubscribeTurnStarted();
+        RefreshDashboard();
+    }
+
+    void OnDisable()
+    {
+        if (TurnManager.Instance != null)
+            TurnManager.Instance.TurnStarted -= OnTurnStarted;
+    }
+
     void OnDestroy()
     {
+        if (TurnManager.Instance != null)
+            TurnManager.Instance.TurnStarted -= OnTurnStarted;
         if (Instance == this)
             Instance = null;
     }
 
-    void Start()
+    void TrySubscribeTurnStarted()
     {
+        if (TurnManager.Instance == null)
+            return;
+
+        TurnManager.Instance.TurnStarted -= OnTurnStarted;
+        TurnManager.Instance.TurnStarted += OnTurnStarted;
+    }
+
+    void OnTurnStarted()
+    {
+        if (TurnManager.Instance == null || !TurnManager.Instance.IsPlayerTurn)
+            return;
+
         RefreshDashboard();
     }
 
@@ -348,6 +376,7 @@ public class FirstSteps : MonoBehaviour
         string factionLine = TurnManager.Instance
             ? $"Lutheran Synod  |  Turn {turn}"
             : $"Turn {turn}";
+        string churchYearLine = ChurchYearFlavor.FormatDashboardLine();
 
         if (queueReviewUIText != null)
             queueReviewUIText.text = TmpTextSanitizer.Sanitize(ActionQueueHud.FormatDashboardBlock());
@@ -357,6 +386,7 @@ public class FirstSteps : MonoBehaviour
             int cityPop = PopulationSync.SumSynodPopulation();
             populationUIText.text = TmpTextSanitizer.Sanitize(
                 $"{factionLine}\n" +
+                $"{churchYearLine}\n" +
                 $"<b>Synod population {population}</b>" +
                 (cityPop != population ? $"  (cities total {cityPop})" : "") + "\n" +
                 $"{synodStatus}");
@@ -387,6 +417,8 @@ public class FirstSteps : MonoBehaviour
             string crisis = CrisisManager.Instance?.FormatCrisisLine();
             if (string.IsNullOrEmpty(crisis))
                 crisis = PastoralBriefingManager.Instance?.FormatStatusLine();
+            if (string.IsNullOrEmpty(crisis))
+                crisis = UnionStrifeManager.FormatStatusLine();
             if (string.IsNullOrEmpty(crisis))
                 crisis = FormatWaltherCrisisWarning();
             waltherDashboardUIText.text = TmpTextSanitizer.Sanitize(
@@ -472,6 +504,7 @@ public class FirstSteps : MonoBehaviour
         ChaplainSpecialty.ProcessEndTurn(FactionId.LutheranSynod);
         EpiscopalOversight.ProcessEndTurn(FactionId.LutheranSynod);
         CrisisManager.Instance?.OnPlayerTurnEnded();
+        UnionStrifeManager.ProcessPlayerEndTurn();
         MatchController.Instance?.OnPlayerTurnEnded();
         SynodDiplomacyManager.Instance?.ProcessTurnEnd();
         TurnPhaseBanner.Instance?.Refresh();
@@ -488,6 +521,8 @@ public class FirstSteps : MonoBehaviour
         RunMigrationPhase();
         RunProductionPhase();
         RunConfessionalPhase();
+        CityMilitia.ProcessSynodPlayerEndTurn(SynodPlayerId.Player1);
+        UnitRecovery.ProcessPlayerEndTurn();
     }
 
     void ApplyConfessionalTurnLogic()
@@ -864,10 +899,21 @@ public class FirstSteps : MonoBehaviour
             sections.Add("<size=13>No trade links or rival diplomacy yet.</size>");
 
         sections.Add("");
+        sections.Add("<color=#DDCC88><b>CHURCH YEAR</b></color>");
+        sections.Add(ChurchYearFlavor.FormatDashboardLine());
+        sections.Add(
+            "<size=12><color=#AABBCC>Feasts, festivals, and commemorations follow the Lutheran Service Book calendar " +
+            "(LCMS Worship, historic 1-year dates). Each turn is about one synodical month from St. Andrew / Advent " +
+            "(~12 turns per church year). <b>WATCH</b> turns mark the eight principal feasts of Christ " +
+            "(LSB p. xi boldface) when they fall in that month.</color></size>");
+
+        sections.Add("");
         sections.Add("<color=#DDCC88><b>WALTHER DIALECTIC</b></color>");
         string crisis = CrisisManager.Instance?.FormatCrisisLine();
         if (string.IsNullOrEmpty(crisis))
             crisis = PastoralBriefingManager.Instance?.FormatStatusLine();
+        if (string.IsNullOrEmpty(crisis))
+            crisis = UnionStrifeManager.FormatStatusLine();
         if (string.IsNullOrEmpty(crisis))
             crisis = FormatWaltherCrisisWarning();
         sections.Add($"Civic Restraint (Law)  {civicRestraint:F0}%  |  Spiritual Comfort (Gospel)  {spiritualComfort:F0}%");
@@ -875,6 +921,12 @@ public class FirstSteps : MonoBehaviour
             sections.Add(crisis);
         sections.Add("<size=12><color=#AABBCC>High Law + low Gospel risks legalism; high Gospel + low adherence risks antinomian schism.</color></size>");
         sections.Add("<size=12><color=#AABBCC>Pastoral briefings (Luther, Walther, Gerhard, etc.) appear every few turns when Law and Gospel drift — choose a response to steer the dialectic.</color></size>");
+        if (UnionStrifeManager.IsSaturated)
+        {
+            sections.Add(
+                "<size=12><color=#EEAA66>At the schism cap, church-year witnesses deepen overflow and union-strife cards — " +
+                "three sisters in error already stand; the calendar teaches fidelity without a fourth capital.</color></size>");
+        }
         string emphasis = SynodicalEmphasisManager.Instance?.FormatStatusLine();
         if (!string.IsNullOrEmpty(emphasis))
             sections.Add(emphasis);

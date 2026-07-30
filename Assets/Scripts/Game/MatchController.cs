@@ -57,6 +57,12 @@ public class MatchController : MonoBehaviour
         EvaluateConditions();
     }
 
+    public void ForceSchismaticVictory(string detail)
+    {
+        if (IsMatchOver) return;
+        EndMatch(MatchResult.SchismaticVictory, detail);
+    }
+
     public void EvaluateConditions()
     {
         if (IsMatchOver) return;

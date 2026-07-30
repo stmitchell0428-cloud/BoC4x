@@ -158,6 +158,7 @@ public class ConfessionModifiers
         ConfessionTechId.KurtMarquart => new ConfessionModifiers { PreachAdherenceBonus = 5f, SchismaticDamageTakenMultiplier = 0.85f },
 
         ConfessionTechId.EarthenVessels => new ConfessionModifiers { SettlementPopulationBonus = 1 },
+        ConfessionTechId.ParishWalls => new ConfessionModifiers { SoldierDefenseBonus = 1 },
         ConfessionTechId.ParishGranary => new ConfessionModifiers { PopulationGrowthBonus = 1, SettlementPopulationBonus = 1 },
         ConfessionTechId.ShepherdsSling => new ConfessionModifiers { SoldierAttackBonus = 1 },
         _ => new ConfessionModifiers()

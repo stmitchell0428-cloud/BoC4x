@@ -17,6 +17,12 @@ public static class ConfessionalUiVocabulary
     public static string FormatEraPathClosed(string chosenName, string integrationName) =>
         $"Era path closed — committed to <b>{chosenName}</b>. {FormatIntegratedSiblingReopen(integrationName)}";
 
+    public static string FormatEraForkChoice(string siblingName) =>
+        $"<b>Era fork</b> — choosing this locks <b>{siblingName}</b>. Integration can reopen the deferred path later.";
+
+    public static string FormatEraForkBadge(string siblingShortName) =>
+        $"<color=#E8C878>Fork</color> <color=#AABBCC>vs {siblingShortName}</color>";
+
     public static string FormatIntegratedSiblingAvailable() =>
         $"Integrated sibling — {PartialReception}. Pay study colloquy when research begins for {DeepenedReception}.";
 

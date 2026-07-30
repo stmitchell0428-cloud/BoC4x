@@ -192,7 +192,7 @@ public static class PastoralBriefingDatabase
             "Martin Luther",
             "1483-1546",
             "Peace if possible, truth at all costs.",
-            "Three dissenting synods already stand abroad. This unrest cannot found a fourth capital — but it will not vanish.",
+            "Three sisters in error already stand abroad. Living with them is the trial now — not founding a fourth capital.",
             new PastoralBriefingChoice(
                 "Colloquy (pay 3 mss)",
                 "Law +4, Gospel +4, adherence +6, -3 mss",
@@ -207,7 +207,7 @@ public static class PastoralBriefingDatabase
             "C. F. W. Walther",
             "1811-1887",
             "The true knowledge of the distinction between the Law and the Gospel is the key to Holy Scripture.",
-            "Dissent overflows without new schism. The synod must preach with sharper distinction.",
+            "Union strife rises when three dissenting synods press the land. Preach with sharper distinction — or they will.",
             new PastoralBriefingChoice(
                 "Sharpen distinction",
                 "Law +5, Gospel +5, adherence +8",
@@ -313,10 +313,11 @@ public static class PastoralBriefingDatabase
 
     public static string FormatBody(PastoralBriefingEntry entry)
     {
-        return
+        string body =
             $"{entry.Prompt}\n\n" +
             $"<i>\"{entry.Quote}\"</i>\n\n" +
             $"<size=13><color=#AABBCC>— {entry.Author} ({entry.Lifespan})</color></size>\n\n" +
             "<size=12><color=#8899AA>Your response shapes Law, Gospel, and adherence this season.</color></size>";
+        return ChurchYearFlavor.EnrichPastoralBody(body);
     }
 }

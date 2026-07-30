@@ -1,47 +1,81 @@
 # BoC4x — Session Checkpoint
 
-**Saved:** July 28, 2026 (playtest aborted — turn skip bug; fix committed)  
+**Saved:** July 30, 2026 (evening) — morning playtest next  
 **Project:** Book of Concord 4X prototype (`C:\Users\stmit\BoC4x`)  
-**Engine:** Unity 6000.5.x — scene `Assets/Scenes/SampleScene.unity`  
-**Latest commit:** turn/unit-cycle fix after schism (stale `FinishAiTurn`); compile fixes (`EraBranchRules` Linq, capital food `out`)
+**Engine:** Unity 6000.5.x — scene `Assets/Scenes/SampleScene.unity`
 
 ---
 
-## Resume here (next session)
+## Resume here (next session) — morning playtest
 
-1. Open **`Assets/Scenes/SampleScene.unity`** → wait for recompile, then Play (solo · Grand · Archipelago · Full canon).
-2. **Smoke-test the turn fix first (post-schism):** End Turn several times after a schism — turn counter must advance **one** per round; banner should show `Orders X/Y of Z` when scout + missionary both need orders. Console logs `Turn advanced N → N+1`.
-3. **Test Runner:** Window → General → Test Runner → **EditMode** → **BoC4x.Editor.Tests** → Run All.
-4. **Playtest order:** Phase **B** (Sustainable Wittenberg + districts) → **G** retest block → **C** antinomian / third schism.
-5. Mark pass/fail rows in the checklist below.
+**Lobby:** solo · Grand · Archipelago · Full canon · coastal capital preferred.  
+**No save/load** — fresh match. **⏳ later** is clear (nothing to implement before Play).
 
-**Note:** Empty Test Runner was fixed by `BoC4x.asmdef` + `BoC4x.Editor.Tests.asmdef`. Unity AI `NoSubscription` console spam is harmless (ignore or remove AI Assistant package).
+1. Open **`Assets/Scenes/SampleScene.unity`** → wait for recompile.
+2. **Test Runner first:** EditMode → **BoC4x.Editor.Tests** → Run All (incl. `ChurchYearCalendarTests`, `EraBranchRulesTests`, `EmphasisGateTests`).
+3. Play — work this list **in order** (newest / highest risk first). Mark pass/fail as you go.
 
-**Priority unverified (coded, needs editor):**
+### Priority checks (do these)
 
-| Area | What to check |
-|------|----------------|
-| **Turn / unit cycle (Jul 28 fix)** | No 4→6 / 8→10 skips after schism; both units in order queue |
-| **Three research queues** | **T** → Doctrine / Culture / Secular tabs; Q/E cycles tabs |
-| **Sustainable Wittenberg** | Found pop **15**; food preview; +6 urban food; 8-turn deficit grace — playtest saw odd pop/food after schism (recheck) |
-| **Emphasis / forks** | Partial/deepened/full reception; study colloquy; Augsburg → Law +8% |
-| **Phase G** | Most rows still open |
+| | Focus | What to verify |
+|---|--------|----------------|
+| [ ] | **Church Year HUD** | Turn 1 dashboard shows **Advent / St. Andrew**; season + date update each turn (~month steps, not weeks) |
+| [ ] | **WATCH turn** | By ~turn 2–3: banner + dashboard show **WATCH** (Name of Jesus / Presentation). Crisis or pastoral card body includes principal-feast watch block |
+| [ ] | **Y brief calendar** | **Y** → Church Year section explains monthly clock + WATCH / principal feasts |
+| [ ] | **Parish care heal** | Wound a unit on Wittenberg (or own city) hex → End Turn → **+4 HP** + log/hint |
+| [ ] | **District offer** | Food surplus → district offer appears; **no** `TerritoryManager` NRE on End Turn |
+| [ ] | **Militia** | Hostile adjacent to independent city at End Turn → militia damage + banner |
+| [ ] | **Parish Walls** | Research **Parish Walls** → build fortification on a city → hostile **cannot enter** walled hex; can siege/preach adjacent until loyalty falls |
+| [ ] | **Era fork UI** | Open **T** near Augsburg/Gutenberg (or Mission/Bach): both show advance lock warning + **Fork** badge / amber tint |
+| [ ] | **Map wrap** | Pan near map edge — no blank Game view; camera stays in home band (spot-check once) |
 
-**No save/load** — Play mode resets on recompile; use a fresh match for verification.
+### If the match runs long enough
+
+| | Focus | What to verify |
+|---|--------|----------------|
+| [ ] | **Crisis + church year** | Any crisis card shows Church Year block (season/date; WATCH flavor on watch turns) |
+| [ ] | **3rd schism saturation** | At 3 active blocs, further overflow is **honest** (no fake “new schism %”); strife / saturated copy appears |
+| [ ] | **Union strife** | Post-saturation: strife meter, raid, and/or reconciliation path feel coherent |
+| [ ] | **Phase B core** | Found → research queues → first schism contact still feels right (spot-check only) |
+
+### After smoke (optional same session)
+
+- Phase **G** retest: fork lock + study colloquy / dual-path reception (see Phase G9 below) if you reach integration.
+- Phase **C** naval only if coasts are convenient.
+
+**Workflow:** When the player must restart Play / a match, implement any remaining **⏳ later** items from this file before they resume (don’t leave pending work for the next restart if it was already noted).
 
 ---
 
-## This session (Jul 28) — implemented
+## This session (Jul 29) — implemented
 
-- **Turn skip fix:** `SimpleAI.FinishAiTurn` ignores stale Invokes on player turn; cancel stacked Invokes; schedule with expected faction/bloc guard.
-- **Unit cycle:** Banner `Orders X/Y of Z`; no raw `EndTurn` fallback when phased end-turn is blocked; missionary still needs orders when preach-ready at 0 MP.
-- **Schism peel:** `ConvertToSchismaticBloc` re-registers unit on schismatic faction list.
-- **Compile:** `EraBranchRules` + `using System.Linq`; capital founding food assigns `foodSurplus` before early return.
-- **Playtest aborted** mid Phase B after schism — turn counter and unit cycle were broken; not a clean pass/fail session.
-
-**Key files:** `SimpleAI.cs`, `PlayerUnitCycle.cs`, `TurnManager.cs`, `EndTurnPhaseController.cs`, `Unit.cs`, `FirstSteps.cs`, `EraBranchRules.cs`, `CityGrowthSystem.cs`.
+- **TerritoryManager** spawned in bootstrap + district-offer null guards (fixes End Turn NRE / worked tiles).
+- **Dashboard turn sync:** `FirstSteps` refreshes on player `TurnStarted`; banner always shows turn number.
+- **Research labels:** HUD + **T** tabs = **Doctrine · Hymnody · Civic** (`TechTreeRules.DisplayName` + flavor subtitles).
+- **Tech tree clarity:** status badges + strong Done (green) / Available (blue) / Locked (muted) colors.
+- **Unit healing:** end turn on own city/district hex → **+4 HP** (`UnitRecovery`); selection hint when wounded on parish hex.
+- **Found Wittenberg HUD:** checklist box hides and relayouts once capital is founded.
+- **City militia:** independent cities strike adjacent hostiles at end of turn (`CityMilitia`, damage scales with pop); banner on every hit.
+- **TMP glyphs:** tech status markers use ASCII `*` `>` `+` `x` (LiberationSans-safe).
+- **Map wrap:** camera follows home band (fixes blank Game view); free pan stays in home band; wrap clones culled to camera.
+- **Tech detail scroll:** `UiDetailPane` right sidebar sizes content + mouse-wheel/drag; EditMode tests walk every tech.
+- **Era fork UI:** advance “choosing this locks X” on both siblings; Fork badge + amber tint on open fork buttons.
+- **Parish Walls:** early Civic tech unlocks Fortifications; walled cities block hostile entry; adjacent siege until loyalty falls.
+- **Post–3rd schism:** honest saturated crisis cards; harder overflow; Union strife raids; reconciliation option; reclaiming/losing capitals matter.
+- **Church Year (LSB calendar):** feasts/festivals + commemorations from LCMS Worship lists; turn clock **~1 synodical month/turn** (28 days from St. Andrew; ~12 turns/year); **WATCH turns** for the eight LSB p. xi principal feasts of Christ (1-year dates, Visitation Jul 2); dashboard + banner + crisis/pastoral enrichment; saturation witness flavor.
 
 **Still not expanded:** Full Decision 16 era forks (only Augsburg↔Gutenberg, Mission↔Bach).
+
+### ⏳ later (before next Play restart)
+
+- _(none — Jul 29 evening batch implemented: walls hybrid, era-fork UI, post-3rd saturation)_
+
+### Explore much later (not before next Play restart)
+
+Church Year depth — park until systems feel settled; do **not** treat as restart blockers:
+
+- **Martyr-weighted saturation copy:** when strife/saturation is hot *and* the day’s observance is a martyr/apostle feast, lean harder into witness language (keep rare; principal WATCH turns already cover the high Christ feasts).
+- **Window, not single day:** with 28-day turns, optionally surface “this month also remembers…” for 1–2 nearby commemorations so the calendar feels denser without changing the clock (WATCH already windows the eight principal feasts).
 
 ---
 
@@ -57,12 +91,13 @@
 | Capital     | **Coastal** (for naval testing)              |
 
 
-**Resume playtest track:** Smoke-test turn fix → Phase **B** then **G** — not a single in-progress save.
+**Resume playtest track:** Morning priority list in **Resume here** (Church Year / WATCH → heal → militia → walls → fork UI → saturation if long). Full Phase tables below stay the archive.
 
 **Unity startup:** Hub → **BoC4x** (`6000.5.2f1`) → double-click **`Assets/Scenes/SampleScene.unity`** before Play. A blank **Untitled** scene (Main Camera only) is not the game.
 
-**Previously confirmed:** Phase A; G1 core gates; nomadic founding; asymmetric tech; legalism + schism spawn.  
-**Automated (EditMode):** `EmphasisGateTests` (6) — run full test list in **Resume here** on return.
+**Previously confirmed:** Phase A; G1 core gates; nomadic founding; asymmetric tech; legalism + schism spawn; Jul 29 HUD/research/tech-scroll/Found-Wittenberg hide.  
+**Morning focus (unverified in Play):** Church Year + WATCH, parish heal, militia, Parish Walls, era-fork UI, post–3rd saturation.  
+**Automated:** Run full EditMode suite first (see **Resume here**).
 
 **Phase log:** Report pass/fail per row below.
 
@@ -344,7 +379,18 @@ Schismatic blocs **ignore diplomacy** in all cases.
 | —    | Augsburg emphasis → Law +8% (3C) | ✅ (needs playtest) |
 | —    | Sustainable Wittenberg (founding food) | ✅ (needs playtest) |
 | —    | Three research queues (Doctrine / Culture / Secular) | ✅ (needs playtest) |
-| —    | Post-schism turn skip / unit cycle (FinishAiTurn) | ✅ (needs retest) |
+| —    | Post-schism turn skip / unit cycle (FinishAiTurn) | ✅ playtest OK |
+| —    | Dashboard turn number sync on TurnStarted | ✅ playtest OK |
+| —    | Unify research labels → Doctrine · Hymnody · Civic | ✅ playtest OK |
+| —    | Tech tree clearer researched vs locked visuals | ✅ playtest OK |
+| —    | Unit healing (city rest / general recovery) | ✅ (needs playtest) |
+| —    | City militia (adjacent hostile strike) | ✅ (needs playtest) |
+| —    | Hide Found Wittenberg HUD after founding | ✅ playtest OK |
+| —    | TerritoryManager bootstrap + district offer NRE | ✅ (needs playtest) |
+| —    | Tech panel TMP glyphs (ASCII-safe) | ✅ (needs retest) |
+| —    | Tech detail pane scroll (all long blurbs) | ✅ playtest OK |
+| —    | Map wrap camera nearest-image + clone cull | ✅ so far; blank Game view until pan fixed (home-band follow) |
+| —    | Synod vs schism unit colors + enemy sighted alert | ✅ (needs retest) |
 
 
 ---

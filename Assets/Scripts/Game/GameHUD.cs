@@ -226,7 +226,11 @@ public class GameHUD : MonoBehaviour
     {
         if (!NomadicFoundingGate.IsNomadicPhase)
         {
+            // Hide the Found Wittenberg checklist once a capital exists.
+            if (nomadicFoundingText != null)
+                nomadicFoundingText.text = "";
             SetRowVisible(nomadicFoundingPanel, false);
+            SetRowVisible(nomadicFoundingText, false);
             return y;
         }
 

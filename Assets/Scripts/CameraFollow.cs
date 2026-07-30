@@ -46,12 +46,17 @@ public class CameraFollow : MonoBehaviour
         userPanning = false;
         dragPanActive = false;
         ClearTemporaryPan();
+
+        // Always focus the real map (home band). NearestWorldImage alone can park the
+        // camera on an empty wrap copy until the player pans (blank Game view).
+        var focus = ResolveFollowWorld(unit.transform.position);
+        transform.position = new Vector3(focus.x, focus.y, cameraHeightDepth);
     }
 
     public void PanToHex(HexCoordinates hex, float holdSeconds = 4f)
     {
         if (HexGridMap.Instance == null) return;
-        var world = HexGridMap.Instance.HexToWorld(hex);
+        var world = ResolveFollowWorld(HexGridMap.Instance.HexToWorld(hex));
         temporaryPanPosition = new Vector3(world.x, world.y, cameraHeightDepth);
         temporaryPanUntil = Time.time + holdSeconds;
         userPanning = true;
@@ -110,6 +115,7 @@ public class CameraFollow : MonoBehaviour
         move.Normalize();
         var delta = new Vector3(move.x, move.y, 0f) * keyboardPanSpeed * Time.deltaTime;
         transform.position += delta;
+        WrapCameraIntoHomeBand();
     }
 
     void HandleDragPan()
@@ -137,17 +143,33 @@ public class CameraFollow : MonoBehaviour
         }
 
         if (Mouse.current.middleButton.wasReleasedThisFrame)
+        {
             dragPanActive = false;
+            WrapCameraIntoHomeBand();
+        }
     }
 
     void LateUpdate()
     {
-        if (userPanning || dragPanActive)
+        if (dragPanActive)
             return;
+
+        if (userPanning)
+        {
+            WrapCameraIntoHomeBand();
+            return;
+        }
 
         if (temporaryPanPosition.HasValue && Time.time < temporaryPanUntil)
         {
-            LerpToward(temporaryPanPosition.Value);
+            var panTarget = temporaryPanPosition.Value;
+            if (HexGridMap.Instance != null)
+            {
+                var home = HexGridMap.Instance.WrapWorldIntoHomeBand(panTarget);
+                panTarget = new Vector3(home.x, home.y, cameraHeightDepth);
+            }
+
+            LerpToward(panTarget);
             return;
         }
 
@@ -156,11 +178,26 @@ public class CameraFollow : MonoBehaviour
 
         if (playerTarget == null) return;
 
-        var targetCoordinates = new Vector3(
-            playerTarget.position.x,
-            playerTarget.position.y,
-            cameraHeightDepth);
-        LerpToward(targetCoordinates);
+        var focus = ResolveFollowWorld(playerTarget.position);
+        LerpToward(new Vector3(focus.x, focus.y, cameraHeightDepth));
+    }
+
+    Vector3 ResolveFollowWorld(Vector3 targetWorld)
+    {
+        if (HexGridMap.Instance == null)
+            return targetWorld;
+
+        // Edge continuity is MapWrapVisuals' job; the camera stays on the real tile grid.
+        return HexGridMap.Instance.WrapWorldIntoHomeBand(targetWorld);
+    }
+
+    void WrapCameraIntoHomeBand()
+    {
+        if (HexGridMap.Instance == null)
+            return;
+
+        var wrapped = HexGridMap.Instance.WrapWorldIntoHomeBand(transform.position);
+        transform.position = new Vector3(wrapped.x, wrapped.y, cameraHeightDepth);
     }
 
     void LerpToward(Vector3 targetCoordinates)

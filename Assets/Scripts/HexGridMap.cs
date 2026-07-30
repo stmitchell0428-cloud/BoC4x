@@ -111,6 +111,8 @@ public class HexGridMap : MonoBehaviour
             gameObject.AddComponent<TerrainInfoPanel>();
         if (FindAnyObjectByType<CityManager>() == null)
             gameObject.AddComponent<CityManager>();
+        if (FindAnyObjectByType<TerritoryManager>() == null)
+            gameObject.AddComponent<TerritoryManager>();
         if (FindAnyObjectByType<CityScreenPanel>() == null)
             gameObject.AddComponent<CityScreenPanel>();
         if (FindAnyObjectByType<MatchController>() == null)
@@ -315,6 +317,83 @@ public class HexGridMap : MonoBehaviour
             var rEdge = new HexCoordinates(0, gridHeightRows).ToWorldPosition(hexRadiusSize) - mapOriginOffset;
             return new Vector3(qEdge.x - origin.x, rEdge.y - origin.y, 0f);
         }
+    }
+
+    /// <summary>World-space period of one full wrap (for camera / visual nearest-image math).</summary>
+    public Vector3 WrapPeriodWorld
+    {
+        get
+        {
+            var local = WrapPeriodLocal;
+            var a = transform.TransformPoint(Vector3.zero);
+            var b = transform.TransformPoint(local);
+            return b - a;
+        }
+    }
+
+    /// <summary>
+    /// Among world images of <paramref name="world"/> separated by wrap periods, pick the one
+    /// closest to <paramref name="reference"/> (stops camera jumping across the whole map).
+    /// </summary>
+    public Vector3 NearestWorldImage(Vector3 world, Vector3 reference)
+    {
+        if (wrapStyle == MapWrapStyle.Bounded)
+            return world;
+
+        var period = WrapPeriodWorld;
+        Vector3 best = world;
+        float bestDist = (world - reference).sqrMagnitude;
+
+        int qSpan = WrapsHorizontally && Mathf.Abs(period.x) > 0.01f ? 1 : 0;
+        int rSpan = WrapsVertically && Mathf.Abs(period.y) > 0.01f ? 1 : 0;
+
+        for (int dq = -qSpan; dq <= qSpan; dq++)
+        {
+            for (int dr = -rSpan; dr <= rSpan; dr++)
+            {
+                if (dq == 0 && dr == 0)
+                    continue;
+
+                var candidate = world + new Vector3(dq * period.x, dr * period.y, 0f);
+                float dist = (candidate - reference).sqrMagnitude;
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    best = candidate;
+                }
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>Shift a world point into the primary wrap band centered on the map midpoint.</summary>
+    public Vector3 WrapWorldIntoHomeBand(Vector3 world)
+    {
+        if (wrapStyle == MapWrapStyle.Bounded)
+            return world;
+
+        var period = WrapPeriodWorld;
+        var home = HexToWorld(new HexCoordinates(gridWidthCols / 2, gridHeightRows / 2));
+        var result = world;
+
+        if (WrapsHorizontally && Mathf.Abs(period.x) > 0.01f)
+        {
+            while (result.x - home.x > period.x * 0.5f)
+                result.x -= period.x;
+            while (result.x - home.x < -period.x * 0.5f)
+                result.x += period.x;
+        }
+
+        if (WrapsVertically && Mathf.Abs(period.y) > 0.01f)
+        {
+            while (result.y - home.y > period.y * 0.5f)
+                result.y -= period.y;
+            while (result.y - home.y < -period.y * 0.5f)
+                result.y += period.y;
+        }
+
+        return result;
     }
 
     public HexCoordinates Wrap(HexCoordinates coords)

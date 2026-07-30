@@ -123,7 +123,8 @@ public class City : MonoBehaviour
             GetCityMaskSprite(SizeTier),
             Unit.FactionColor(Faction, SynodPlayer),
             ArtEraVisualController.CurrentEra,
-            $"city_{SizeTier}");
+            $"city_{SizeTier}",
+            hostileOutline: Faction == FactionId.Schismatic);
         spriteRenderer.color = Color.white;
         transform.localScale = Vector3.one * SizeTier switch
         {
@@ -399,6 +400,10 @@ public class City : MonoBehaviour
             (newOwner != FactionId.LutheranSynod || SynodPlayer == synodPlayer))
             return;
 
+        var previousFaction = Faction;
+        var previousBloc = SchismaticBloc;
+        bool wasSchismaticCapital = previousFaction == FactionId.Schismatic && IsCapital;
+
         Faction = newOwner;
         if (newOwner == FactionId.LutheranSynod)
         {
@@ -410,6 +415,20 @@ public class City : MonoBehaviour
         Production?.OnCityCaptured();
         TerritoryManager.Instance?.RefreshAll();
         Debug.Log($"{CityName} captured by {newOwner}.");
+
+        if (wasSchismaticCapital && newOwner == FactionId.LutheranSynod && previousBloc != SchismaticBlocId.None)
+        {
+            SchismaticBlocRegistry.Instance?.UnregisterBloc(previousBloc);
+            TurnPhaseBanner.Instance?.Refresh(
+                $"<color=#88EEAA><b>{CityName}</b></color> reclaimed — a dissenting capital falls; a schism slot opens.");
+            UnionStrifeManager.AddStrife(-20);
+        }
+
+        if (previousFaction == FactionId.LutheranSynod &&
+            SynodPlayer == SynodPlayerId.Player1 &&
+            newOwner == FactionId.Schismatic)
+            UnionStrifeManager.NotifyPlayerCityLostToSchism();
+
         MatchController.Instance?.EvaluateConditions();
         FirstSteps.Instance?.RefreshDashboard();
         TerrainInfoPanel.Instance?.RefreshCityYield();

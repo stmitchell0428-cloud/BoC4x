@@ -395,7 +395,9 @@ public class ConfessionResearchManager : MonoBehaviour
         string doctrine = FormatQueueLabel(TechTreeCategory.Doctrine, doctrineQueue.Active, doctrineQueue.TurnsRemaining);
         string culture = FormatQueueLabel(TechTreeCategory.Culture, cultureQueue.Active, cultureQueue.TurnsRemaining);
         string secular = FormatQueueLabel(TechTreeCategory.Secular, secularQueue.Active, secularQueue.TurnsRemaining);
-        return $"Doctrine: {doctrine}  |  Culture: {culture}  |  Secular: {secular}";
+        return $"{TechTreeRules.DisplayName(TechTreeCategory.Doctrine)}: {doctrine}  |  " +
+               $"{TechTreeRules.DisplayName(TechTreeCategory.Culture)}: {culture}  |  " +
+               $"{TechTreeRules.DisplayName(TechTreeCategory.Secular)}: {secular}";
     }
 
     public string FormatProminentResearchBlock()
@@ -425,7 +427,9 @@ public class ConfessionResearchManager : MonoBehaviour
         string doctrine = FormatCompactTrackLabel(doctrineQueue.Active, doctrineQueue.TurnsRemaining);
         string culture = FormatCompactTrackLabel(cultureQueue.Active, cultureQueue.TurnsRemaining);
         string secular = FormatCompactTrackLabel(secularQueue.Active, secularQueue.TurnsRemaining);
-        return $"Doctrine {doctrine}  ·  Culture {culture}  ·  Secular {secular}";
+        return $"{TechTreeRules.DisplayName(TechTreeCategory.Doctrine)} {doctrine}  ·  " +
+               $"{TechTreeRules.DisplayName(TechTreeCategory.Culture)} {culture}  ·  " +
+               $"{TechTreeRules.DisplayName(TechTreeCategory.Secular)} {secular}";
     }
 
     static string FormatCompactTrackLabel(ConfessionTechId? active, int turnsRemaining)
@@ -448,8 +452,11 @@ public class ConfessionResearchManager : MonoBehaviour
     {
         float p = AdherencePotency;
         if (p <= 0f)
-            return $"Tech potency: dormant (≤{BonusPotencyThreshold:F0}% adherence) — secular research still allowed";
-        return $"Tech potency: {p * 100f:F0}% (doctrine, culture, secular)";
+            return $"Tech potency: dormant (≤{BonusPotencyThreshold:F0}% adherence) — civic research still allowed";
+        return $"Tech potency: {p * 100f:F0}% (" +
+               $"{TechTreeRules.DisplayName(TechTreeCategory.Doctrine)}, " +
+               $"{TechTreeRules.DisplayName(TechTreeCategory.Culture)}, " +
+               $"{TechTreeRules.DisplayName(TechTreeCategory.Secular)})";
     }
 
     public int UnlockedCount => unlocked.Count;

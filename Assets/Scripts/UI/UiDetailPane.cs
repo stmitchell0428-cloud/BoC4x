@@ -34,11 +34,18 @@ public static class UiDetailPane
         scrollRectTransform.offsetMin = new Vector2(8f, 8f);
         scrollRectTransform.offsetMax = new Vector2(-8f, -8f);
 
+        // ScrollRect only receives wheel/drag when a Graphic can be raycast.
+        var scrollHit = scrollGo.AddComponent<Image>();
+        scrollHit.color = Color.clear;
+        scrollHit.raycastTarget = true;
+
         scrollRect = scrollGo.AddComponent<ScrollRect>();
         scrollRect.horizontal = false;
         scrollRect.vertical = true;
         scrollRect.movementType = ScrollRect.MovementType.Clamped;
-        scrollRect.scrollSensitivity = 20f;
+        scrollRect.inertia = true;
+        scrollRect.decelerationRate = 0.135f;
+        scrollRect.scrollSensitivity = 28f;
 
         var viewport = new GameObject("Viewport");
         viewport.transform.SetParent(scrollGo.transform, false);
@@ -48,6 +55,9 @@ public static class UiDetailPane
         vpRect.offsetMin = Vector2.zero;
         vpRect.offsetMax = Vector2.zero;
         viewport.AddComponent<RectMask2D>();
+        var vpHit = viewport.AddComponent<Image>();
+        vpHit.color = Color.clear;
+        vpHit.raycastTarget = true;
 
         var content = new GameObject("Content");
         content.transform.SetParent(viewport.transform, false);
@@ -55,8 +65,8 @@ public static class UiDetailPane
         contentRect.anchorMin = new Vector2(0f, 1f);
         contentRect.anchorMax = new Vector2(1f, 1f);
         contentRect.pivot = new Vector2(0.5f, 1f);
-        contentRect.offsetMin = Vector2.zero;
-        contentRect.offsetMax = Vector2.zero;
+        contentRect.anchoredPosition = Vector2.zero;
+        contentRect.sizeDelta = new Vector2(0f, 0f);
 
         var body = content.AddComponent<TextMeshProUGUI>();
         if (font != null) body.font = font;
@@ -65,24 +75,67 @@ public static class UiDetailPane
         body.color = new Color(0.92f, 0.91f, 0.86f);
         body.alignment = TextAlignmentOptions.TopLeft;
         body.richText = true;
+        body.textWrappingMode = TextWrappingModes.Normal;
+        body.overflowMode = TextOverflowModes.Overflow;
         body.raycastTarget = false;
         body.text = placeholder;
 
-        var fitter = content.AddComponent<ContentSizeFitter>();
-        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
         scrollRect.viewport = vpRect;
         scrollRect.content = contentRect;
+
+        SetDetailText(body, scrollRect, placeholder);
         return body;
     }
 
     public static void SetDetailText(TextMeshProUGUI body, ScrollRect scroll, string text)
     {
         if (body == null) return;
-        body.text = SanitizeForFont(text);
+
+        body.text = SanitizeForFont(text ?? "");
+        body.textWrappingMode = TextWrappingModes.Normal;
+        body.overflowMode = TextOverflowModes.Overflow;
+
+        var contentRect = body.rectTransform;
+        float width = ResolveContentWidth(scroll, contentRect);
+        contentRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+
+        body.ForceMeshUpdate(true);
+        float preferredHeight = body.GetPreferredValues(body.text, width, 0f).y;
+        if (preferredHeight < 1f)
+            preferredHeight = body.preferredHeight;
+        if (preferredHeight < 8f && !string.IsNullOrEmpty(body.text))
+        {
+            // Fallback when TMP font metrics are unavailable (e.g. EditMode without font asset).
+            int lines = Mathf.Max(1, body.text.Split('\n').Length);
+            float approxWrapped = body.text.Length / Mathf.Max(8f, width / (body.fontSize * 0.55f));
+            preferredHeight = Mathf.Max(lines, approxWrapped) * (body.fontSize + body.lineSpacing) * 1.2f;
+        }
+
+        contentRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Mathf.Max(preferredHeight, 1f));
+        LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+
         if (scroll != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            scroll.velocity = Vector2.zero;
             scroll.verticalNormalizedPosition = 1f;
+        }
+    }
+
+    static float ResolveContentWidth(ScrollRect scroll, RectTransform contentRect)
+    {
+        if (scroll != null && scroll.viewport != null)
+        {
+            float viewportWidth = scroll.viewport.rect.width;
+            if (viewportWidth > 1f)
+                return viewportWidth;
+        }
+
+        if (contentRect != null && contentRect.rect.width > 1f)
+            return contentRect.rect.width;
+
+        // Sidebar padding: 8px each side inside the scroll area.
+        return Mathf.Max(8f, SidebarWidth - 32f);
     }
 
     /// <summary>Replace glyphs missing from the default TMP font (LiberationSans SDF).</summary>

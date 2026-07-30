@@ -379,13 +379,13 @@ public static class CityBuildDatabase
             CityBuildId.BuildFortification,
             "Fortifications",
             "Walls and watchmen when schismatic dissent threatens the city.",
-            "+5 adherence; defenders +2 defense on this city's tile",
+            "+5 adherence; defenders +2 defense on this city's tile; blocks hostile entry until loyalty falls",
             CityBuildCategory.ConfessionalBuilding,
             CityBuildTrack.Confessional,
             manuscriptCost: 4,
             turnsToComplete: 3,
             uniquePerCity: true,
-            requiredTech: ConfessionTechId.MartinChemnitz),
+            requiredTech: ConfessionTechId.ParishWalls),
 
         [CityBuildId.BuildLibrary] = new CityBuildDefinition(
             CityBuildId.BuildLibrary,

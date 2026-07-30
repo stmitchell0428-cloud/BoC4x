@@ -300,25 +300,70 @@ public class CityManager : MonoBehaviour
         if (unit == null || (unit.Type != UnitType.Soldier && unit.Type != UnitType.Defender &&
             unit.Type != UnitType.Archer && unit.Type != UnitType.Horseman && unit.Type != UnitType.Slinger) ||
             !unit.IsAlive) return;
-        if (!HexGridMap.Instance.TryGetTile(hex, out var tile) || tile.Settlement == null) return;
-        if (tile.Settlement.Faction == unit.Faction &&
-            (unit.Faction != FactionId.LutheranSynod || tile.Settlement.SynodPlayer == unit.SynodPlayer))
-            return;
-        if (tile.Occupant != null && tile.Occupant != unit) return;
+        if (!HexGridMap.Instance.TryGetTile(hex, out var tile)) return;
 
-        CityLoyaltySystem.TryApplyPressure(unit, tile.Settlement, isPreach: false);
+        City city = tile.Settlement;
+        if (city == null && HexGridMap.Instance != null)
+        {
+            // Adjacent siege against walled cities.
+            foreach (var neighbor in HexGridMap.Instance.GetWrappedNeighbors(hex))
+            {
+                if (!HexGridMap.Instance.TryGetTile(neighbor, out var nTile) || nTile.Settlement == null)
+                    continue;
+                if (CityDefenses.CanPressCityFrom(unit, nTile.Settlement))
+                {
+                    city = nTile.Settlement;
+                    break;
+                }
+            }
+        }
+
+        if (city == null) return;
+        if (!CityDefenses.CanPressCityFrom(unit, city) && unit.HexPosition != city.HexPosition)
+            return;
+        if (city.Faction == unit.Faction &&
+            (unit.Faction != FactionId.LutheranSynod || city.SynodPlayer == unit.SynodPlayer))
+            return;
+        if (HexGridMap.Instance.TryGetTile(city.HexPosition, out var cityTile) &&
+            cityTile.Occupant != null && cityTile.Occupant != unit &&
+            !CityDefenses.HasWalls(city))
+            return;
+
+        CityLoyaltySystem.TryApplyPressure(unit, city, isPreach: false);
     }
 
     public void TryPreachCityAt(Unit unit, HexCoordinates hex)
     {
         if (unit == null || !unit.CanPreachOrHymn || !unit.IsAlive) return;
-        if (!HexGridMap.Instance.TryGetTile(hex, out var tile) || tile.Settlement == null) return;
-        if (tile.Settlement.Faction == unit.Faction &&
-            (unit.Faction != FactionId.LutheranSynod || tile.Settlement.SynodPlayer == unit.SynodPlayer))
-            return;
-        if (tile.Occupant != null && tile.Occupant != unit) return;
+        if (!HexGridMap.Instance.TryGetTile(hex, out var tile)) return;
 
-        CityLoyaltySystem.TryApplyPressure(unit, tile.Settlement, isPreach: true);
+        City city = tile.Settlement;
+        if (city == null && HexGridMap.Instance != null)
+        {
+            foreach (var neighbor in HexGridMap.Instance.GetWrappedNeighbors(hex))
+            {
+                if (!HexGridMap.Instance.TryGetTile(neighbor, out var nTile) || nTile.Settlement == null)
+                    continue;
+                if (CityDefenses.CanPressCityFrom(unit, nTile.Settlement))
+                {
+                    city = nTile.Settlement;
+                    break;
+                }
+            }
+        }
+
+        if (city == null) return;
+        if (!CityDefenses.CanPressCityFrom(unit, city) && unit.HexPosition != city.HexPosition)
+            return;
+        if (city.Faction == unit.Faction &&
+            (unit.Faction != FactionId.LutheranSynod || city.SynodPlayer == unit.SynodPlayer))
+            return;
+        if (HexGridMap.Instance.TryGetTile(city.HexPosition, out var cityTile) &&
+            cityTile.Occupant != null && cityTile.Occupant != unit &&
+            !CityDefenses.HasWalls(city))
+            return;
+
+        CityLoyaltySystem.TryApplyPressure(unit, city, isPreach: true);
     }
 
     public bool TrySpawnUnit(City city, UnitType type)
@@ -439,6 +484,8 @@ public class CityManager : MonoBehaviour
         Debug.Log(
             $"Founded {cityName} (pop {CityGrowthSystem.FoundingCapitalPopulation}). " +
             $"Turn-1 food: {foodProduced}/{foodConsumed} ({foodNote}). The nomadic settler is now a missionary.");
+        FirstSteps.Instance?.RefreshDashboard();
+        GameHUD.Instance?.Relayout();
         TurnPhaseBanner.Instance?.Refresh();
         return true;
     }

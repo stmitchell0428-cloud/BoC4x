@@ -139,7 +139,7 @@ public class ConfessionTechPanel : MonoBehaviour
         detailText = UiDetailPane.CreateSidebar(
             panelRoot.transform,
             out detailScroll,
-            "Select a doctrine tech.\n\nDoctrine, culture, and secular research each run in parallel.",
+            "Select a Doctrine tech.\n\nDoctrine, Hymnody, and Civic research each run in parallel.",
             uiFont);
         startResearchButton = UiDetailPane.CreateSidebarActionButton(
             panelRoot.transform,
@@ -219,9 +219,15 @@ public class ConfessionTechPanel : MonoBehaviour
         layout.childForceExpandWidth = true;
         layout.childForceExpandHeight = true;
 
-        doctrineTabButton = CreateTreeTab(tabsGo.transform, "Doctrine", "Confession", OnDoctrineTabClicked, out doctrineTabImage);
-        cultureTabButton = CreateTreeTab(tabsGo.transform, "Culture", "Hymnody & Life", OnCultureTabClicked, out cultureTabImage);
-        secularTabButton = CreateTreeTab(tabsGo.transform, "Secular", "Science & Civic", OnSecularTabClicked, out secularTabImage);
+        doctrineTabButton = CreateTreeTab(
+            tabsGo.transform, "Doctrine", TechTreeRules.DisplayName(TechTreeCategory.Doctrine),
+            OnDoctrineTabClicked, out doctrineTabImage);
+        cultureTabButton = CreateTreeTab(
+            tabsGo.transform, "Culture", TechTreeRules.DisplayName(TechTreeCategory.Culture),
+            OnCultureTabClicked, out cultureTabImage);
+        secularTabButton = CreateTreeTab(
+            tabsGo.transform, "Secular", TechTreeRules.DisplayName(TechTreeCategory.Secular),
+            OnSecularTabClicked, out secularTabImage);
         UpdateTreeTabVisuals();
     }
 
@@ -298,11 +304,21 @@ public class ConfessionTechPanel : MonoBehaviour
     static string TreeSelectionHint(TechTreeCategory tree) => tree switch
     {
         TechTreeCategory.Doctrine =>
-            "Select a doctrine tech.\n\nDoctrine, culture, and secular research each run in parallel.",
+            $"Select a {TechTreeRules.DisplayName(TechTreeCategory.Doctrine)} tech.\n\n" +
+            $"{TechTreeRules.DisplayName(TechTreeCategory.Doctrine)}, " +
+            $"{TechTreeRules.DisplayName(TechTreeCategory.Culture)}, and " +
+            $"{TechTreeRules.DisplayName(TechTreeCategory.Secular)} research each run in parallel.\n" +
+            $"<size=12><i>{TechTreeRules.FlavorSubtitle(TechTreeCategory.Doctrine)}</i></size>",
         TechTreeCategory.Culture =>
-            "Select a culture tech.\n\nDoctrine, culture, and secular research each run in parallel.",
+            $"Select a {TechTreeRules.DisplayName(TechTreeCategory.Culture)} tech.\n\n" +
+            $"{TechTreeRules.DisplayName(TechTreeCategory.Doctrine)}, " +
+            $"{TechTreeRules.DisplayName(TechTreeCategory.Culture)}, and " +
+            $"{TechTreeRules.DisplayName(TechTreeCategory.Secular)} research each run in parallel.\n" +
+            $"<size=12><i>{TechTreeRules.FlavorSubtitle(TechTreeCategory.Culture)}</i></size>",
         _ =>
-            "Select a science or civic tech.\n\nSecular bonuses stay dormant until adherence exceeds 40%."
+            $"Select a {TechTreeRules.DisplayName(TechTreeCategory.Secular)} tech.\n\n" +
+            $"Civic bonuses stay dormant until adherence exceeds 40%.\n" +
+            $"<size=12><i>{TechTreeRules.FlavorSubtitle(TechTreeCategory.Secular)}</i></size>"
     };
 
     void UpdateTreeTabVisuals()
@@ -503,7 +519,7 @@ public class ConfessionTechPanel : MonoBehaviour
         btnGo.transform.SetParent(parent, false);
 
         var le = btnGo.AddComponent<LayoutElement>();
-        le.preferredHeight = 44f;
+        le.preferredHeight = 52f;
 
         var img = btnGo.AddComponent<Image>();
         img.color = new Color(0.18f, 0.22f, 0.3f, 1f);
@@ -534,24 +550,25 @@ public class ConfessionTechPanel : MonoBehaviour
     {
         var rm = ConfessionResearchManager.Instance;
         var status = rm != null ? rm.GetStatus(node.Id) : ConfessionTechStatus.Locked;
-        string statusLine = status switch
+        string statusBadge = status switch
         {
-            ConfessionTechStatus.Unlocked => "*",
-            ConfessionTechStatus.Researching => ">",
-            ConfessionTechStatus.Available => "+",
-            ConfessionTechStatus.AdherenceLocked => "!",
-            ConfessionTechStatus.EraForkLocked => "×",
-            _ => "-"
+            // ASCII-only markers — LiberationSans SDF lacks several Unicode arrows/checks.
+            ConfessionTechStatus.Unlocked => "<color=#88EEAA>*</color> <color=#88EEAA>Done</color>",
+            ConfessionTechStatus.Researching => "<color=#FFCC55>></color> <color=#FFCC55>In progress</color>",
+            ConfessionTechStatus.Available => "<color=#AADDFF>+</color> <color=#AADDFF>Available</color>",
+            ConfessionTechStatus.AdherenceLocked => "<color=#CC8866>!</color> <color=#CC8866>Adherence</color>",
+            ConfessionTechStatus.EraForkLocked => "<color=#CC8866>x</color> <color=#CC8866>Era-locked</color>",
+            _ => "<color=#777788>-</color> <color=#777788>Locked</color>"
         };
 
-        string track = node.Track switch
-        {
-            TechTrack.Culture => "Culture | ",
-            TechTrack.Secular => "Science | ",
-            _ => ""
-        };
-
-        return $"<b>{statusLine} {track}{node.Name}</b>\n<size=13><color=#AABBCC>{node.ManuscriptCost} mss | {node.TurnsToComplete} turns</color></size>";
+        string nameColor = status == ConfessionTechStatus.Unlocked ? "#BBCCBB" : "#FFFFFF";
+        string forkBadge = EraBranchRules.FormatForkButtonBadge(node.Id, status);
+        string forkLine = string.IsNullOrEmpty(forkBadge)
+            ? ""
+            : $"\n<size=12>{forkBadge}</size>";
+        return $"<b>{statusBadge}</b>  <color={nameColor}>{node.Name}</color>\n" +
+               $"<size=13><color=#AABBCC>{node.ManuscriptCost} mss | {node.TurnsToComplete} turns</color></size>" +
+               forkLine;
     }
 
     void SelectTech(ConfessionTechId id)
@@ -653,7 +670,9 @@ public class ConfessionTechPanel : MonoBehaviour
 
         if (TechTreeRules.CategoryFor(node.Id) == TechTreeCategory.Secular)
             sb.AppendLine(
-                $"<b>Secular track</b>  research allowed at any adherence; bonuses dormant ≤{ConfessionResearchManager.BonusPotencyThreshold:F0}%");
+                $"<b>{TechTreeRules.DisplayName(TechTreeCategory.Secular)} track</b>  " +
+                $"({TechTreeRules.FlavorSubtitle(TechTreeCategory.Secular)})  " +
+                $"research allowed at any adherence; bonuses dormant ≤{ConfessionResearchManager.BonusPotencyThreshold:F0}%");
 
         if (node.Prerequisites.Length > 0)
         {
@@ -663,50 +682,7 @@ public class ConfessionTechPanel : MonoBehaviour
                 sb.AppendLine($"* {ConfessionTechDatabase.Get(prereq).Name}");
         }
 
-        if (id == ConfessionTechId.SynodicalEmphasis)
-        {
-            sb.AppendLine();
-            sb.AppendLine(
-                "<size=12><color=#AABBCC>Completing this tech opens a choice card: Walther (pastoral) or Pieper (dogmatic) " +
-                "emphasis at full bonus. After Johann Gerhard, the other path can be taken for 4 mss as " +
-                $"{ConfessionalUiVocabulary.SecondaryReception}.</color></size>");
-        }
-
-        if (id == ConfessionTechId.ConfessionalEmphasis)
-        {
-            sb.AppendLine();
-            sb.AppendLine(
-                "<size=12><color=#AABBCC>Opens a confessional emphasis card. Internal (Formula) is always available. " +
-                "<b>Augsburg</b> appears after scout contact with a schismatic bloc; <b>Smalcald</b> after battle with one. " +
-                "Large Catechism unlocks secondary paths; Mutual Conference unlocks integration (deepens secondary reception).</color></size>");
-        }
-
-        if (id == ConfessionTechId.ConfessionsCultureEmphasis)
-        {
-            sb.AppendLine();
-            sb.AppendLine(
-                "<size=12><color=#AABBCC>Opens a culture emphasis card. Chorale liturgy is always available. " +
-                "Gerhardt cross-comfort appears only after your units have fought (any battle). " +
-                "Chorale Tradition or Sacred Hymnody unlock secondary paths; CTCR Reports unlock integration.</color></size>");
-        }
-
-        if (id == ConfessionTechId.SynodicalGovernance)
-        {
-            sb.AppendLine();
-            sb.AppendLine(
-                "<size=12><color=#AABBCC>With primary + secondary confessional emphasis chosen, opens an integration colloquy " +
-                $"(deepens secondary reception, tertiary emphasis, {ConfessionalUiVocabulary.FormatReopenEraForkSiblings()}; " +
-                $"{EraBranchRules.ColloquyCostForTier(ConfessionTechDatabase.Get(Tier2EmphasisManager.ConfessionalIntegrationUnlockTech).Tier)} mss).</color></size>");
-        }
-
-        if (id == ConfessionTechId.CTCRReports)
-        {
-            sb.AppendLine();
-            sb.AppendLine(
-                "<size=12><color=#AABBCC>With primary + secondary culture emphasis chosen, opens an integration colloquy " +
-                $"(deepens secondary reception, {ConfessionalUiVocabulary.FormatReopenEraForkSiblings()}; " +
-                $"{EraBranchRules.ColloquyCostForTier(ConfessionTechDatabase.Get(Tier2EmphasisManager.CultureIntegrationUnlockTech).Tier)} mss).</color></size>");
-        }
+        ConfessionTechDetailText.AppendSpecialCaseHints(sb, id);
 
         string emphasisLine = SynodicalEmphasisManager.Instance?.FormatStatusLine();
         if (!string.IsNullOrEmpty(emphasisLine))
@@ -804,34 +780,29 @@ public class ConfessionTechPanel : MonoBehaviour
                 if (img == null || ConfessionResearchManager.Instance == null) continue;
 
                 var status = ConfessionResearchManager.Instance.GetStatus(id);
-                bool isCulture = ConfessionTechDatabase.Get(id).Track == TechTrack.Culture;
-                bool isSecular = ConfessionTechDatabase.Get(id).Track == TechTrack.Secular;
                 bool isSelected = selectedTech == id;
+                // Status-first colors so Done / Available / Locked read at a glance.
+                // Open era-fork siblings get a warm amber so the pair is visible across tabs.
+                string forkBadge = EraBranchRules.FormatForkButtonBadge(id, status);
+                bool openFork = !string.IsNullOrEmpty(forkBadge) &&
+                                status is ConfessionTechStatus.Available or ConfessionTechStatus.Locked or
+                                    ConfessionTechStatus.AdherenceLocked;
                 img.color = status switch
                 {
-                    ConfessionTechStatus.Unlocked => isSecular
-                        ? new Color(0.14f, 0.28f, 0.32f, 1f)
-                        : isCulture
-                            ? new Color(0.28f, 0.26f, 0.14f, 1f)
-                            : new Color(0.15f, 0.32f, 0.2f, 1f),
-                    ConfessionTechStatus.Researching => isSecular
-                        ? new Color(0.18f, 0.32f, 0.38f, 1f)
-                        : isCulture
-                            ? new Color(0.38f, 0.30f, 0.12f, 1f)
-                            : new Color(0.35f, 0.28f, 0.12f, 1f),
-                    ConfessionTechStatus.Available => isSecular
-                        ? new Color(0.16f, 0.30f, 0.38f, 1f)
-                        : isCulture
-                            ? new Color(0.32f, 0.26f, 0.16f, 1f)
-                            : new Color(0.18f, 0.28f, 0.42f, 1f),
-                    ConfessionTechStatus.AdherenceLocked => new Color(0.22f, 0.16f, 0.14f, 1f),
-                    _ => new Color(0.14f, 0.14f, 0.16f, 1f)
+                    ConfessionTechStatus.Unlocked => new Color(0.10f, 0.38f, 0.22f, 1f),
+                    ConfessionTechStatus.Researching => new Color(0.42f, 0.32f, 0.10f, 1f),
+                    ConfessionTechStatus.Available when openFork => new Color(0.36f, 0.28f, 0.12f, 1f),
+                    ConfessionTechStatus.Available => new Color(0.16f, 0.30f, 0.48f, 1f),
+                    ConfessionTechStatus.AdherenceLocked => new Color(0.28f, 0.16f, 0.14f, 1f),
+                    ConfessionTechStatus.EraForkLocked => new Color(0.22f, 0.14f, 0.18f, 1f),
+                    _ when openFork => new Color(0.22f, 0.18f, 0.10f, 1f),
+                    _ => new Color(0.11f, 0.11f, 0.13f, 1f)
                 };
                 if (isSelected)
                     img.color = new Color(
-                        Mathf.Min(img.color.r + 0.12f, 1f),
-                        Mathf.Min(img.color.g + 0.12f, 1f),
-                        Mathf.Min(img.color.b + 0.08f, 1f), 1f);
+                        Mathf.Min(img.color.r + 0.14f, 1f),
+                        Mathf.Min(img.color.g + 0.14f, 1f),
+                        Mathf.Min(img.color.b + 0.10f, 1f), 1f);
             }
         }
 

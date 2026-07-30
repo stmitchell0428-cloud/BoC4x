@@ -451,7 +451,7 @@ public class SchismManager : MonoBehaviour
     }
 
     /// <summary>Dissent overflow when three blocs already exist — strengthens an existing heresy.</summary>
-    public void ReinforceExistingBloc(SchismaticBlocId blocId, string reason)
+    public void ReinforceExistingBloc(SchismaticBlocId blocId, string reason, bool nearPlayer = false)
     {
         var registry = SchismaticBlocRegistry.Instance;
         if (registry == null || !registry.TryGetBloc(blocId, out var record))
@@ -466,7 +466,26 @@ public class SchismManager : MonoBehaviour
 
         var profile = record.Profile;
         var rallyHex = record.CapitalHex;
-        if (HexGridMap.Instance != null)
+
+        if (nearPlayer)
+        {
+            var playerCity = CityManager.Instance?.GetPrimaryPlayerCity();
+            if (playerCity != null && HexGridMap.Instance != null)
+            {
+                foreach (var neighbor in HexGridMap.Instance.GetWrappedNeighbors(playerCity.HexPosition))
+                {
+                    if (!HexGridMap.Instance.TryGetTile(neighbor, out var nTile))
+                        continue;
+                    if (!TerrainRules.IsPassable(nTile.Terrain) || nTile.Occupant != null)
+                        continue;
+                    if (nTile.Settlement != null)
+                        continue;
+                    rallyHex = neighbor;
+                    break;
+                }
+            }
+        }
+        else if (HexGridMap.Instance != null)
         {
             foreach (var neighbor in record.CapitalHex.GetNeighbors())
             {
@@ -483,6 +502,11 @@ public class SchismManager : MonoBehaviour
         var unitType = profile.PreferSoldiers && !profile.PreferMissionaries
             ? UnitType.Soldier
             : PickSchismaticClergy(profile);
+
+        // Spawn a martial raider when pressing the player; otherwise mirror profile.
+        if (nearPlayer)
+            unitType = profile.PreferRanged ? UnitType.Slinger : UnitType.Soldier;
+
         SpawnSchismaticUnit(blocId, unitType, rallyHex, city);
 
         var faction = FirstSteps.Instance;
@@ -493,7 +517,9 @@ public class SchismManager : MonoBehaviour
         }
 
         TurnPhaseBanner.Instance?.Refresh(
-            $"Dissent joined {profile.CapitalSuffix} — no fourth capital, but their party grows.");
+            nearPlayer
+                ? $"Dissent from {profile.CapitalSuffix} presses near your cities — no fourth capital, but their party grows."
+                : $"Dissent joined {profile.CapitalSuffix} — no fourth capital, but their party grows.");
         Debug.LogWarning($"Dissent overflow: reinforced {profile.DisplayName} ({blocId}). {reason}");
         FirstSteps.Instance?.RefreshDashboard();
     }
@@ -504,6 +530,6 @@ public class SchismManager : MonoBehaviour
         if (blocId == null)
             return;
 
-        ReinforceExistingBloc(blocId.Value, reason);
+        ReinforceExistingBloc(blocId.Value, reason, nearPlayer: false);
     }
 }

@@ -56,11 +56,26 @@ public static class ArtEraPalette
     {
         return era switch
         {
-            VisualArtEra.WoodcutPaper => SepiaTint(baseColor, 0.88f),
+            // Keep faction hue readable (old sepia ~0.88 collapsed blue/red into the same brown).
+            VisualArtEra.WoodcutPaper => WarmFactionTint(baseColor),
             VisualArtEra.StainedGlass => Saturate(baseColor, 1.35f),
             VisualArtEra.Modern => Color.Lerp(baseColor, Color.white, 0.08f),
             _ => baseColor
         };
+    }
+
+    static Color WarmFactionTint(Color color)
+    {
+        Color.RGBToHSV(color, out float h, out float s, out float v);
+        s = Mathf.Clamp01(s * 1.05f);
+        v = Mathf.Clamp01(v * 0.98f);
+        var kept = Color.HSVToRGB(h, s, v);
+        var warm = new Color(
+            Mathf.Clamp01(kept.r * 1.04f + 0.02f),
+            Mathf.Clamp01(kept.g * 0.98f),
+            Mathf.Clamp01(kept.b * 0.92f),
+            color.a);
+        return Color.Lerp(kept, warm, 0.22f);
     }
 
     public static Color TerrainColor(TerrainType terrain, VisualArtEra era)

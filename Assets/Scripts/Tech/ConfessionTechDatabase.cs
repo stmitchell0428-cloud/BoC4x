@@ -447,6 +447,16 @@ public static class ConfessionTechDatabase
                 prerequisites: new[] { ConfessionTechId.OrderedCreation }),
 
             new ConfessionTechNode(
+                ConfessionTechId.ParishWalls,
+                "Parish Walls",
+                "Timber and stone around the parish  -  earthly authority guarding Word and sacrament.",
+                "Unlocks Fortifications build; walled cities block hostile entry until loyalty falls",
+                reformation, tier: 1, manuscriptCost: 3, turnsToComplete: 2,
+                track: TechTrack.Secular, minAdherence: 38f,
+                figureName: "Parish magistrates", lifespan: "Reformation",
+                prerequisites: new[] { ConfessionTechId.EarthenVessels, ConfessionTechId.TwoKingdoms }),
+
+            new ConfessionTechNode(
                 ConfessionTechId.ParishGranary,
                 "Parish Granary",
                 "Store the harvest against famine  -  good stewardship of God's provision.",

@@ -13,6 +13,23 @@ public class TerritoryManager : MonoBehaviour
 
     void Awake() => Instance = this;
 
+    void Start()
+    {
+        // Catch cities registered before this component existed (bootstrap order / hot add).
+        if (CityManager.Instance == null)
+            return;
+
+        foreach (var city in CityManager.Instance.AllCities)
+        {
+            if (city == null)
+                continue;
+            cityTerritory.TryAdd(city, new HashSet<HexCoordinates>());
+            cityWorked.TryAdd(city, new HashSet<HexCoordinates>());
+        }
+
+        RefreshAll();
+    }
+
     void OnDestroy()
     {
         if (Instance == this)

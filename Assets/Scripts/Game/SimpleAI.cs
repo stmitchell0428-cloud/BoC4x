@@ -97,6 +97,7 @@ public class SimpleAI : MonoBehaviour
         }
 
         MatchController.Instance?.EvaluateConditions();
+        CityMilitia.ProcessSynodPlayerEndTurn(playerId);
         CityLoyaltySystem.ProcessEndTurnOccupation(FactionId.LutheranSynod);
         AiSynodCrisisManager.ProcessEndTurn(playerId);
         ScheduleFinishAiTurn(FactionId.LutheranSynod, playerId, SchismaticBlocId.None);
@@ -388,6 +389,7 @@ public class SimpleAI : MonoBehaviour
         }
 
         MatchController.Instance?.EvaluateConditions();
+        CityMilitia.ProcessEndTurn(FactionId.Schismatic, blocId);
         CityLoyaltySystem.ProcessEndTurnOccupation(FactionId.Schismatic);
         ScheduleFinishAiTurn(FactionId.Schismatic, SynodPlayerId.None, blocId);
     }

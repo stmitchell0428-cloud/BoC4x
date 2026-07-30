@@ -502,8 +502,9 @@ public class Unit : MonoBehaviour
 
         var mask = GetBaseMaskSprite(Type);
         var fill = FactionColor(Faction, SynodPlayer);
+        bool hostile = Faction == FactionId.Schismatic;
         spriteRenderer.sprite = ArtEraSpriteFactory.StyleSprite(
-            mask, fill, ArtEraVisualController.CurrentEra, $"unit_{Type}");
+            mask, fill, ArtEraVisualController.CurrentEra, $"unit_{Type}", hostile);
         spriteRenderer.color = Color.white;
     }
 
@@ -723,6 +724,7 @@ public class Unit : MonoBehaviour
         if (!HexGridMap.Instance.TryGetTile(target, out var tile)) return false;
         if (!NavalMovementRules.CanEnterTile(Type, tile)) return false;
         if (tile.Occupant != null) return false;
+        if (CityDefenses.BlocksHostileEntryAt(target, this)) return false;
         return true;
     }
 
@@ -898,7 +900,8 @@ public class Unit : MonoBehaviour
         faction switch
     {
         FactionId.LutheranSynod => SynodPlayerDatabase.ColorFor(synodPlayer),
-        FactionId.Schismatic => new Color(0.85f, 0.28f, 0.22f),
+        // Hot vermillion — deliberately far from synod blues after art-era tint.
+        FactionId.Schismatic => new Color(0.98f, 0.22f, 0.08f),
         _ => Color.gray
     };
 

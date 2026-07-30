@@ -91,5 +91,19 @@ namespace BoC4x.Tests
                 EraBranchRules.ResolveForkPotency(
                     ConfessionTechId.GutenbergPress, unlocked, integrated, studied));
         }
+
+        [Test]
+        public void AdvanceForkHint_NamesSibling_OnBothSides()
+        {
+            string augsburg = EraBranchRules.FormatAdvanceForkHint(ConfessionTechId.AugsburgConfession);
+            string gutenberg = EraBranchRules.FormatAdvanceForkHint(ConfessionTechId.GutenbergPress);
+            Assert.IsTrue(augsburg.Contains("Gutenberg") || augsburg.Contains("Printed"), augsburg);
+            Assert.IsTrue(gutenberg.Contains("Augsburg"), gutenberg);
+
+            string mission = EraBranchRules.FormatAdvanceForkHint(ConfessionTechId.MissionarySending);
+            string bach = EraBranchRules.FormatAdvanceForkHint(ConfessionTechId.JohannSebastianBach);
+            Assert.IsFalse(string.IsNullOrEmpty(mission));
+            Assert.IsFalse(string.IsNullOrEmpty(bach));
+        }
     }
 }

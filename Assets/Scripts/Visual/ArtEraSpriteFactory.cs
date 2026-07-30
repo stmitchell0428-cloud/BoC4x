@@ -8,13 +8,18 @@ public static class ArtEraSpriteFactory
 
     public static void ClearCache() => Cache.Clear();
 
-    public static Sprite StyleSprite(Sprite mask, Color fill, VisualArtEra era, string cacheKey)
+    public static Sprite StyleSprite(
+        Sprite mask,
+        Color fill,
+        VisualArtEra era,
+        string cacheKey,
+        bool hostileOutline = false)
     {
         if (mask == null)
             return null;
 
         int fillHash = fill.r.GetHashCode() ^ fill.g.GetHashCode() ^ fill.b.GetHashCode();
-        string key = $"{cacheKey}_{era}_{fillHash}";
+        string key = $"{cacheKey}_{era}_{fillHash}_{(hostileOutline ? "H" : "F")}";
         if (Cache.TryGetValue(key, out var cached))
             return cached;
 
@@ -45,9 +50,9 @@ public static class ArtEraSpriteFactory
                 bool edge = IsEdge(maskPixels, width, height, x, y);
                 outPixels[i] = era switch
                 {
-                    VisualArtEra.WoodcutPaper => StyleWoodcut(fill, x, y, edge),
-                    VisualArtEra.StainedGlass => StyleStainedGlass(fill, x, y, edge),
-                    _ => StyleModern(fill, x, y, height, edge)
+                    VisualArtEra.WoodcutPaper => StyleWoodcut(fill, x, y, edge, hostileOutline),
+                    VisualArtEra.StainedGlass => StyleStainedGlass(fill, x, y, edge, hostileOutline),
+                    _ => StyleModern(fill, x, y, height, edge, hostileOutline)
                 };
             }
         }
@@ -83,21 +88,25 @@ public static class ArtEraSpriteFactory
         return false;
     }
 
-    static Color StyleWoodcut(Color fill, int x, int y, bool edge)
+    static Color StyleWoodcut(Color fill, int x, int y, bool edge, bool hostile)
     {
         float grain = 0.82f + Hash(x, y) * 0.18f;
         var tinted = ArtEraPalette.TintFactionColor(fill, VisualArtEra.WoodcutPaper);
         var color = tinted * grain;
         if (edge)
-            color *= 0.55f;
+            color = hostile
+                ? new Color(1f, 0.92f, 0.25f, 1f)
+                : Color.Lerp(color, new Color(0.85f, 0.92f, 1f, 1f), 0.55f);
         color.a = 1f;
         return color;
     }
 
-    static Color StyleStainedGlass(Color fill, int x, int y, bool edge)
+    static Color StyleStainedGlass(Color fill, int x, int y, bool edge, bool hostile)
     {
         if (edge)
-            return new Color(0.04f, 0.04f, 0.06f, 1f);
+            return hostile
+                ? new Color(1f, 0.88f, 0.15f, 1f)
+                : new Color(0.75f, 0.88f, 1f, 1f);
 
         int segment = (x / 4 + y / 4) % 3;
         var tinted = ArtEraPalette.TintFactionColor(fill, VisualArtEra.StainedGlass);
@@ -111,13 +120,15 @@ public static class ArtEraSpriteFactory
         return pane;
     }
 
-    static Color StyleModern(Color fill, int x, int y, int height, bool edge)
+    static Color StyleModern(Color fill, int x, int y, int height, bool edge, bool hostile)
     {
         float gradient = 0.92f + (y / (float)Mathf.Max(1, height - 1)) * 0.12f;
         var tinted = ArtEraPalette.TintFactionColor(fill, VisualArtEra.Modern);
         var color = tinted * gradient;
         if (edge)
-            color = Color.Lerp(color, Color.white, 0.18f);
+            color = hostile
+                ? new Color(1f, 0.9f, 0.2f, 1f)
+                : Color.Lerp(color, Color.white, 0.45f);
         color.a = 1f;
         return color;
     }

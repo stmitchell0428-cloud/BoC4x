@@ -19,5 +19,13 @@ namespace BoC4x.Tests
             Assert.IsTrue(TechTreeRules.RequiresAdherence(TechTreeCategory.Culture));
             Assert.IsFalse(TechTreeRules.RequiresAdherence(TechTreeCategory.Secular));
         }
+
+        [Test]
+        public void DisplayName_UsesShortHudLabels()
+        {
+            Assert.AreEqual("Doctrine", TechTreeRules.DisplayName(TechTreeCategory.Doctrine));
+            Assert.AreEqual("Hymnody", TechTreeRules.DisplayName(TechTreeCategory.Culture));
+            Assert.AreEqual("Civic", TechTreeRules.DisplayName(TechTreeCategory.Secular));
+        }
     }
 }

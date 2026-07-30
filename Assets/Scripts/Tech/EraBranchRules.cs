@@ -135,7 +135,68 @@ public static class EraBranchRules
             return $"<size=12><color=#AABBCC><i>{ConfessionalUiVocabulary.FormatIntegratedSiblingAvailable()}</i></color></size>";
         }
 
+        // Advance warning while the fork is still open.
+        if (status is ConfessionTechStatus.Available or ConfessionTechStatus.Locked or
+            ConfessionTechStatus.AdherenceLocked or ConfessionTechStatus.Researching)
+        {
+            string advance = FormatAdvanceForkHint(id);
+            if (!string.IsNullOrEmpty(advance))
+                return advance;
+        }
+
         return "";
+    }
+
+    /// <summary>Shown on both siblings before either path is taken.</summary>
+    public static string FormatAdvanceForkHint(ConfessionTechId id)
+    {
+        var siblings = SiblingsInBranch(id).ToList();
+        if (siblings.Count == 0)
+            return "";
+
+        // Only warn while no sibling in the group is unlocked yet.
+        var unlocked = ConfessionResearchManager.Instance;
+        if (unlocked != null)
+        {
+            if (unlocked.IsTechUnlocked(id))
+                return "";
+            foreach (var sib in siblings)
+            {
+                if (unlocked.IsTechUnlocked(sib))
+                    return "";
+            }
+        }
+
+        string siblingName = ConfessionTechDatabase.Get(siblings[0]).Name;
+        return $"<size=12><color=#E8C878><i>{ConfessionalUiVocabulary.FormatEraForkChoice(siblingName)}</i></color></size>";
+    }
+
+    public static string FormatForkButtonBadge(ConfessionTechId id, ConfessionTechStatus status)
+    {
+        var siblings = SiblingsInBranch(id).ToList();
+        if (siblings.Count == 0)
+            return "";
+
+        if (status == ConfessionTechStatus.EraForkLocked)
+            return "<color=#CC8866>Fork locked</color>";
+
+        var rm = ConfessionResearchManager.Instance;
+        if (rm != null && rm.IsTechUnlocked(id))
+            return "<color=#88EEAA>Fork path</color>";
+
+        if (rm != null)
+        {
+            foreach (var sib in siblings)
+            {
+                if (rm.IsTechUnlocked(sib))
+                    return "<color=#CC8866>Fork locked</color>";
+            }
+        }
+
+        string shortName = ConfessionTechDatabase.Get(siblings[0]).Name;
+        if (shortName.Length > 18)
+            shortName = shortName.Substring(0, 16) + "…";
+        return ConfessionalUiVocabulary.FormatEraForkBadge(shortName);
     }
 
     public static bool BothSiblingsUnlocked(IReadOnlyCollection<ConfessionTechId> unlocked, ConfessionTechId id)
