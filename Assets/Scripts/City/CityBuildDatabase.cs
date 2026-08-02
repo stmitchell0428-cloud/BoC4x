@@ -156,19 +156,52 @@ public static class CityBuildDatabase
             manuscriptCost: 2,
             turnsToComplete: 1,
             spawnsUnit: UnitType.CoastalPatrol,
-            requiredTech: ConfessionTechId.MissionarySending),
+            requiredTech: ConfessionTechId.CoastalWharves),
+
+        [CityBuildId.BuildWharf] = new CityBuildDefinition(
+            CityBuildId.BuildWharf,
+            "Build Wharf",
+            "Timber slips and landings for fishing boats and river trade.",
+            "Enables coastal patrol & explorer; +1 food at coastal cities",
+            CityBuildCategory.SecularBuilding,
+            CityBuildTrack.Secular,
+            productionCost: 12,
+            uniquePerCity: true,
+            requiredTech: ConfessionTechId.CoastalWharves),
+
+        [CityBuildId.BuildFishingPost] = new CityBuildDefinition(
+            CityBuildId.BuildFishingPost,
+            "Build Fishing Post",
+            "Smokehouses and nets along the shore to feed the synod.",
+            "+2 food at coastal cities; requires wharf",
+            CityBuildCategory.SecularBuilding,
+            CityBuildTrack.Secular,
+            productionCost: 8,
+            uniquePerCity: true,
+            requiredTech: ConfessionTechId.CoastalWharves),
+
+        [CityBuildId.TrainCoastalExplorer] = new CityBuildDefinition(
+            CityBuildId.TrainCoastalExplorer,
+            "Build Coastal Explorer",
+            "Light fishing boat for rivers, lakes, and near-shore mapping.",
+            "Spawns an explorer (land + navigable water; wide sight)",
+            CityBuildCategory.Unit,
+            CityBuildTrack.Confessional,
+            manuscriptCost: 2,
+            turnsToComplete: 1,
+            spawnsUnit: UnitType.CoastalExplorer,
+            requiredTech: ConfessionTechId.CoastalWharves),
 
         [CityBuildId.BuildDock] = new CityBuildDefinition(
             CityBuildId.BuildDock,
-            "Build Dock",
-            "Wharves and boat slips for river trade and coastal defense.",
-            "Unlocks coastal galleys; requires shore or naval coast",
+            "Build War Dock",
+            "Heavy wharves, arsenals, and slips for galleys and deep-sea craft.",
+            "Unlocks galleys & deep-sea ships; trade hub; requires wharf",
             CityBuildCategory.SecularBuilding,
             CityBuildTrack.Secular,
-            manuscriptCost: 3,
-            turnsToComplete: 2,
+            productionCost: 20,
             uniquePerCity: true,
-            requiredTech: ConfessionTechId.MissionarySending),
+            requiredTech: ConfessionTechId.NavalWarfare),
 
         [CityBuildId.TrainCoastalGalley] = new CityBuildDefinition(
             CityBuildId.TrainCoastalGalley,
@@ -180,7 +213,19 @@ public static class CityBuildDatabase
             manuscriptCost: 3,
             turnsToComplete: 2,
             spawnsUnit: UnitType.CoastalGalley,
-            requiredTech: ConfessionTechId.MissionarySending),
+            requiredTech: ConfessionTechId.NavalWarfare),
+
+        [CityBuildId.TrainDeepSeaShip] = new CityBuildDefinition(
+            CityBuildId.TrainDeepSeaShip,
+            "Build Deep-Sea Ship",
+            "Ocean-going vessel for archipelago crossings and distant witness.",
+            "Spawns a deep-sea ship (all ocean tiles; amphibious transport)",
+            CityBuildCategory.Unit,
+            CityBuildTrack.Confessional,
+            manuscriptCost: 4,
+            turnsToComplete: 3,
+            spawnsUnit: UnitType.DeepSeaShip,
+            requiredTech: ConfessionTechId.OpenOceanNavigation),
 
         [CityBuildId.TrainScout] = new CityBuildDefinition(
             CityBuildId.TrainScout,

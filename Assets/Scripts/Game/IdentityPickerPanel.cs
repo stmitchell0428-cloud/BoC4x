@@ -153,7 +153,7 @@ public class IdentityPickerPanel : MonoBehaviour
             if (isRespecMode)
                 faction.MarkIdentityRespecUsed();
             else
-                faction.AddFame(10);
+                faction.AddFame(6);
         }
 
         if (panelRoot != null)

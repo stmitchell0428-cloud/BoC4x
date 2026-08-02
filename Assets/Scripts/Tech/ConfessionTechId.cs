@@ -73,6 +73,9 @@ public enum ConfessionTechId
     ChoraleTradition,
     JohannesKepler,
     CarlLinnaeus,
+    CoastalWharves,
+    NavalWarfare,
+    OpenOceanNavigation,
 
     // Tier 3  -  Age of Orthodoxy
     MartinChemnitz,

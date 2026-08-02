@@ -14,6 +14,9 @@ public class PastoralBriefingManager : MonoBehaviour, IChoiceCardPresenter
     readonly HashSet<int> recentlyUsedIndices = new();
     int lastBriefingTurn = -999;
     Coroutine deferredPresentRoutine;
+    string pendingTitle;
+    string pendingBody;
+    List<CrisisCardChoice> pendingChoices;
 
     public bool IsAwaitingPlayerChoice { get; private set; }
 
@@ -57,7 +60,7 @@ public class PastoralBriefingManager : MonoBehaviour, IChoiceCardPresenter
         if (CrisisManager.Instance != null && CrisisManager.Instance.IsAwaitingPlayerChoice)
             return;
 
-        if (CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible)
+        if (ChoiceCardBlocking.BlocksOtherEvents())
             return;
 
         TryOfferBriefing();
@@ -66,6 +69,7 @@ public class PastoralBriefingManager : MonoBehaviour, IChoiceCardPresenter
     public void OnChoiceCardDismissed()
     {
         IsAwaitingPlayerChoice = false;
+        ClearPendingCard();
         FirstSteps.Instance?.RefreshDashboard();
         TurnPhaseBanner.Instance?.Refresh();
     }
@@ -74,6 +78,7 @@ public class PastoralBriefingManager : MonoBehaviour, IChoiceCardPresenter
     {
         ApplyDeferredJudgment();
         IsAwaitingPlayerChoice = false;
+        ClearPendingCard();
         FirstSteps.Instance?.RefreshDashboard();
         TurnPhaseBanner.Instance?.Refresh();
     }
@@ -83,7 +88,21 @@ public class PastoralBriefingManager : MonoBehaviour, IChoiceCardPresenter
         if (!IsAwaitingPlayerChoice)
             return;
 
-        // Card already visible from a prior end-turn attempt.
+        if (CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible)
+        {
+            CrisisCardPanel.Instance.BringToFront();
+            return;
+        }
+
+        if (pendingChoices != null && pendingChoices.Count > 0)
+            TryShowImmediate(pendingTitle, pendingBody, pendingChoices);
+    }
+
+    void ClearPendingCard()
+    {
+        pendingTitle = null;
+        pendingBody = null;
+        pendingChoices = null;
     }
 
     public string FormatStatusLine()
@@ -104,7 +123,9 @@ public class PastoralBriefingManager : MonoBehaviour, IChoiceCardPresenter
         if (turn < MinTurn)
             return;
 
-        if (turn - lastBriefingTurn < CooldownTurns)
+        if (turn - lastBriefingTurn < CooldownTurns &&
+            (TestimonyColloquyManager.Instance == null ||
+             !TestimonyColloquyManager.Instance.ShouldOfferLibraryPatristicBriefing(turn)))
             return;
 
         if (CrisisManager.Instance != null &&
@@ -112,11 +133,17 @@ public class PastoralBriefingManager : MonoBehaviour, IChoiceCardPresenter
             CrisisManager.Instance.IsAwaitingPlayerChoice)
             return;
 
+        if (LiturgicalEventManager.Instance != null && LiturgicalEventManager.Instance.IsAwaitingPlayerChoice)
+            return;
+
+        if (TestimonyColloquyManager.Instance != null && TestimonyColloquyManager.Instance.IsAwaitingPlayerChoice)
+            return;
+
         if (!ShouldOfferBriefing(turn, faction))
             return;
 
-        var situation = ClassifySituation(faction);
-        var entry = PastoralBriefingDatabase.PickForSituation(situation, recentlyUsedIndices, out int entryIndex);
+        var situation = ClassifySituation(faction, turn);
+        var entry = PastoralBriefingDatabase.PickForSituation(situation, recentlyUsedIndices, out int entryIndex, turn);
         recentlyUsedIndices.Add(entryIndex);
         if (recentlyUsedIndices.Count > 6)
             recentlyUsedIndices.Clear();
@@ -131,6 +158,15 @@ public class PastoralBriefingManager : MonoBehaviour, IChoiceCardPresenter
         bool periodic = turn - lastBriefingTurn >= PeriodicInterval;
         bool saturated = SchismaticBlocRegistry.Instance != null &&
                          SchismaticBlocRegistry.Instance.ActiveCount >= SchismaticBlocRegistry.MaxBlocs;
+        bool feastWindow = LiturgicalEventManager.Instance != null &&
+                           LiturgicalEventManager.Instance.HasRecentFeastSpawn(turn);
+
+        if (TestimonyColloquyManager.Instance != null &&
+            TestimonyColloquyManager.Instance.ShouldOfferLibraryPatristicBriefing(turn))
+            return true;
+
+        if (feastWindow && Random.value < 0.78f)
+            return true;
 
         if (saturated && Random.value < 0.45f)
             return true;
@@ -144,8 +180,19 @@ public class PastoralBriefingManager : MonoBehaviour, IChoiceCardPresenter
         return false;
     }
 
-    static PastoralBriefingSituation ClassifySituation(FirstSteps faction)
+    static PastoralBriefingSituation ClassifySituation(FirstSteps faction, int turn)
     {
+        if (TestimonyColloquyManager.Instance != null &&
+            TestimonyColloquyManager.Instance.ShouldOfferLibraryPatristicBriefing(turn))
+            return PastoralBriefingSituation.PatristicWitness;
+
+        if (ChurchYearCalendar.TryGetMartyrInTurnWindow(turn, out _) &&
+            ChurchYearCalendar.IsChurchYearActive)
+            return PastoralBriefingSituation.MartyrFeast;
+
+        if (TestimonyColloquyManager.PatristicTestimonyUnlocked() && Random.value < 0.35f)
+            return PastoralBriefingSituation.PatristicWitness;
+
         if (SchismaticBlocRegistry.Instance != null &&
             SchismaticBlocRegistry.Instance.ActiveCount >= SchismaticBlocRegistry.MaxBlocs)
             return PastoralBriefingSituation.SchismSaturation;
@@ -208,6 +255,11 @@ public class PastoralBriefingManager : MonoBehaviour, IChoiceCardPresenter
             return false;
 
         IsAwaitingPlayerChoice = true;
+        pendingTitle = title;
+        pendingBody = body;
+        pendingChoices = choices is List<CrisisCardChoice> list
+            ? list
+            : new List<CrisisCardChoice>(choices);
         lastBriefingTurn = TurnManager.Instance != null ? TurnManager.Instance.TurnNumber : 1;
         FirstSteps.Instance?.RefreshDashboard();
         TurnPhaseBanner.Instance?.Refresh("Pastoral briefing — choose Law/Gospel emphasis.");

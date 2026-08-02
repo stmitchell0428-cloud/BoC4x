@@ -96,9 +96,9 @@ public static class HamletSpecialtyDatabase
             CityBuildId.BuildWatchtower,
             CityBuildId.BuildMarketHall,
             CityBuildId.BuildMill,
-            CityBuildId.TrainCoastalPatrol,
-            CityBuildId.BuildDock,
-            CityBuildId.TrainCoastalGalley
+            CityBuildId.TrainCoastalGalley,
+            CityBuildId.TrainDeepSeaShip,
+            CityBuildId.BuildDock
         };
         return set;
     }
@@ -109,7 +109,7 @@ public static class HamletSpecialtyDatabase
             HamletSpecialty.Seminary,
             "Seminary District",
             "Word, hymn, and pastoral office",
-            "Trains missionaries, pastors, deaconesses; pastor->bishop/chaplain upgrades.",
+            "Missionaries, pastors, deaconesses, cantors; pastor upgrades.",
             new[]
             {
                 CityBuildId.TrainMissionary,
@@ -136,7 +136,7 @@ public static class HamletSpecialtyDatabase
         [HamletSpecialty.Garrison] = new HamletSpecialtyDefinition(
             HamletSpecialty.Garrison,
             "Garrison District",
-            "Sword, bow, and horse  -  siege engines planned for Tier 5-6",
+            "Sword, bow, and horse — siege engines in later tiers",
             "Trains soldiers, slingers, archers, siege engines; breaching at Maxwell tier.",
             new[]
             {
@@ -158,13 +158,17 @@ public static class HamletSpecialtyDatabase
             HamletSpecialty.Market,
             "Market District",
             "Trade, craft, and frontier expansion",
-            "Trains colonists, scouts, coastal patrol, and galleys; builds dock and frontier craft.",
+            "Colonists, scouts, coastal units; dock and frontier craft.",
             new[]
             {
                 CityBuildId.TrainFrontierSettler,
                 CityBuildId.TrainScout,
                 CityBuildId.TrainCoastalPatrol,
+                CityBuildId.TrainCoastalExplorer,
                 CityBuildId.TrainCoastalGalley,
+                CityBuildId.TrainDeepSeaShip,
+                CityBuildId.BuildWharf,
+                CityBuildId.BuildFishingPost,
                 CityBuildId.BuildGuildWorkshop,
                 CityBuildId.BuildPotteryWorkshop,
                 CityBuildId.BuildGranary,

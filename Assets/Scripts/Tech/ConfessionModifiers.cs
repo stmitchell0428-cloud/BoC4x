@@ -1,6 +1,8 @@
 /// <summary>Cumulative bonuses from unlocked confession techs.</summary>
 public class ConfessionModifiers
 {
+    public int CoastalNavalMovementBonus = 0;
+    public int ExplorerSightBonus = 0;
     public float AdherenceDecayMultiplier = 1f;
     public float SettlementAdherenceDecayMultiplier = 1f;
     public float PreachAdherenceBonus = 6f;
@@ -45,6 +47,8 @@ public class ConfessionModifiers
         MissionaryMovementBonus += other.MissionaryMovementBonus;
         MissionaryAttackBonus += other.MissionaryAttackBonus;
         AllUnitsMovementBonus += other.AllUnitsMovementBonus;
+        CoastalNavalMovementBonus += other.CoastalNavalMovementBonus;
+        ExplorerSightBonus += other.ExplorerSightBonus;
         TerrainMovePenaltyReduction += other.TerrainMovePenaltyReduction;
         LawGospelDriftMultiplier *= other.LawGospelDriftMultiplier;
         LegalismDriftMultiplier *= other.LegalismDriftMultiplier;
@@ -80,6 +84,8 @@ public class ConfessionModifiers
             MissionaryMovementBonus = ScaleInt(source.MissionaryMovementBonus, potency),
             MissionaryAttackBonus = ScaleInt(source.MissionaryAttackBonus, potency),
             AllUnitsMovementBonus = ScaleInt(source.AllUnitsMovementBonus, potency),
+            CoastalNavalMovementBonus = ScaleInt(source.CoastalNavalMovementBonus, potency),
+            ExplorerSightBonus = ScaleInt(source.ExplorerSightBonus, potency),
             TerrainMovePenaltyReduction = ScaleInt(source.TerrainMovePenaltyReduction, potency),
             LawGospelDriftMultiplier = LerpMultiplier(1f, source.LawGospelDriftMultiplier, potency),
             LegalismDriftMultiplier = LerpMultiplier(1f, source.LegalismDriftMultiplier, potency),
@@ -127,6 +133,9 @@ public class ConfessionModifiers
         ConfessionTechId.SynodicalEmphasis => new ConfessionModifiers(),
         ConfessionTechId.WaltherPastoralTheology => new ConfessionModifiers { PreachSpiritualComfortBonus = 8f },
         ConfessionTechId.FrancisPieper => new ConfessionModifiers { AdherenceDecayMultiplier = 0.9f },
+        ConfessionTechId.CoastalWharves => new ConfessionModifiers { SettlementManuscriptBonus = 1 },
+        ConfessionTechId.NavalWarfare => new ConfessionModifiers { CoastalNavalMovementBonus = 1 },
+        ConfessionTechId.OpenOceanNavigation => new ConfessionModifiers { CoastalNavalMovementBonus = 1, ExplorerSightBonus = 1 },
         ConfessionTechId.MissionarySending => new ConfessionModifiers { MissionaryMovementBonus = 1 },
         ConfessionTechId.JohannSebastianBach => new ConfessionModifiers { SpiritualComfortTurnBonus = 8f, PreachAdherenceBonus = 5f },
         ConfessionTechId.OttoVonGuericke => new ConfessionModifiers { SoldierDefenseBonus = 2, SiegePressureBonus = 2 },

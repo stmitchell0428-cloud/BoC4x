@@ -18,6 +18,10 @@ public static class ChurchYearFlavor
 
     public static string FormatDashboardLine()
     {
+        if (MatchNarrativeChronology.Instance != null &&
+            MatchNarrativeChronology.Instance.Phase == NarrativeChronologyPhase.SalvationHistory)
+            return MatchNarrativeChronology.FormatDashboardLine();
+
         GetToday(out int month, out int day, out var season);
         string seasonName = ChurchYearCalendar.SeasonDisplayName(season);
 
@@ -54,7 +58,10 @@ public static class ChurchYearFlavor
         return line;
     }
 
-    public static string FormatCompactObservance()
+    public static string FormatCompactObservance() =>
+        MatchNarrativeChronology.FormatCompactObservance();
+
+    public static string FormatChurchYearCompactObservance()
     {
         if (ChurchYearCalendar.TryGetPrincipalWatchesForTurn(CurrentTurn, out var watch, out var also))
         {
@@ -71,7 +78,6 @@ public static class ChurchYearFlavor
         return $"{ChurchYearCalendar.SeasonDisplayName(season)} ({MonthName(month)} {day})";
     }
 
-    /// <summary>Append liturgical context to a crisis/event body.</summary>
     public static string EnrichEventBody(string body, bool saturatedEmphasis = false)
     {
         if (string.IsNullOrEmpty(body))

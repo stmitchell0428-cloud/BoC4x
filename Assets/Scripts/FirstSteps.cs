@@ -187,11 +187,30 @@ public class FirstSteps : MonoBehaviour
         if (Keyboard.current.lKey.wasPressedThisFrame)
             TryDisembarkGalley();
 
+        if (Keyboard.current.hKey.wasPressedThisFrame)
+            TryToggleFortifySelected();
+
         if (Keyboard.current.dKey.wasPressedThisFrame)
             DiplomacyPanel.Instance?.Toggle();
 
         if (Keyboard.current.yKey.wasPressedThisFrame)
             SynodBriefPanel.Instance?.Toggle();
+    }
+
+    void TryToggleFortifySelected()
+    {
+        var unit = TurnManager.Instance?.SelectedUnit;
+        if (unit == null || !unit.IsOnMap)
+            return;
+        if (!unit.ToggleFortify())
+            return;
+
+        TerrainInfoPanel.Instance?.RefreshUnitDisplay();
+        PlayerUnitCycle.Instance?.OnUnitOrdersChanged();
+        TurnPhaseBanner.Instance?.Refresh(
+            unit.IsFortified
+                ? $"{Unit.TypeDisplayName(unit.Type)} fortified (H to wake)"
+                : $"{Unit.TypeDisplayName(unit.Type)} left fortify");
     }
 
     void TryEmbarkSelectedUnit()
@@ -215,7 +234,7 @@ public class FirstSteps : MonoBehaviour
     void TryDisembarkGalley()
     {
         var galley = TurnManager.Instance?.SelectedUnit;
-        if (galley == null || galley.Type != UnitType.CoastalGalley)
+        if (galley == null || galley.Type is not (UnitType.CoastalGalley or UnitType.DeepSeaShip))
             return;
 
         var targets = AmphibiousTransport.GetDisembarkHexes(galley);
@@ -422,7 +441,7 @@ public class FirstSteps : MonoBehaviour
             if (string.IsNullOrEmpty(crisis))
                 crisis = FormatWaltherCrisisWarning();
             waltherDashboardUIText.text = TmpTextSanitizer.Sanitize(
-                "Walther Dialectic  (T tech  |  C city  |  Y brief)\n" +
+                "Walther Dialectic  (T tech  |  C city  |  Y brief  |  H fortify)\n" +
                 $"  Civic Restraint (Law)  {civicRestraint:F0}%\n" +
                 $"  Spiritual Comfort (Gospel)  {spiritualComfort:F0}%" +
                 (string.IsNullOrEmpty(crisis) ? "" : $"\n  {crisis}"));
@@ -501,6 +520,7 @@ public class FirstSteps : MonoBehaviour
         ConfessionResearchManager.Instance?.AdvanceTurn();
         ConfessionResearchManager.Instance?.NotifyAdherenceChanged();
         CityLoyaltySystem.ProcessEndTurnOccupation(FactionId.LutheranSynod);
+        CityLoyaltySystem.ProcessEndTurnRecovery(FactionId.LutheranSynod, SynodPlayerId.Player1);
         ChaplainSpecialty.ProcessEndTurn(FactionId.LutheranSynod);
         EpiscopalOversight.ProcessEndTurn(FactionId.LutheranSynod);
         CrisisManager.Instance?.OnPlayerTurnEnded();
@@ -755,7 +775,7 @@ public class FirstSteps : MonoBehaviour
         if (!freePreach && preacher.CanPreach)
             preacher.MarkPreached();
 
-        AddFame(2);
+        AddFame(1);
         CityManager.Instance?.TryPreachCityAt(preacher, preacher.HexPosition);
 
         RefreshDashboard();
@@ -776,7 +796,7 @@ public class FirstSteps : MonoBehaviour
         civicRestraint = Mathf.Clamp(civicRestraint - 4f, 0f, 100f);
 
         cantor.MarkPreached();
-        AddFame(2);
+        AddFame(1);
         CityManager.Instance?.TryPreachCityAt(cantor, cantor.HexPosition);
         Debug.Log($"Spacebar: Cantor led hymn (+{comfort:F0} comfort, +3 adherence).");
 

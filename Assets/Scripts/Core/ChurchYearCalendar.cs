@@ -71,11 +71,36 @@ public static class ChurchYearCalendar
 
     public static void GetCivilDateForTurn(int turnNumber, out int month, out int day)
     {
-        turnNumber = System.Math.Max(1, turnNumber);
+        turnNumber = System.Math.Max(1, EffectiveChurchTurn(turnNumber));
         int startIndex = DayOfYear(StartMonth, StartDay);
         int index = (startIndex + (turnNumber - 1) * DaysPerTurn) % 365;
         if (index < 0) index += 365;
         FromDayOfYear(index, out month, out day);
+    }
+
+    static int EffectiveChurchTurn(int turnNumber)
+    {
+        if (MatchNarrativeChronology.Instance != null &&
+            MatchNarrativeChronology.Instance.Phase == NarrativeChronologyPhase.ChurchYear &&
+            MatchNarrativeChronology.Instance.ChurchYearStartTurn > 0)
+        {
+            return System.Math.Max(1, turnNumber - MatchNarrativeChronology.Instance.ChurchYearStartTurn + 1);
+        }
+
+        return turnNumber;
+    }
+
+    public static bool IsChurchYearActive =>
+        MatchNarrativeChronology.Instance == null ||
+        MatchNarrativeChronology.Instance.Phase == NarrativeChronologyPhase.ChurchYear;
+
+    static bool IsCommemorationUnlockedForMatch(ChurchYearEntry entry)
+    {
+        if (MatchNarrativeChronology.Instance == null)
+            return true;
+        if (MatchNarrativeChronology.Instance.Phase != NarrativeChronologyPhase.ChurchYear)
+            return false;
+        return MatchNarrativeChronology.Instance.IsCommemorationUnlocked(entry);
     }
 
     public static LiturgicalSeason SeasonFor(int month, int day)
@@ -400,5 +425,153 @@ public static class ChurchYearCalendar
 
         month = 12;
         day = 31;
+    }
+
+    public static bool IsMartyrCommemoration(ChurchYearEntry entry)
+    {
+        string name = entry.Name ?? "";
+        if (name.Contains("Martyr", System.StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Martyrdom", System.StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Holy Innocents", System.StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return name.Contains("Polycarp", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Ignatius", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Lawrence", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Cyprian", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Lucia", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Perpetua", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Robert Barnes", System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsBiblicalCommemoration(ChurchYearEntry entry)
+    {
+        string name = entry.Name ?? "";
+        return name.Contains("Abraham", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Moses", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Noah", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("David", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Esther", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Job", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Adam and Eve", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("John the Baptist", System.StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("Holy Innocents", System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool TryGetMartyrInTurnWindow(int turnNumber, out ChurchYearEntry entry)
+    {
+        entry = default;
+        GetCivilDateForTurn(turnNumber, out int month, out int day);
+        int start = DayOfYear(month, day);
+
+        for (int offset = 0; offset < DaysPerTurn; offset++)
+        {
+            int index = (start + offset) % 365;
+            if (index < 0) index += 365;
+            FromDayOfYear(index, out int m, out int d);
+            foreach (var candidate in EntriesFor(m, d))
+            {
+                if (!IsMartyrCommemoration(candidate))
+                    continue;
+                entry = candidate;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static bool IsCommemorationInTurnWindow(int turnNumber, string nameFragment)
+    {
+        if (string.IsNullOrEmpty(nameFragment))
+            return false;
+
+        GetCivilDateForTurn(turnNumber, out int month, out int day);
+        int start = DayOfYear(month, day);
+
+        for (int offset = 0; offset < DaysPerTurn; offset++)
+        {
+            int index = (start + offset) % 365;
+            if (index < 0) index += 365;
+            FromDayOfYear(index, out int m, out int d);
+            foreach (var candidate in EntriesFor(m, d))
+            {
+                if (candidate.Name != null &&
+                    candidate.Name.Contains(nameFragment, System.StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static bool IsBugenhagenCommemorationWindow(int turnNumber) =>
+        IsCommemorationInTurnWindow(turnNumber, "Bugenhagen");
+
+    static bool IsDecisionEligible(ChurchYearEntry entry) =>
+        entry.IsPrincipalFeast ||
+        entry.Kind == ChurchYearEntryKind.FeastOrFestival ||
+        IsMartyrCommemoration(entry) ||
+        IsBiblicalCommemoration(entry);
+
+    static int DecisionFeastPriority(ChurchYearEntry entry)
+    {
+        if (entry.IsPrincipalFeast)
+            return 4;
+        if (IsMartyrCommemoration(entry))
+            return 3;
+        if (IsBiblicalCommemoration(entry))
+            return 2;
+        if (entry.Kind == ChurchYearEntryKind.FeastOrFestival)
+            return 1;
+        return 0;
+    }
+
+    /// <summary>Highest-priority feast/martyr in the 28-day turn window, for spawn + decision cards.</summary>
+    public static bool TryGetDecisionFeastForTurn(int turnNumber, out ChurchYearEntry entry)
+    {
+        entry = default;
+        GetCivilDateForTurn(turnNumber, out int month, out int day);
+        int start = DayOfYear(month, day);
+
+        ChurchYearEntry? best = null;
+        int bestPriority = -1;
+
+        for (int offset = 0; offset < DaysPerTurn; offset++)
+        {
+            int index = (start + offset) % 365;
+            if (index < 0) index += 365;
+            FromDayOfYear(index, out int m, out int d);
+            foreach (var candidate in EntriesFor(m, d))
+            {
+                if (!IsDecisionEligible(candidate))
+                    continue;
+                if (!IsCommemorationUnlockedForMatch(candidate))
+                    continue;
+                int priority = DecisionFeastPriority(candidate);
+                if (priority > bestPriority)
+                {
+                    bestPriority = priority;
+                    best = candidate;
+                }
+            }
+        }
+
+        if (!best.HasValue)
+            return false;
+
+        entry = best.Value;
+        return true;
+    }
+
+    public static string FeastKey(ChurchYearEntry entry) => $"{entry.Month:D2}-{entry.Day:D2}:{entry.Name}";
+
+    /// <summary>Feasts eligible for church-year decisions on this turn (highest priority in window).</summary>
+    public static List<ChurchYearEntry> DecisionFeastsForTurn(int turnNumber)
+    {
+        var result = new List<ChurchYearEntry>();
+        if (TryGetDecisionFeastForTurn(turnNumber, out var entry))
+            result.Add(entry);
+        return result;
     }
 }

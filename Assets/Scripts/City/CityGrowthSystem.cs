@@ -11,8 +11,8 @@ public static class CityGrowthSystem
     public const int CapitalUrbanFoodBaseline = 6;
     public const int FoundingCapitalPopulation = 15;
     public const int CapitalDeficitGraceTurns = 8;
-    public const float MigrationAppealThreshold = 22f;
-    public const int MinSurplusStreakForDistrict = 2;
+    public const float MigrationAppealThreshold = 18f;
+    public const int MinSurplusStreakForDistrict = 1;
     public const int MaxMigrationPerCityPerTurn = 4;
     public const int WorkerPopulationDivisor = 3;
     public const int WorkersPerActiveProject = 1;
@@ -157,10 +157,10 @@ public static class CityGrowthSystem
         if (TerritoryManager.Instance != null)
             food += TerritoryManager.Instance.GetWorkedYieldTotal(root).Food;
 
-        food += GetBuildingFoodBonus(root.Production);
+        food += GetBuildingFoodBonus(root);
 
         foreach (var hamlet in GetChildDistricts(root))
-            food += GetBuildingFoodBonus(hamlet.Production);
+            food += GetBuildingFoodBonus(hamlet);
 
         if (!city.IsHamlet && city.IsIndependentCity)
             food += GetUrbanFoodBaseline(city);
@@ -229,8 +229,9 @@ public static class CityGrowthSystem
         foodSurplus = foodProduced - foodConsumed;
     }
 
-    static int GetBuildingFoodBonus(CityProduction production)
+    static int GetBuildingFoodBonus(City city)
     {
+        var production = city?.Production;
         if (production == null)
             return 0;
 
@@ -238,6 +239,22 @@ public static class CityGrowthSystem
         if (production.HasBuilding(CityBuildId.BuildGranary)) food += 2;
         if (production.HasBuilding(CityBuildId.BuildMill)) food += 1;
         if (production.HasBuilding(CityBuildId.BuildMarketHall)) food += 1;
+        if (production.HasBuilding(CityBuildId.BuildWharf) &&
+            CityManager.Instance != null &&
+            CityManager.Instance.CityTouchesNavalCoast(city))
+            food += 1;
+        if (production.HasBuilding(CityBuildId.BuildFishingPost) &&
+            CityManager.Instance != null &&
+            CityManager.Instance.CityTouchesNavalCoast(city))
+            food += 2;
+
+        int turn = TurnManager.Instance != null ? TurnManager.Instance.TurnNumber : 1;
+        if (production.HasBuilding(CityBuildId.BuildWharf) &&
+            CityManager.Instance != null &&
+            CityManager.Instance.CityTouchesNavalCoast(city) &&
+            ChurchYearCalendar.IsBugenhagenCommemorationWindow(turn))
+            food += 1;
+
         return food;
     }
 
@@ -246,7 +263,7 @@ public static class CityGrowthSystem
         if (district == null || !district.IsHamlet)
             return 0;
 
-        int food = GetBuildingFoodBonus(district.Production);
+        int food = GetBuildingFoodBonus(district);
         var parent = district.ParentCity;
         if (parent == null || HexGridMap.Instance == null || TerritoryManager.Instance == null)
             return food;
@@ -339,7 +356,7 @@ public static class CityGrowthSystem
                 continue;
             if (c.ControllingCity != root)
                 continue;
-            if (c.Production != null && c.Production.IsProducing)
+            if (c.Production != null && c.Production.IsProdBusy)
                 busy += WorkersPerActiveProject;
         }
         return busy;
@@ -353,7 +370,7 @@ public static class CityGrowthSystem
 
     public static float GetProductionWorkerMultiplier(City city)
     {
-        if (city == null || city.Production == null || !city.Production.IsProducing)
+        if (city == null || city.Production == null || !city.Production.IsProdBusy)
             return 1f;
 
         var snap = Evaluate(city);
@@ -569,7 +586,39 @@ public static class CityGrowthSystem
             };
         }
 
-        return bestScore >= 28f ? best : null;
+        return bestScore >= 20f ? best : null;
+    }
+
+    /// <summary>Why food+streak are met but FindBestDistrictOffer still fails.</summary>
+    public static string ExplainDistrictBlocker(City parent, GrowthSnapshot snap)
+    {
+        if (parent == null)
+            return "district blocked";
+        if (snap.BlendedAppeal < MigrationAppealThreshold)
+            return $"need appeal {MigrationAppealThreshold:F0}+ (now {snap.BlendedAppeal:F0})";
+
+        if (CityManager.Instance == null || TerritoryManager.Instance == null || HexGridMap.Instance == null)
+            return "no valid district site";
+
+        var territory = TerritoryManager.Instance.GetTerritory(parent);
+        if (territory == null || territory.Count == 0)
+            return "no valid district site";
+
+        float bestScore = 0f;
+        bool anySite = false;
+        foreach (var hex in territory)
+        {
+            if (!CityManager.Instance.IsValidHamletDistrictSite(hex, parent))
+                continue;
+            anySite = true;
+            bestScore = Mathf.Max(bestScore, ScoreDistrictHex(parent, hex, snap));
+        }
+
+        if (!anySite)
+            return "no valid district site";
+        if (bestScore < 20f)
+            return $"best site score {bestScore:F0}/20";
+        return "district blocked";
     }
 
     public static float ScoreLocalAppealHex(City parent, HexCoordinates hex, GrowthSnapshot snap) =>
@@ -596,6 +645,30 @@ public static class CityGrowthSystem
     public static HamletSpecialty SuggestSpecialty(City parent, HexCoordinates hex)
     {
         int seminary = 0, garrison = 0, market = 0, scholastic = 0;
+
+        var identity = FirstSteps.Instance != null
+            ? FirstSteps.Instance.confessionalIdentity
+            : ConfessionalIdentityId.None;
+        ApplyIdentityLean(identity, ref seminary, ref garrison, ref market, ref scholastic);
+
+        HamletSpecialty identityPrimary = IdentityPrimarySpecialty(identity);
+        int existingOfPrimary = 0;
+        foreach (var child in GetChildDistricts(parent))
+        {
+            switch (child.Specialty)
+            {
+                case HamletSpecialty.Seminary: seminary -= 4; break;
+                case HamletSpecialty.Garrison: garrison -= 4; break;
+                case HamletSpecialty.Market: market -= 4; break;
+                case HamletSpecialty.Scholastic: scholastic -= 4; break;
+            }
+
+            if (identityPrimary != HamletSpecialty.None && child.Specialty == identityPrimary)
+                existingOfPrimary++;
+        }
+
+        if (identityPrimary != HamletSpecialty.None && existingOfPrimary == 0)
+            AddToBucket(identityPrimary, 2, ref seminary, ref garrison, ref market, ref scholastic);
 
         if (parent.Production != null)
         {
@@ -625,15 +698,75 @@ public static class CityGrowthSystem
             scholastic += y.Manuscripts * 2;
         }
 
-        int max = Mathf.Max(seminary, garrison, market, scholastic);
+        int max = Mathf.Max(seminary, Mathf.Max(garrison, Mathf.Max(market, scholastic)));
         if (max <= 0)
-            return HamletSpecialty.Market;
+            return identityPrimary != HamletSpecialty.None ? identityPrimary : HamletSpecialty.Market;
 
-        if (max == seminary) return HamletSpecialty.Seminary;
-        if (max == garrison) return HamletSpecialty.Garrison;
-        if (max == scholastic) return HamletSpecialty.Scholastic;
+        // Ties: identity primary first, then Seminary → Garrison → Scholastic → Market.
+        if (identityPrimary != HamletSpecialty.None && ScoreOf(identityPrimary, seminary, garrison, market, scholastic) == max)
+            return identityPrimary;
+        if (seminary == max) return HamletSpecialty.Seminary;
+        if (garrison == max) return HamletSpecialty.Garrison;
+        if (scholastic == max) return HamletSpecialty.Scholastic;
         return HamletSpecialty.Market;
     }
+
+    static void ApplyIdentityLean(
+        ConfessionalIdentityId identity,
+        ref int seminary, ref int garrison, ref int market, ref int scholastic)
+    {
+        switch (identity)
+        {
+            case ConfessionalIdentityId.Magisterial:
+                garrison += 5;
+                seminary += 2;
+                break;
+            case ConfessionalIdentityId.PastoralCare:
+                seminary += 5;
+                market += 2;
+                break;
+            case ConfessionalIdentityId.MissionarySending:
+                market += 5;
+                seminary += 2;
+                break;
+            case ConfessionalIdentityId.ChemnitzConfessional:
+                scholastic += 5;
+                seminary += 2;
+                break;
+        }
+    }
+
+    static HamletSpecialty IdentityPrimarySpecialty(ConfessionalIdentityId identity) => identity switch
+    {
+        ConfessionalIdentityId.Magisterial => HamletSpecialty.Garrison,
+        ConfessionalIdentityId.PastoralCare => HamletSpecialty.Seminary,
+        ConfessionalIdentityId.MissionarySending => HamletSpecialty.Market,
+        ConfessionalIdentityId.ChemnitzConfessional => HamletSpecialty.Scholastic,
+        _ => HamletSpecialty.None
+    };
+
+    static void AddToBucket(
+        HamletSpecialty specialty, int amount,
+        ref int seminary, ref int garrison, ref int market, ref int scholastic)
+    {
+        switch (specialty)
+        {
+            case HamletSpecialty.Seminary: seminary += amount; break;
+            case HamletSpecialty.Garrison: garrison += amount; break;
+            case HamletSpecialty.Market: market += amount; break;
+            case HamletSpecialty.Scholastic: scholastic += amount; break;
+        }
+    }
+
+    static int ScoreOf(
+        HamletSpecialty specialty, int seminary, int garrison, int market, int scholastic) => specialty switch
+    {
+        HamletSpecialty.Seminary => seminary,
+        HamletSpecialty.Garrison => garrison,
+        HamletSpecialty.Market => market,
+        HamletSpecialty.Scholastic => scholastic,
+        _ => int.MinValue
+    };
 
     static void CountBuilding(CityProduction prod, CityBuildId id, ref int bucket, int weight)
     {
@@ -725,12 +858,12 @@ public static class CityGrowthSystem
         int streakNeed = RequiredSurplusStreakForDistrict(city);
         if (CountChildDistricts(city) < GetMaxDistrictCount(city))
         {
-            if (s.FoodSurplus > 0 && streak > 0)
-            {
-                sb.Append(streak >= streakNeed
-                    ? "  |  <color=#DDEE88>district offer ready</color>"
-                    : $"  |  district streak {streak}/{streakNeed}");
-            }
+            if (FindBestDistrictOffer(city, streak).HasValue)
+                sb.Append("  |  <color=#DDEE88>district offer ready</color>");
+            else if (s.FoodSurplus > 0 && streak >= streakNeed)
+                sb.Append($"  |  <color=#99AABB>{ExplainDistrictBlocker(city, s)}</color>");
+            else if (s.FoodSurplus > 0 && streak > 0)
+                sb.Append($"  |  district streak {streak}/{streakNeed}");
             else if (s.FoodSurplus <= 0)
                 sb.Append("  |  <color=#99AABB>need food surplus for districts</color>");
         }

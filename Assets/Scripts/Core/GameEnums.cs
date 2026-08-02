@@ -56,5 +56,7 @@ public enum UnitType
     Deaconess,
     SiegeEngine,
     CoastalPatrol,
-    CoastalGalley
+    CoastalExplorer,
+    CoastalGalley,
+    DeepSeaShip
 }

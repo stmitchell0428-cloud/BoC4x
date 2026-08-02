@@ -47,8 +47,6 @@ public class CameraFollow : MonoBehaviour
         dragPanActive = false;
         ClearTemporaryPan();
 
-        // Always focus the real map (home band). NearestWorldImage alone can park the
-        // camera on an empty wrap copy until the player pans (blank Game view).
         var focus = ResolveFollowWorld(unit.transform.position);
         transform.position = new Vector3(focus.x, focus.y, cameraHeightDepth);
     }
@@ -187,8 +185,16 @@ public class CameraFollow : MonoBehaviour
         if (HexGridMap.Instance == null)
             return targetWorld;
 
-        // Edge continuity is MapWrapVisuals' job; the camera stays on the real tile grid.
-        return HexGridMap.Instance.WrapWorldIntoHomeBand(targetWorld);
+        var home = HexGridMap.Instance.WrapWorldIntoHomeBand(targetWorld);
+        // Prefer the wrap image nearest the current camera so selecting a unit while
+        // viewing an edge clone does not teleport across the map into black void.
+        var nearest = HexGridMap.Instance.NearestWorldImage(targetWorld, transform.position);
+        float nearDist = (nearest - transform.position).sqrMagnitude;
+        float homeDist = (home - transform.position).sqrMagnitude;
+        if (nearDist + 0.01f < homeDist)
+            return nearest;
+
+        return home;
     }
 
     void WrapCameraIntoHomeBand()
@@ -206,5 +212,7 @@ public class CameraFollow : MonoBehaviour
             transform.position,
             targetCoordinates,
             trackingSmoothness * Time.deltaTime);
+        // Hard-clamp after lerp so wrap-band drift can't accumulate into a jump.
+        WrapCameraIntoHomeBand();
     }
 }

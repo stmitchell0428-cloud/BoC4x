@@ -14,7 +14,8 @@ public static class AmphibiousTransport
             or UnitType.Horseman;
 
     public static bool IsGalleyTransporter(Unit unit) =>
-        unit != null && unit.IsAlive && unit.Type == UnitType.CoastalGalley;
+        unit != null && unit.IsAlive &&
+        unit.Type is UnitType.CoastalGalley or UnitType.DeepSeaShip;
 
     public static bool CanEmbark(Unit passenger, Unit galley)
     {

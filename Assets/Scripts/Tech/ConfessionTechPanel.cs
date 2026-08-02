@@ -519,7 +519,12 @@ public class ConfessionTechPanel : MonoBehaviour
         btnGo.transform.SetParent(parent, false);
 
         var le = btnGo.AddComponent<LayoutElement>();
-        le.preferredHeight = 52f;
+        string labelText = FormatButtonLabel(node);
+        // Fork badge adds a third line; give it room so "Fork vs …" is not clipped.
+        bool hasForkLine = labelText.Contains("\n") &&
+                           (labelText.Contains("Fork") || labelText.Contains("Era-locked"));
+        le.preferredHeight = hasForkLine ? 78f : 56f;
+        le.minHeight = le.preferredHeight;
 
         var img = btnGo.AddComponent<Image>();
         img.color = new Color(0.18f, 0.22f, 0.3f, 1f);
@@ -540,10 +545,12 @@ public class ConfessionTechPanel : MonoBehaviour
         var label = labelGo.AddComponent<TextMeshProUGUI>();
         ApplyFont(label);
         label.raycastTarget = false;
-        label.fontSize = 14f;
+        label.fontSize = 13f;
         label.alignment = TextAlignmentOptions.TopLeft;
         label.richText = true;
-        label.text = TmpTextSanitizer.Sanitize(FormatButtonLabel(node));
+        label.textWrappingMode = TextWrappingModes.Normal;
+        label.overflowMode = TextOverflowModes.Ellipsis;
+        label.text = TmpTextSanitizer.Sanitize(labelText);
     }
 
     string FormatButtonLabel(ConfessionTechNode node)
@@ -679,7 +686,23 @@ public class ConfessionTechPanel : MonoBehaviour
             sb.AppendLine();
             sb.AppendLine("<b>Requires</b>");
             foreach (var prereq in node.Prerequisites)
-                sb.AppendLine($"* {ConfessionTechDatabase.Get(prereq).Name}");
+            {
+                var preNode = ConfessionTechDatabase.Get(prereq);
+                bool done = rm.IsTechUnlocked(prereq);
+                string tree = TechTreeRules.DisplayName(TechTreeRules.CategoryFor(prereq));
+                if (done)
+                {
+                    sb.AppendLine(
+                        $"* <color=#88EEAA>{preNode.Name}</color> " +
+                        $"<size=12><color=#88EEAA>(done · {tree})</color></size>");
+                }
+                else
+                {
+                    sb.AppendLine(
+                        $"* <color=#FFCC88>{preNode.Name}</color> " +
+                        $"<size=12><color=#AABBCC>(need · {tree} tree)</color></size>");
+                }
+            }
         }
 
         ConfessionTechDetailText.AppendSpecialCaseHints(sb, id);
@@ -817,6 +840,7 @@ public class ConfessionTechPanel : MonoBehaviour
         if (panelRoot != null)
             panelRoot.SetActive(open);
         TerrainInfoPanel.Instance?.SetBottomHudVisible(!open && !(CityScreenPanel.Instance?.IsOpen ?? false));
+        GameHUD.SetQueuePanelVisible(!open && !(CityScreenPanel.Instance?.IsOpen ?? false));
         if (open)
         {
             BringHeaderAboveScroll();

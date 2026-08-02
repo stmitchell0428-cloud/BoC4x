@@ -45,7 +45,11 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
             StopCoroutine(deferredPresentRoutine);
     }
 
-    public void NotifyCardDismissed() => IsAwaitingPlayerChoice = false;
+    public void NotifyCardDismissed()
+    {
+        IsAwaitingPlayerChoice = false;
+        pendingCard = null;
+    }
 
     public void OnChoiceCardDismissed() => NotifyCardDismissed();
 
@@ -55,6 +59,7 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
     {
         IsAwaitingPlayerChoice = false;
         cardShownThisStage = false;
+        pendingCard = null;
         CrisisCardPanel.Instance?.Hide();
         FirstSteps.Instance?.RefreshDashboard();
         TurnPhaseBanner.Instance?.Refresh();
@@ -62,8 +67,26 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
 
     public void EnsurePendingCrisisCardVisible()
     {
-        if (IsAwaitingPlayerChoice || ActiveCrisis == CrisisType.None)
+        if (ActiveCrisis == CrisisType.None)
             return;
+
+        // Awaiting but panel hidden (covered / dismissed UI race) — restore from last card.
+        if (IsAwaitingPlayerChoice)
+        {
+            if (CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible)
+            {
+                CrisisCardPanel.Instance.BringToFront();
+                return;
+            }
+
+            if (pendingCard.HasValue)
+            {
+                var card = pendingCard.Value;
+                TryShowCardImmediate(card.Title, card.Body, card.Choices);
+            }
+
+            return;
+        }
 
         if (cardShownThisStage)
             return;
@@ -120,7 +143,15 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
 
         IsAwaitingPlayerChoice = true;
         cardShownThisStage = true;
-        pendingCard = null;
+        // Keep a copy so End Turn can re-show if another modal covered the panel.
+        pendingCard = new PendingCardPresentation
+        {
+            Title = title,
+            Body = body,
+            Choices = choices is List<CrisisCardChoice> list
+                ? list
+                : new List<CrisisCardChoice>(choices)
+        };
         FirstSteps.Instance?.RefreshDashboard();
         TurnPhaseBanner.Instance?.Refresh();
         return true;

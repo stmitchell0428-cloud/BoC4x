@@ -36,7 +36,7 @@ public class AppealOverlayController : MonoBehaviour
         TurnPhaseBanner.Instance?.Refresh(IsActive ? BuildBannerMessage() : null);
 
         Debug.Log(IsActive
-            ? "Appeal overlay ON  -  gold = best district sites, lavender = good (G to hide)."
+            ? "Appeal overlay ON  -  gold/lavender = valid district sites by score (G to hide)."
             : "Appeal overlay OFF.");
     }
 
@@ -63,18 +63,18 @@ public class AppealOverlayController : MonoBehaviour
             {
                 if (!HexGridMap.Instance.TryGetTile(hex, out var tile))
                     continue;
-                if (tile.Occupant != null && tile.Settlement == null)
+                if (!CityManager.Instance.IsValidHamletDistrictSite(hex, city))
                     continue;
 
                 float score = CityGrowthSystem.ScoreLocalAppealHex(city, hex, snap);
                 if (score >= ExcellentThreshold)
                 {
-                    tile.SetHighlight(HighlightKind.AppealExcellent);
+                    HexSelectionController.Instance?.MarkHighlight(hex, HighlightKind.AppealExcellent);
                     lastExcellentCount++;
                 }
                 else if (score >= GoodThreshold)
                 {
-                    tile.SetHighlight(HighlightKind.AppealGood);
+                    HexSelectionController.Instance?.MarkHighlight(hex, HighlightKind.AppealGood);
                     lastGoodCount++;
                 }
             }
@@ -88,11 +88,11 @@ public class AppealOverlayController : MonoBehaviour
         if (lastExcellentCount + lastGoodCount == 0)
         {
             return "<color=#DDCC88><b>Appeal map (G)</b></color>  -  " +
-                   "no strong sites yet; expand borders and raise food surplus first";
+                   "no valid district sites in range yet (need passable hexes within 3 of the city)";
         }
 
         return "<color=#DDCC88><b>Appeal map (G)</b></color>  -  " +
                $"<color=#EECC55>{lastExcellentCount} excellent</color>, " +
-               $"<color=#AA88DD>{lastGoodCount} good</color> district hexes in synod territory";
+               $"<color=#AA88DD>{lastGoodCount} good</color> valid district hexes";
     }
 }

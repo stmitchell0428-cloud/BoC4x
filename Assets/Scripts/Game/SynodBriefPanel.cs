@@ -33,7 +33,9 @@ public class SynodBriefPanel : MonoBehaviour
         if (!IsVisible || Keyboard.current == null)
             return;
 
-        if (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.yKey.wasPressedThisFrame)
+        // Y is handled only in FirstSteps.Toggle — handling it here too double-fires
+        // (Hide then Show) and leaves the brief stuck open.
+        if (Keyboard.current.escapeKey.wasPressedThisFrame)
             Hide();
     }
 

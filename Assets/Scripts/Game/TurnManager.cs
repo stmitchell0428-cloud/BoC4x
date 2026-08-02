@@ -134,7 +134,11 @@ public class TurnManager : MonoBehaviour
         }
 
         if (IsPlayerTurn)
+        {
+            // Marches now advance at the start of the next player turn (after RefreshTurn).
+            // Keep a no-op-safe pass here only for leftover MP on the same turn as the order.
             AdvancePendingPlayerMoveOrders();
+        }
 
         TurnEnded?.Invoke();
         SelectedUnit = null;
@@ -174,7 +178,11 @@ public class TurnManager : MonoBehaviour
         if (slot.Faction == FactionId.LutheranSynod)
         {
             if (slot.SynodPlayer == SynodPlayerId.Player1)
+            {
+                // Advance multi-turn marches after MP refresh (EndTurn used to run with 0 MP).
+                AdvancePendingPlayerMoveOrders();
                 FogOfWarManager.Instance?.Refresh();
+            }
             else
                 SimpleAI.Instance?.PlaySynodTurn(slot.SynodPlayer);
         }

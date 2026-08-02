@@ -11,7 +11,7 @@ public static class GarrisonBonus
     public static bool IsMartialUnit(Unit unit) =>
         unit != null &&
         unit.Type is UnitType.Soldier or UnitType.Defender or UnitType.Slinger or UnitType.Archer
-            or UnitType.Horseman or UnitType.SiegeEngine or UnitType.CoastalGalley;
+            or UnitType.Horseman or UnitType.SiegeEngine or UnitType.CoastalGalley or UnitType.DeepSeaShip;
 
     public static bool TryGetFriendlyCityAt(Unit unit, out City city)
     {

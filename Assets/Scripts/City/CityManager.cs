@@ -466,7 +466,7 @@ public class CityManager : MonoBehaviour
 
         if (settler.SynodPlayer == SynodPlayerId.Player1)
         {
-            FirstSteps.Instance?.AddFame(15);
+            FirstSteps.Instance?.AddFame(10);
             IdentityPickerPanel.Instance?.Show();
         }
         PopulationSync.SyncPlayerFactionFromCities();
@@ -533,7 +533,7 @@ public class CityManager : MonoBehaviour
         settler.ConvertToMissionaryAfterFounding();
 
         if (settler.SynodPlayer == SynodPlayerId.Player1)
-            FirstSteps.Instance?.AddFame(10);
+            FirstSteps.Instance?.AddFame(6);
 
         PopulationSync.SyncPlayerFactionFromCities();
         TerrainInfoPanel.Instance?.RefreshCityYield();
@@ -569,19 +569,13 @@ public class CityManager : MonoBehaviour
             return false;
         }
 
-        if (HexGridMap.Instance.TryGetTile(hex, out var tile) && tile.Occupant != null)
-        {
-            Debug.LogWarning("Organic district site is occupied.");
-            return false;
-        }
-
         hamletCounter++;
         var go = new GameObject($"City_Hamlet_{hamletCounter}");
         go.transform.SetParent(transform);
         var city = go.AddComponent<City>();
         city.Initialize(parent.Faction, hex, $"District {hamletCounter}", startingPopulation: 10, parentCity: parent);
 
-        FirstSteps.Instance?.AddFame(5);
+        FirstSteps.Instance?.AddFame(3);
         FirstSteps.Instance?.RefreshDashboard();
         TerrainInfoPanel.Instance?.RefreshCityYield();
         FogOfWarManager.Instance?.Refresh();
@@ -618,9 +612,14 @@ public class CityManager : MonoBehaviour
             return false;
         if (tile.Settlement != null)
             return false;
+        // Enemy units block founding; friendly / same-synod units do not.
+        if (tile.Occupant != null && FactionRelations.IsHostileToCity(tile.Occupant, parentCity))
+            return false;
         if (HexGridMap.Instance.WrappedDistance(hex, parentCity.HexPosition) > 3)
             return false;
-        return !IsTooCloseToIndependentCity(hex);
+        // Parent is ignored — districts sit near the capital; MinCitySeparation
+        // only blocks other independent cities (≤3 and ≥6 from parent is impossible).
+        return !IsTooCloseToIndependentCity(hex, ignore: parentCity);
     }
 
     public City GetNearestPlayerCity(HexCoordinates hex, bool independentOnly = false)
@@ -740,23 +739,19 @@ public class CityManager : MonoBehaviour
         MissionHouseChain.ProcessEndTurnFame();
 
         int totalMss = 0;
-        int totalFame = 0;
         foreach (var city in GetPlayerCities())
         {
             if (!city.IsHamlet) continue;
             int tribute = city.GetProductionPerTurn();
-            int mss = Mathf.Max(1, tribute / 2);
-            totalMss += mss;
-            totalFame += tribute;
+            totalMss += Mathf.Max(1, tribute / 2);
         }
 
+        // Manuscripts only — district tribute fame was racing the fame victory ahead of research.
         if (totalMss > 0)
+        {
             faction.ScriptureManuscripts += totalMss;
-        if (totalFame > 0)
-            faction.AddFame(totalFame / 2);
-
-        if (totalMss > 0 || totalFame > 0)
-            Debug.Log($"Hamlet tribute: +{totalMss} manuscripts, +{totalFame / 2} fame.");
+            Debug.Log($"Hamlet tribute: +{totalMss} manuscripts.");
+        }
     }
 
     public City GetAiCity(SchismaticBlocId blocId = SchismaticBlocId.None)

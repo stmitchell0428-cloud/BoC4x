@@ -38,8 +38,12 @@ public enum CityBuildId
     BuildMill,
     TrainSiegeEngine,
     TrainCoastalPatrol,
+    BuildWharf,
+    BuildFishingPost,
+    TrainCoastalExplorer,
     BuildDock,
-    TrainCoastalGalley
+    TrainCoastalGalley,
+    TrainDeepSeaShip
 }
 
 public enum CityBuildCategory

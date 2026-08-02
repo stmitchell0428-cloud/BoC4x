@@ -75,6 +75,9 @@ public class ArtEraVisualController : MonoBehaviour
         {
             TurnPhaseBanner.Instance?.Refresh(lastTransitionMessage);
             FirstSteps.Instance?.RefreshDashboard();
+            // Skip match-start force refresh noise; only announce real flips mid-match.
+            if (!forceRefresh)
+                ArtEraTransitionPanel.Instance?.Show(currentEra);
         }
     }
 

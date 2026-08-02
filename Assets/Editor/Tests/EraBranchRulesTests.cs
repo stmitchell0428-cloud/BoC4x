@@ -102,8 +102,8 @@ namespace BoC4x.Tests
 
             string mission = EraBranchRules.FormatAdvanceForkHint(ConfessionTechId.MissionarySending);
             string bach = EraBranchRules.FormatAdvanceForkHint(ConfessionTechId.JohannSebastianBach);
-            Assert.IsFalse(string.IsNullOrEmpty(mission));
-            Assert.IsFalse(string.IsNullOrEmpty(bach));
+            Assert.IsTrue(string.IsNullOrEmpty(mission), mission);
+            Assert.IsTrue(string.IsNullOrEmpty(bach), bach);
         }
     }
 }

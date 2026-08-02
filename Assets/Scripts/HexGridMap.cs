@@ -129,6 +129,8 @@ public class HexGridMap : MonoBehaviour
             gameObject.AddComponent<SchismaticBlocRegistry>();
         if (FindAnyObjectByType<SchismEventPanel>() == null)
             gameObject.AddComponent<SchismEventPanel>();
+        if (FindAnyObjectByType<ArtEraTransitionPanel>() == null)
+            gameObject.AddComponent<ArtEraTransitionPanel>();
         if (FindAnyObjectByType<CrisisCardPanel>() == null)
             gameObject.AddComponent<CrisisCardPanel>();
         if (FindAnyObjectByType<LegacySlotPickerPanel>() == null)
@@ -141,6 +143,14 @@ public class HexGridMap : MonoBehaviour
             gameObject.AddComponent<PlayerUnitCycle>();
         if (FindAnyObjectByType<CrisisManager>() == null)
             gameObject.AddComponent<CrisisManager>();
+        if (FindAnyObjectByType<MatchNarrativeChronology>() == null)
+            gameObject.AddComponent<MatchNarrativeChronology>();
+        if (FindAnyObjectByType<NarrativeEventManager>() == null)
+            gameObject.AddComponent<NarrativeEventManager>();
+        if (FindAnyObjectByType<LiturgicalEventManager>() == null)
+            gameObject.AddComponent<LiturgicalEventManager>();
+        if (FindAnyObjectByType<TestimonyColloquyManager>() == null)
+            gameObject.AddComponent<TestimonyColloquyManager>();
         if (FindAnyObjectByType<PastoralBriefingManager>() == null)
             gameObject.AddComponent<PastoralBriefingManager>();
         if (FindAnyObjectByType<SynodicalEmphasisManager>() == null)

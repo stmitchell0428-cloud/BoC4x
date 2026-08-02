@@ -8,5 +8,7 @@ public enum PastoralBriefingSituation
     Balanced,
     SchismSaturation,
     Wilderness,
-    Nomadic
+    Nomadic,
+    MartyrFeast,
+    PatristicWitness
 }

@@ -40,6 +40,10 @@ public class Tier2EmphasisManager : MonoBehaviour, IChoiceCardPresenter
 
     bool pendingConfessionalChoice;
     bool pendingCultureChoice;
+    string pendingTitle;
+    string pendingBody;
+    List<CrisisCardChoice> pendingChoices;
+    bool pendingIsConfessional;
     Coroutine deferredPresentRoutine;
 
     public bool IsAwaitingPlayerChoice => pendingConfessionalChoice || pendingCultureChoice;
@@ -57,8 +61,10 @@ public class Tier2EmphasisManager : MonoBehaviour, IChoiceCardPresenter
 
     public void OnChoiceCardDismissed()
     {
+        // Keep awaiting + stored card so End Turn / T can re-show (same pattern as synodical).
         pendingConfessionalChoice = false;
         pendingCultureChoice = false;
+        ClearPendingCard();
         ConfessionResearchManager.Instance?.NotifyAdherenceChanged();
         FirstSteps.Instance?.RefreshDashboard();
         TurnPhaseBanner.Instance?.Refresh();
@@ -74,6 +80,7 @@ public class Tier2EmphasisManager : MonoBehaviour, IChoiceCardPresenter
 
         pendingConfessionalChoice = false;
         pendingCultureChoice = false;
+        ClearPendingCard();
         FirstSteps.Instance?.RefreshDashboard();
         TurnPhaseBanner.Instance?.Refresh("Synod deferred — default emphasis applied.");
     }
@@ -96,17 +103,64 @@ public class Tier2EmphasisManager : MonoBehaviour, IChoiceCardPresenter
 
     public void EnsurePendingChoicesVisible()
     {
-        if (ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionalSecondaryUnlockTech) == true)
-            TryPresentConfessionalSecondaryChoice();
+        if (IsAwaitingPlayerChoice)
+        {
+            if (CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible)
+            {
+                CrisisCardPanel.Instance.BringToFront();
+                SynodBriefPanel.Instance?.Hide();
+                return;
+            }
 
-        if (ConfessionResearchManager.Instance != null &&
-            (ConfessionResearchManager.Instance.IsTechUnlocked(ConfessionTechId.ChoraleTradition) ||
-             ConfessionResearchManager.Instance.IsTechUnlocked(ConfessionTechId.PaulGerhardt)))
-            TryPresentCultureSecondaryChoice();
+            if (pendingChoices != null && pendingChoices.Count > 0 &&
+                !string.IsNullOrEmpty(pendingTitle))
+            {
+                TryShowImmediate(pendingTitle, pendingBody, pendingChoices, pendingIsConfessional, secondary: false);
+                SynodBriefPanel.Instance?.Hide();
+                return;
+            }
+
+            // Stale awaiting with no stored card — clear and re-offer.
+            pendingConfessionalChoice = false;
+            pendingCultureChoice = false;
+            ClearPendingCard();
+        }
+
+        var research = ConfessionResearchManager.Instance;
+        if (research != null)
+        {
+            if (confessionalPrimary == ConfessionalEmphasisChoice.None &&
+                research.IsTechUnlocked(ConfessionTechId.ConfessionalEmphasis))
+            {
+                PresentConfessionalPrimaryChoice();
+                return;
+            }
+
+            if (culturePrimary == ConfessionsCultureEmphasisChoice.None &&
+                research.IsTechUnlocked(ConfessionTechId.ConfessionsCultureEmphasis))
+            {
+                PresentCulturePrimaryChoice();
+                return;
+            }
+
+            if (research.IsTechUnlocked(ConfessionalSecondaryUnlockTech))
+                TryPresentConfessionalSecondaryChoice();
+
+            if (research.IsTechUnlocked(ConfessionTechId.ChoraleTradition) ||
+                research.IsTechUnlocked(ConfessionTechId.PaulGerhardt))
+                TryPresentCultureSecondaryChoice();
+        }
 
         TryPresentConfessionalIntegrationChoice();
         TryPresentCultureIntegrationChoice();
         TryPresentConfessionalTertiaryChoice();
+    }
+
+    void ClearPendingCard()
+    {
+        pendingTitle = null;
+        pendingBody = null;
+        pendingChoices = null;
     }
 
     public bool OwnsConfessionalEmphasis(ConfessionalEmphasisChoice choice) =>
@@ -767,11 +821,19 @@ public class Tier2EmphasisManager : MonoBehaviour, IChoiceCardPresenter
         if (CrisisCardPanel.Instance == null)
             return false;
 
-        if (!CrisisCardPanel.Instance.Show(title, body, choices, this))
+        pendingTitle = title;
+        pendingBody = body;
+        pendingChoices = choices is List<CrisisCardChoice> list
+            ? list
+            : new List<CrisisCardChoice>(choices);
+        pendingIsConfessional = confessional;
+
+        if (!CrisisCardPanel.Instance.Show(title, body, pendingChoices, this))
             return false;
 
         pendingConfessionalChoice = confessional;
         pendingCultureChoice = !confessional;
+        SynodBriefPanel.Instance?.Hide();
 
         FirstSteps.Instance?.RefreshDashboard();
         TurnPhaseBanner.Instance?.Refresh();

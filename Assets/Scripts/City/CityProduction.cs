@@ -1,12 +1,17 @@
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 
+/// <summary>
+/// Dual tracks: mss/turn-timer jobs can run alongside production-point jobs (one each).
+/// </summary>
 public class CityProduction : MonoBehaviour
 {
     City city;
     readonly HashSet<CityBuildId> completedBuildings = new();
-    CityBuildId? activeBuild;
+    CityBuildId? activeTimerBuild;
     int turnsRemaining;
+    CityBuildId? activeProdBuild;
     int productionProgress;
 
     public event System.Action ProductionChanged;
@@ -15,41 +20,88 @@ public class CityProduction : MonoBehaviour
 
     public bool HasBuilding(CityBuildId id) => completedBuildings.Contains(id);
 
-    public bool IsProducing => activeBuild.HasValue;
+    public bool IsProducing => activeTimerBuild.HasValue || activeProdBuild.HasValue;
+    public bool IsTimerBusy => activeTimerBuild.HasValue;
+    public bool IsProdBusy => activeProdBuild.HasValue;
 
-    public CityBuildId? ActiveBuildId => activeBuild;
+    public CityBuildId? ActiveTimerBuildId => activeTimerBuild;
+    public CityBuildId? ActiveProdBuildId => activeProdBuild;
+
+    /// <summary>Prefer prod slot, else timer — for single-slot UI fallbacks.</summary>
+    public CityBuildId? ActiveBuildId => activeProdBuild ?? activeTimerBuild;
 
     public int ProductionProgress => productionProgress;
-
     public int TurnsRemainingOnProject => turnsRemaining;
 
-    public int? EstimatedTurnsRemaining()
+    public bool IsBuilding(CityBuildId id) =>
+        activeTimerBuild == id || activeProdBuild == id;
+
+    public int? EstimatedTurnsRemaining() =>
+        ActiveBuildId.HasValue ? EstimatedTurnsRemainingFor(ActiveBuildId.Value) : null;
+
+    public int? EstimatedTurnsRemainingFor(CityBuildId id)
     {
-        if (!activeBuild.HasValue || city == null)
+        if (city == null)
             return null;
 
-        var def = CityBuildDatabase.Get(activeBuild.Value);
-        if (!def.UsesProduction)
-            return turnsRemaining;
+        var def = CityBuildDatabase.Get(id);
+        if (def.UsesProduction)
+        {
+            if (activeProdBuild != id)
+                return null;
+            int remaining = def.ProductionCost - productionProgress;
+            if (remaining <= 0)
+                return 0;
+            int yield = city.GetProductionPerTurn();
+            if (yield <= 0)
+                return null;
+            yield = Mathf.Max(1, Mathf.RoundToInt(yield * CityGrowthSystem.GetProductionWorkerMultiplier(city)));
+            return Mathf.CeilToInt(remaining / (float)yield);
+        }
 
-        int remaining = def.ProductionCost - productionProgress;
-        if (remaining <= 0)
-            return 0;
-
-        int yield = city.GetProductionPerTurn();
-        if (yield <= 0)
+        if (activeTimerBuild != id)
             return null;
-
-        return Mathf.CeilToInt(remaining / (float)yield);
+        return turnsRemaining;
     }
 
     public string ActiveBuildLabel()
     {
-        if (!activeBuild.HasValue)
+        if (!IsProducing)
             return "None";
 
-        var def = CityBuildDatabase.Get(activeBuild.Value);
-        int? eta = EstimatedTurnsRemaining();
+        var parts = new List<string>(2);
+        if (activeTimerBuild.HasValue)
+            parts.Add(FormatSlotLabel(activeTimerBuild.Value, hud: false));
+        if (activeProdBuild.HasValue)
+            parts.Add(FormatSlotLabel(activeProdBuild.Value, hud: false));
+        return string.Join(" · ", parts);
+    }
+
+    public string ActiveBuildHudLabel()
+    {
+        if (!IsProducing)
+            return "None";
+
+        var parts = new List<string>(2);
+        if (activeTimerBuild.HasValue)
+            parts.Add(FormatSlotLabel(activeTimerBuild.Value, hud: true));
+        if (activeProdBuild.HasValue)
+            parts.Add(FormatSlotLabel(activeProdBuild.Value, hud: true));
+        return string.Join(" · ", parts);
+    }
+
+    string FormatSlotLabel(CityBuildId id, bool hud)
+    {
+        var def = CityBuildDatabase.Get(id);
+        int? eta = EstimatedTurnsRemainingFor(id);
+        if (hud)
+        {
+            if (eta.HasValue)
+                return $"{def.Name} ({eta.Value}t left)";
+            if (def.UsesProduction)
+                return $"{def.Name} ({productionProgress}/{def.ProductionCost} prod)";
+            return def.Name;
+        }
 
         if (def.UsesProduction)
         {
@@ -60,32 +112,29 @@ public class CityProduction : MonoBehaviour
         return $"{def.Name} ({turnsRemaining}t left)";
     }
 
-    /// <summary>Compact label for HUD lines (name + turns remaining).</summary>
-    public string ActiveBuildHudLabel()
-    {
-        if (!activeBuild.HasValue)
-            return "None";
-
-        var def = CityBuildDatabase.Get(activeBuild.Value);
-        int? eta = EstimatedTurnsRemaining();
-        if (eta.HasValue)
-            return $"{def.Name} ({eta.Value}t left)";
-
-        if (def.UsesProduction)
-            return $"{def.Name} ({productionProgress}/{def.ProductionCost} prod)";
-
-        return def.Name;
-    }
-
     public string ActiveBuildProgressBlock()
     {
-        if (!activeBuild.HasValue)
+        if (!IsProducing)
             return "<color=#888888>No project in the queue.</color>";
 
-        var def = CityBuildDatabase.Get(activeBuild.Value);
-        int? eta = EstimatedTurnsRemaining();
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("<b>Current project</b>");
+        var sb = new StringBuilder();
+        if (activeTimerBuild.HasValue)
+            AppendProgressBlock(sb, activeTimerBuild.Value);
+        if (activeProdBuild.HasValue)
+        {
+            if (activeTimerBuild.HasValue)
+                sb.AppendLine();
+            AppendProgressBlock(sb, activeProdBuild.Value);
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    void AppendProgressBlock(StringBuilder sb, CityBuildId id)
+    {
+        var def = CityBuildDatabase.Get(id);
+        int? eta = EstimatedTurnsRemainingFor(id);
+        sb.AppendLine(def.UsesProduction ? "<b>Production project</b>" : "<b>Manuscript / turn project</b>");
         sb.AppendLine(def.Name);
 
         if (def.UsesProduction)
@@ -103,8 +152,6 @@ public class CityProduction : MonoBehaviour
             if (def.ManuscriptCost > 0)
                 sb.AppendLine($"Paid: {def.ManuscriptCost} manuscripts");
         }
-
-        return sb.ToString().TrimEnd();
     }
 
     public CityBuildStatus GetStatus(CityBuildId id)
@@ -112,7 +159,7 @@ public class CityProduction : MonoBehaviour
         var def = CityBuildDatabase.Get(id);
         if (def.UniquePerCity && completedBuildings.Contains(id))
             return CityBuildStatus.Completed;
-        if (activeBuild == id)
+        if (IsBuilding(id))
             return CityBuildStatus.Building;
 
         if (city.Faction != FactionId.LutheranSynod)
@@ -121,11 +168,18 @@ public class CityProduction : MonoBehaviour
             return CityBuildStatus.Locked;
         if (MatchController.Instance != null && MatchController.Instance.IsMatchOver)
             return CityBuildStatus.Locked;
-        if (activeBuild.HasValue)
-            return CityBuildStatus.Locked;
 
-        if (def.UsesProduction && CityGrowthSystem.GetProductionWorkerMultiplier(city) <= 0.15f)
+        if (def.UsesProduction)
+        {
+            if (activeProdBuild.HasValue)
+                return CityBuildStatus.Locked;
+            if (CityGrowthSystem.GetProductionWorkerMultiplier(city) <= 0.15f)
+                return CityBuildStatus.Locked;
+        }
+        else if (activeTimerBuild.HasValue)
+        {
             return CityBuildStatus.Locked;
+        }
 
         if (def.RequiredTech.HasValue &&
             (ConfessionResearchManager.Instance == null ||
@@ -151,11 +205,22 @@ public class CityProduction : MonoBehaviour
         if (id == CityBuildId.TrainCoastalPatrol && !CityManager.Instance.CityTouchesNavalCoast(city))
             return CityBuildStatus.Locked;
 
-        if ((id == CityBuildId.BuildDock || id == CityBuildId.TrainCoastalGalley) &&
+        if ((id == CityBuildId.BuildWharf || id == CityBuildId.BuildFishingPost ||
+             id == CityBuildId.BuildDock || id == CityBuildId.TrainCoastalGalley ||
+             id == CityBuildId.TrainCoastalExplorer || id == CityBuildId.TrainDeepSeaShip) &&
             !CityManager.Instance.CityTouchesNavalCoast(city))
             return CityBuildStatus.Locked;
 
-        if (id == CityBuildId.TrainCoastalGalley &&
+        if (NavalMovementRules.RequiresWharf(id) &&
+            id != CityBuildId.BuildWharf &&
+            (city.Production == null || !city.Production.HasBuilding(CityBuildId.BuildWharf)))
+            return CityBuildStatus.Locked;
+
+        if (id == CityBuildId.BuildDock &&
+            (city.Production == null || !city.Production.HasBuilding(CityBuildId.BuildWharf)))
+            return CityBuildStatus.Locked;
+
+        if (NavalMovementRules.RequiresDock(id) &&
             (city.Production == null || !city.Production.HasBuilding(CityBuildId.BuildDock)))
             return CityBuildStatus.Locked;
 
@@ -219,18 +284,16 @@ public class CityProduction : MonoBehaviour
                 turnsRemaining = Mathf.Max(1, turnsRemaining - 1);
             if (id == CityBuildId.TrainSiegeEngine && HasBuilding(CityBuildId.BuildArmory))
                 turnsRemaining = Mathf.Max(1, turnsRemaining - 1);
+
+            activeTimerBuild = id;
+            Debug.Log($"{city.CityName}: started {def.Name} ({turnsRemaining} turns).");
         }
         else
         {
             productionProgress = 0;
-        }
-
-        activeBuild = id;
-
-        if (def.UsesProduction)
+            activeProdBuild = id;
             Debug.Log($"{city.CityName}: started {def.Name} ({def.ProductionCost} production required).");
-        else
-            Debug.Log($"{city.CityName}: started {def.Name} ({turnsRemaining} turns).");
+        }
 
         ProductionChanged?.Invoke();
         faction.RefreshDashboard();
@@ -239,19 +302,33 @@ public class CityProduction : MonoBehaviour
 
     public bool TryStartAiBuild(CityBuildId id)
     {
-        if (city.Faction == FactionId.LutheranSynod || activeBuild.HasValue)
+        if (city.Faction == FactionId.LutheranSynod)
             return false;
 
         var def = CityBuildDatabase.Get(id);
         if (def.UniquePerCity && completedBuildings.Contains(id))
             return false;
 
-        if (!def.UsesProduction)
-            turnsRemaining = def.TurnsToComplete;
-        else
-            productionProgress = 0;
+        if (def.RequiredTech.HasValue &&
+            (ConfessionResearchManager.Instance == null ||
+             !ConfessionResearchManager.Instance.IsTechUnlocked(def.RequiredTech.Value)))
+            return false;
 
-        activeBuild = id;
+        if (def.UsesProduction)
+        {
+            if (activeProdBuild.HasValue)
+                return false;
+            productionProgress = 0;
+            activeProdBuild = id;
+        }
+        else
+        {
+            if (activeTimerBuild.HasValue)
+                return false;
+            turnsRemaining = def.TurnsToComplete;
+            activeTimerBuild = id;
+        }
+
         Debug.Log($"{city.CityName} (AI): started {def.Name}.");
         ProductionChanged?.Invoke();
         return true;
@@ -259,10 +336,20 @@ public class CityProduction : MonoBehaviour
 
     public bool CancelActiveBuild()
     {
-        if (!activeBuild.HasValue)
+        bool any = false;
+        if (activeTimerBuild.HasValue)
+            any |= CancelBuild(activeTimerBuild.Value);
+        if (activeProdBuild.HasValue)
+            any |= CancelBuild(activeProdBuild.Value);
+        return any;
+    }
+
+    public bool CancelBuild(CityBuildId id)
+    {
+        if (!IsBuilding(id))
             return false;
 
-        var def = CityBuildDatabase.Get(activeBuild.Value);
+        var def = CityBuildDatabase.Get(id);
         if (!def.UsesProduction && def.ManuscriptCost > 0 && city.Faction == FactionId.LutheranSynod)
         {
             var faction = FirstSteps.Instance;
@@ -278,9 +365,18 @@ public class CityProduction : MonoBehaviour
             Debug.Log($"{city.CityName}: cancelled {def.Name}.");
         }
 
-        activeBuild = null;
-        turnsRemaining = 0;
-        productionProgress = 0;
+        if (activeTimerBuild == id)
+        {
+            activeTimerBuild = null;
+            turnsRemaining = 0;
+        }
+
+        if (activeProdBuild == id)
+        {
+            activeProdBuild = null;
+            productionProgress = 0;
+        }
+
         ProductionChanged?.Invoke();
         FirstSteps.Instance?.RefreshDashboard();
         return true;
@@ -288,25 +384,21 @@ public class CityProduction : MonoBehaviour
 
     public void OnCityCaptured()
     {
-        activeBuild = null;
+        activeTimerBuild = null;
         turnsRemaining = 0;
+        activeProdBuild = null;
         productionProgress = 0;
         ProductionChanged?.Invoke();
     }
 
     public void AdvanceTurn()
     {
-        int yield = city.GetProductionPerTurn();
+        bool changed = false;
 
-        if (!activeBuild.HasValue)
+        if (activeProdBuild.HasValue)
         {
-            ApplyPerTurnBuildingEffects();
-            return;
-        }
-
-        var def = CityBuildDatabase.Get(activeBuild.Value);
-        if (def.UsesProduction)
-        {
+            var def = CityBuildDatabase.Get(activeProdBuild.Value);
+            int yield = city.GetProductionPerTurn();
             yield = Mathf.Max(1, Mathf.RoundToInt(yield * CityGrowthSystem.GetProductionWorkerMultiplier(city)));
             productionProgress += yield;
             string workerNote = CityGrowthSystem.GetProductionWorkerMultiplier(city) < 1f ? " (short workers)" : "";
@@ -314,26 +406,36 @@ public class CityProduction : MonoBehaviour
 
             if (productionProgress >= def.ProductionCost)
             {
-                CompleteBuild(activeBuild.Value);
-                activeBuild = null;
+                var completed = activeProdBuild.Value;
+                activeProdBuild = null;
                 productionProgress = 0;
+                CompleteBuild(completed);
             }
+
+            changed = true;
         }
-        else
+
+        if (activeTimerBuild.HasValue)
         {
             turnsRemaining--;
             if (turnsRemaining <= 0)
             {
-                CompleteBuild(activeBuild.Value);
-                activeBuild = null;
+                var completed = activeTimerBuild.Value;
+                activeTimerBuild = null;
                 turnsRemaining = 0;
+                CompleteBuild(completed);
             }
+
+            changed = true;
         }
 
         ApplyPerTurnBuildingEffects();
-        ProductionChanged?.Invoke();
-        FirstSteps.Instance?.RefreshDashboard();
-        TerrainInfoPanel.Instance?.RefreshCityYield();
+        if (changed)
+        {
+            ProductionChanged?.Invoke();
+            FirstSteps.Instance?.RefreshDashboard();
+            TerrainInfoPanel.Instance?.RefreshCityYield();
+        }
     }
 
     void CompleteBuild(CityBuildId id)
@@ -374,6 +476,8 @@ public class CityProduction : MonoBehaviour
 
         completedBuildings.Add(id);
         ApplyInstantBuildingEffect(id);
+        if (id == CityBuildId.BuildLibrary && city.Faction == FactionId.LutheranSynod)
+            TestimonyColloquyManager.Instance?.OnLibraryBuilt(city);
         Debug.Log($"{city.CityName}: completed {def.Name}  -  {def.EffectSummary}");
     }
 
@@ -404,7 +508,7 @@ public class CityProduction : MonoBehaviour
                 break;
             case CityBuildId.BuildMissionHouse:
                 faction.AddFame(2);
-                Debug.Log($"{city.CityName}: Mission House ready  -  colonists can deploy from this cluster.");
+                Debug.Log($"{city.CityName}: Mission House ready  -  settlers can deploy from this cluster.");
                 break;
             case CityBuildId.BuildFortification:
                 faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 5f, 0f, 100f);

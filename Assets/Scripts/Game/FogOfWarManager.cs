@@ -192,5 +192,7 @@ public class FogOfWarManager : MonoBehaviour
         }
 
         TurnPhaseBanner.Instance?.Refresh(sb.ToString());
+        // Don't leave the orders cycle banner permanently overwritten after a sighting flash.
+        PlayerUnitCycle.Instance?.OnUnitOrdersChanged();
     }
 }

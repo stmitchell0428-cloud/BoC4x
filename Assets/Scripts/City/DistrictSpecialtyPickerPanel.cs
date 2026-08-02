@@ -9,6 +9,9 @@ public class DistrictSpecialtyPickerPanel : MonoBehaviour
 
     GameObject panelRoot;
     City pendingDistrict;
+    HamletSpecialty suggestedSpecialty = HamletSpecialty.None;
+
+    public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
 
     void Awake() => Instance = this;
 
@@ -24,10 +27,6 @@ public class DistrictSpecialtyPickerPanel : MonoBehaviour
         if (Instance == this)
             Instance = null;
     }
-
-    HamletSpecialty suggestedSpecialty = HamletSpecialty.None;
-
-    public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
 
     void EnsureUI()
     {
@@ -61,7 +60,7 @@ public class DistrictSpecialtyPickerPanel : MonoBehaviour
         var boxRect = box.AddComponent<RectTransform>();
         boxRect.anchorMin = new Vector2(0.5f, 0.5f);
         boxRect.anchorMax = new Vector2(0.5f, 0.5f);
-        boxRect.sizeDelta = new Vector2(620f, 420f);
+        boxRect.sizeDelta = new Vector2(640f, 520f);
         box.AddComponent<Image>().color = new Color(0.08f, 0.11f, 0.16f, 0.98f);
 
         CreateLabel(box.transform, "Specialize this district", new Vector2(0f, -12f), 22f, FontStyles.Bold);
@@ -69,12 +68,13 @@ public class DistrictSpecialtyPickerPanel : MonoBehaviour
             "Each hamlet serves one role for the parent city. Choose its specialty:",
             new Vector2(0f, -44f), 15f, FontStyles.Normal);
         hintLabel.name = "HintLabel";
+        hintLabel.rectTransform.sizeDelta = new Vector2(600f, 48f);
 
-        float y = -88f;
+        float y = -100f;
         foreach (var def in HamletSpecialtyDatabase.All)
         {
             CreateSpecialtyButton(box.transform, def, new Vector2(0f, y));
-            y -= 78f;
+            y -= 92f;
         }
     }
 
@@ -94,6 +94,7 @@ public class DistrictSpecialtyPickerPanel : MonoBehaviour
         suggestedSpecialty = suggested;
         UpdateSuggestionHint();
         panelRoot.SetActive(true);
+        panelRoot.transform.SetAsLastSibling();
         TurnPhaseBanner.Instance?.Refresh("<color=#DDEE88><b>Choose district specialty</b></color>");
     }
 
@@ -130,7 +131,7 @@ public class DistrictSpecialtyPickerPanel : MonoBehaviour
         rect.anchorMin = new Vector2(0.5f, 1f);
         rect.anchorMax = new Vector2(0.5f, 1f);
         rect.pivot = new Vector2(0.5f, 1f);
-        rect.sizeDelta = new Vector2(560f, 68f);
+        rect.sizeDelta = new Vector2(580f, 84f);
         rect.anchoredPosition = pos;
 
         var img = btnGo.AddComponent<Image>();
@@ -139,18 +140,33 @@ public class DistrictSpecialtyPickerPanel : MonoBehaviour
         btn.targetGraphic = img;
         btn.onClick.AddListener(() => SelectSpecialty(def.Id));
 
-        var label = CreateLabel(btnGo.transform, $"<b>{def.Name}</b>  -  {def.Subtitle}", Vector2.zero, 15f, FontStyles.Normal);
-        label.rectTransform.anchorMin = Vector2.zero;
-        label.rectTransform.anchorMax = Vector2.one;
-        label.rectTransform.offsetMin = new Vector2(12f, 22f);
-        label.rectTransform.offsetMax = new Vector2(-12f, -4f);
+        var title = CreateLabel(btnGo.transform, $"<b>{def.Name}</b>", Vector2.zero, 16f, FontStyles.Normal);
+        title.rectTransform.anchorMin = new Vector2(0f, 1f);
+        title.rectTransform.anchorMax = new Vector2(1f, 1f);
+        title.rectTransform.pivot = new Vector2(0.5f, 1f);
+        title.rectTransform.sizeDelta = new Vector2(-24f, 22f);
+        title.rectTransform.anchoredPosition = new Vector2(0f, -6f);
+        title.textWrappingMode = TextWrappingModes.Normal;
+        title.overflowMode = TextOverflowModes.Ellipsis;
+
+        var subtitle = CreateLabel(btnGo.transform, def.Subtitle, Vector2.zero, 13f, FontStyles.Normal);
+        subtitle.color = new Color(0.88f, 0.9f, 0.94f);
+        subtitle.rectTransform.anchorMin = new Vector2(0f, 1f);
+        subtitle.rectTransform.anchorMax = new Vector2(1f, 1f);
+        subtitle.rectTransform.pivot = new Vector2(0.5f, 1f);
+        subtitle.rectTransform.sizeDelta = new Vector2(-24f, 20f);
+        subtitle.rectTransform.anchoredPosition = new Vector2(0f, -28f);
+        subtitle.textWrappingMode = TextWrappingModes.Normal;
+        subtitle.overflowMode = TextOverflowModes.Ellipsis;
 
         var sub = CreateLabel(btnGo.transform, def.Description, Vector2.zero, 12f, FontStyles.Italic);
-        sub.color = new Color(0.82f, 0.86f, 0.9f);
-        sub.rectTransform.anchorMin = Vector2.zero;
-        sub.rectTransform.anchorMax = Vector2.one;
-        sub.rectTransform.offsetMin = new Vector2(12f, 4f);
-        sub.rectTransform.offsetMax = new Vector2(-12f, -24f);
+        sub.color = new Color(0.78f, 0.82f, 0.88f);
+        sub.rectTransform.anchorMin = new Vector2(0f, 0f);
+        sub.rectTransform.anchorMax = new Vector2(1f, 1f);
+        sub.rectTransform.offsetMin = new Vector2(12f, 6f);
+        sub.rectTransform.offsetMax = new Vector2(-12f, -50f);
+        sub.textWrappingMode = TextWrappingModes.Normal;
+        sub.overflowMode = TextOverflowModes.Ellipsis;
     }
 
     static Color SpecialtyColor(HamletSpecialty id) => id switch
@@ -181,6 +197,7 @@ public class DistrictSpecialtyPickerPanel : MonoBehaviour
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.TopLeft;
         tmp.richText = true;
+        tmp.raycastTarget = false;
         return tmp;
     }
 }

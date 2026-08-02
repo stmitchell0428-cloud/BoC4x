@@ -69,6 +69,7 @@ public class SchismManager : MonoBehaviour
         DissentCapitalHex = schismCapital;
 
         SplitPopulation(controlledSplit);
+        RebalanceLawGospelAfterSchism();
         var schismCity = SpawnSchismaticCity(record, schismCapital);
         SplitSchismaticForcesFromPlayer(record, profile, soldierHex, missionaryHex, schismCity);
 
@@ -243,6 +244,25 @@ public class SchismManager : MonoBehaviour
         faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence - adherenceLoss, 0f, 100f);
     }
 
+    /// <summary>
+    /// After schism, pull Law/Gospel meters out of the crisis skew so the same tension
+    /// does not immediately re-fire on the next turn.
+    /// </summary>
+    static void RebalanceLawGospelAfterSchism()
+    {
+        var faction = FirstSteps.Instance;
+        if (faction == null)
+            return;
+
+        faction.civicRestraint = Mathf.Clamp(
+            Mathf.Lerp(faction.civicRestraint, 52f, 0.55f), 40f, 62f);
+        faction.spiritualComfort = Mathf.Clamp(
+            Mathf.Lerp(faction.spiritualComfort, 52f, 0.55f), 40f, 58f);
+        Debug.Log(
+            $"Schism Law/Gospel rebalance: restraint {faction.civicRestraint:F0}%, " +
+            $"comfort {faction.spiritualComfort:F0}%.");
+    }
+
     City SpawnSchismaticCity(SchismRecord record, HexCoordinates hex)
     {
         var profile = record.Profile;
@@ -350,18 +370,36 @@ public class SchismManager : MonoBehaviour
         if (TurnManager.Instance == null || predicate == null)
             return null;
 
+        // Peel the unit furthest from the capital — fringe peels away; home garrison stays.
+        HexCoordinates? capitalHex = null;
+        var capital = CityManager.Instance?.GetPrimaryPlayerCity();
+        if (capital != null)
+            capitalHex = capital.HexPosition;
+
+        Unit best = null;
+        int bestDistance = -1;
         foreach (var unit in TurnManager.Instance.GetSynodUnits(playerId))
         {
             if (!unit.IsAlive || !unit.IsOnMap || !predicate(unit))
                 continue;
 
-            unit.ConvertToSchismaticBloc(blocId);
-            if (unit.HexPosition != rallyHex && HexGridMap.Instance != null)
-                unit.TryMoveTo(rallyHex);
-            return unit;
+            int dist = capitalHex.HasValue
+                ? unit.HexPosition.DistanceTo(capitalHex.Value)
+                : 0;
+            if (best == null || dist > bestDistance)
+            {
+                best = unit;
+                bestDistance = dist;
+            }
         }
 
-        return null;
+        if (best == null)
+            return null;
+
+        best.ConvertToSchismaticBloc(blocId);
+        if (best.HexPosition != rallyHex && HexGridMap.Instance != null)
+            best.TryMoveTo(rallyHex);
+        return best;
     }
 
     void SpawnSchismaticUnits(

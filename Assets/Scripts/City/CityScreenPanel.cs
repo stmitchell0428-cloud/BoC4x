@@ -141,8 +141,8 @@ public class CityScreenPanel : MonoBehaviour
         var tabsGo = new GameObject("CityTabs");
         tabsGo.transform.SetParent(headerGo.transform, false);
         var tabsLE = tabsGo.AddComponent<LayoutElement>();
-        tabsLE.preferredHeight = 26f;
-        tabsLE.minHeight = 26f;
+        tabsLE.preferredHeight = 48f;
+        tabsLE.minHeight = 48f;
         var tabsLayout = tabsGo.AddComponent<HorizontalLayoutGroup>();
         tabsLayout.spacing = 6f;
         tabsLayout.childControlWidth = false;
@@ -489,9 +489,13 @@ public class CityScreenPanel : MonoBehaviour
             return;
         }
 
-        activeCity.Production.CancelActiveBuild();
+        if (selectedBuild.HasValue && activeCity.Production.IsBuilding(selectedBuild.Value))
+            activeCity.Production.CancelBuild(selectedBuild.Value);
+        else
+            activeCity.Production.CancelActiveBuild();
+
         UiDetailPane.SetDetailText(detailText, detailScroll,
-            "Production cancelled.\n\nConfessional projects refund half their manuscript cost.");
+            "Production cancelled.\n\nManuscript / turn projects refund half their manuscript cost.");
         Refresh();
         UpdateStartBuildButton();
     }
@@ -673,9 +677,9 @@ public class CityScreenPanel : MonoBehaviour
         string progressLine = "";
         if (status == CityBuildStatus.Building &&
             activeCity?.Production != null &&
-            activeCity.Production.ActiveBuildId == def.Id)
+            activeCity.Production.IsBuilding(def.Id))
         {
-            int? eta = activeCity.Production.EstimatedTurnsRemaining();
+            int? eta = activeCity.Production.EstimatedTurnsRemainingFor(def.Id);
             if (eta.HasValue)
                 progressLine = $"\n<size=11><color=#FFCC88>{eta.Value}t left</color></size>";
             else if (def.UsesProduction)
@@ -700,23 +704,31 @@ public class CityScreenPanel : MonoBehaviour
         {
             costLine = "Needs Armory";
         }
-        else if (status == CityBuildStatus.Locked && def.Id == CityBuildId.TrainCoastalPatrol &&
+        else if (status == CityBuildStatus.Locked &&
+                 (def.Id == CityBuildId.BuildWharf || def.Id == CityBuildId.BuildFishingPost ||
+                  def.Id == CityBuildId.BuildDock || def.Id == CityBuildId.TrainCoastalPatrol ||
+                  def.Id == CityBuildId.TrainCoastalExplorer || def.Id == CityBuildId.TrainCoastalGalley ||
+                  def.Id == CityBuildId.TrainDeepSeaShip) &&
                  activeCity != null && CityManager.Instance != null &&
                  !CityManager.Instance.CityTouchesNavalCoast(activeCity))
         {
             costLine = "Needs shore or naval coast";
         }
         else if (status == CityBuildStatus.Locked &&
-                 (def.Id == CityBuildId.BuildDock || def.Id == CityBuildId.TrainCoastalGalley) &&
-                 activeCity != null && CityManager.Instance != null &&
-                 !CityManager.Instance.CityTouchesNavalCoast(activeCity))
+                 NavalMovementRules.RequiresWharf(def.Id) && def.Id != CityBuildId.BuildWharf &&
+                 activeCity?.Production?.HasBuilding(CityBuildId.BuildWharf) != true)
         {
-            costLine = "Needs shore or naval coast";
+            costLine = "Needs Wharf";
         }
-        else if (status == CityBuildStatus.Locked && def.Id == CityBuildId.TrainCoastalGalley &&
+        else if (status == CityBuildStatus.Locked && def.Id == CityBuildId.BuildDock &&
+                 activeCity?.Production?.HasBuilding(CityBuildId.BuildWharf) != true)
+        {
+            costLine = "Needs Wharf first";
+        }
+        else if (status == CityBuildStatus.Locked && NavalMovementRules.RequiresDock(def.Id) &&
                  activeCity?.Production?.HasBuilding(CityBuildId.BuildDock) != true)
         {
-            costLine = "Needs Dock";
+            costLine = "Needs War Dock";
         }
         else if (status == CityBuildStatus.Locked && def.RequiredTech.HasValue &&
             (ConfessionResearchManager.Instance == null ||
@@ -731,7 +743,7 @@ public class CityScreenPanel : MonoBehaviour
     static string FormatCostShort(CityBuildDefinition def, City city = null)
     {
         if (def.UsesProduction)
-            return $"{def.ProductionCost} production";
+            return $"prod · {def.ProductionCost} production";
 
         int cost = def.ManuscriptCost;
         if (def.Id == CityBuildId.TrainFrontierSettler && city != null)
@@ -740,14 +752,14 @@ public class CityScreenPanel : MonoBehaviour
             cost = MissionHouseChain.EffectiveMissionaryCost(city);
 
         if (def.TurnsToComplete <= 1)
-            return $"{cost} mss, {def.TurnsToComplete} turn";
-        return $"{cost} mss, {def.TurnsToComplete} turns";
+            return $"mss · {cost} mss, {def.TurnsToComplete} turn";
+        return $"mss · {cost} mss, {def.TurnsToComplete} turns";
     }
 
     static string FormatCostDetail(CityBuildDefinition def, City city = null)
     {
         if (def.UsesProduction)
-            return $"Cost: {def.ProductionCost} production (city yield applied each End Turn)";
+            return $"Track: production  |  Cost: {def.ProductionCost} production (city yield applied each End Turn)";
 
         int cost = def.ManuscriptCost;
         if (def.Id == CityBuildId.TrainFrontierSettler && city != null)
@@ -755,7 +767,7 @@ public class CityScreenPanel : MonoBehaviour
         else if (def.Id == CityBuildId.TrainMissionary && city != null)
             cost = MissionHouseChain.EffectiveMissionaryCost(city);
 
-        return $"Cost: {cost} manuscripts, {def.TurnsToComplete} turns";
+        return $"Track: manuscript / turns  |  Cost: {cost} manuscripts, {def.TurnsToComplete} turns";
     }
 
     public void Open(City city)
@@ -812,8 +824,9 @@ public class CityScreenPanel : MonoBehaviour
             btnGo.transform.SetParent(cityTabsRoot, false);
 
             var layout = btnGo.AddComponent<LayoutElement>();
-            layout.preferredWidth = Mathf.Min(160f, city.CityName.Length * 9f + 24f);
-            layout.preferredHeight = 26f;
+            layout.preferredWidth = Mathf.Clamp(city.CityName.Length * 10f + 36f, 100f, 200f);
+            layout.minHeight = 44f;
+            layout.preferredHeight = 44f;
 
             var img = btnGo.AddComponent<Image>();
             bool selected = activeCity == city;
@@ -830,16 +843,24 @@ public class CityScreenPanel : MonoBehaviour
             var labelRect = labelGo.AddComponent<RectTransform>();
             labelRect.anchorMin = Vector2.zero;
             labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = new Vector2(6f, 2f);
-            labelRect.offsetMax = new Vector2(-6f, -2f);
+            labelRect.offsetMin = new Vector2(6f, 4f);
+            labelRect.offsetMax = new Vector2(-6f, -4f);
 
             var label = labelGo.AddComponent<TextMeshProUGUI>();
             if (uiFont != null) label.font = uiFont;
-            label.text = TmpTextSanitizer.Sanitize(city.SettlementDisplayName());
-            label.fontSize = 13f;
+            string tabLabel = city.IsHamlet
+                ? (city.HasChosenSpecialty
+                    ? $"{city.CityName}\n{HamletSpecialtyDatabase.DisplayName(city.Specialty)}"
+                    : $"{city.CityName}\n(unspecialized)")
+                : city.CityName;
+            label.text = TmpTextSanitizer.Sanitize(tabLabel);
+            label.fontSize = city.IsHamlet ? 11f : 13f;
             label.alignment = TextAlignmentOptions.Center;
             label.color = Color.white;
             label.raycastTarget = false;
+            label.textWrappingMode = TextWrappingModes.Normal;
+            label.overflowMode = TextOverflowModes.Ellipsis;
+            label.lineSpacing = -6f;
         }
     }
 
@@ -897,8 +918,7 @@ public class CityScreenPanel : MonoBehaviour
             sb.AppendLine(actionMessage);
 
         if (activeCity?.Production != null &&
-            activeCity.Production.ActiveBuildId == id &&
-            activeCity.Production.IsProducing)
+            activeCity.Production.IsBuilding(id))
         {
             sb.AppendLine();
             sb.AppendLine(activeCity.Production.ActiveBuildProgressBlock());
@@ -909,20 +929,28 @@ public class CityScreenPanel : MonoBehaviour
 
     string FormatProductionStatusLine()
     {
-        if (activeCity?.Production == null || !activeCity.Production.IsProducing)
-            return "Production: idle";
+        if (activeCity?.Production == null)
+            return "Manuscript: Idle  ·  Production: Idle";
 
-        var production = activeCity.Production;
-        var def = CityBuildDatabase.Get(production.ActiveBuildId.Value);
-        int? eta = production.EstimatedTurnsRemaining();
+        var prod = activeCity.Production;
+        string mss = prod.ActiveTimerBuildId.HasValue
+            ? FormatSlotHud(prod.ActiveTimerBuildId.Value, prod)
+            : "Idle";
+        string hammers = prod.ActiveProdBuildId.HasValue
+            ? FormatSlotHud(prod.ActiveProdBuildId.Value, prod)
+            : "Idle";
+        return $"Manuscript: {mss}  ·  Production: {hammers}";
+    }
 
+    static string FormatSlotHud(CityBuildId id, CityProduction production)
+    {
+        var def = CityBuildDatabase.Get(id);
+        int? eta = production.EstimatedTurnsRemainingFor(id);
+        if (eta.HasValue)
+            return $"{def.Name} ({eta.Value}t)";
         if (def.UsesProduction)
-        {
-            string etaText = eta.HasValue ? $" | ~{eta.Value} turn{(eta.Value == 1 ? "" : "s")} left" : "";
-            return $"Building: {def.Name} ({production.ProductionProgress}/{def.ProductionCost} prod{etaText})";
-        }
-
-        return $"Building: {def.Name} ({production.TurnsRemainingOnProject} turn{(production.TurnsRemainingOnProject == 1 ? "" : "s")} left)";
+            return $"{def.Name} ({production.ProductionProgress}/{def.ProductionCost})";
+        return def.Name;
     }
 
     string GetBuildStartFailureMessage(CityBuildId id)
@@ -948,18 +976,23 @@ public class CityScreenPanel : MonoBehaviour
             _ when id == CityBuildId.TrainSiegeEngine &&
                    activeCity?.Production?.HasBuilding(CityBuildId.BuildArmory) != true
                 => "<color=#888888>Requires an Armory in this city.</color>",
-            _ when id == CityBuildId.TrainCoastalPatrol && activeCity != null &&
-                   CityManager.Instance != null &&
-                   !CityManager.Instance.CityTouchesNavalCoast(activeCity)
-                => "<color=#888888>City must touch shore or a tagged naval coast hex.</color>",
-            _ when (id == CityBuildId.BuildDock || id == CityBuildId.TrainCoastalGalley) &&
+            _ when (id == CityBuildId.BuildWharf || id == CityBuildId.BuildFishingPost ||
+                     id == CityBuildId.BuildDock || id == CityBuildId.TrainCoastalPatrol ||
+                     id == CityBuildId.TrainCoastalExplorer || id == CityBuildId.TrainCoastalGalley ||
+                     id == CityBuildId.TrainDeepSeaShip) &&
                    activeCity != null &&
                    CityManager.Instance != null &&
                    !CityManager.Instance.CityTouchesNavalCoast(activeCity)
                 => "<color=#888888>City must touch shore or a tagged naval coast hex.</color>",
-            _ when id == CityBuildId.TrainCoastalGalley &&
+            _ when NavalMovementRules.RequiresWharf(id) && id != CityBuildId.BuildWharf &&
+                   activeCity?.Production?.HasBuilding(CityBuildId.BuildWharf) != true
+                => "<color=#888888>Requires a Wharf in this city.</color>",
+            _ when id == CityBuildId.BuildDock &&
+                   activeCity?.Production?.HasBuilding(CityBuildId.BuildWharf) != true
+                => "<color=#888888>Requires a Wharf before the war dock.</color>",
+            _ when NavalMovementRules.RequiresDock(id) &&
                    activeCity?.Production?.HasBuilding(CityBuildId.BuildDock) != true
-                => "<color=#888888>Requires a Dock in this city.</color>",
+                => "<color=#888888>Requires a War Dock in this city.</color>",
             _ when def.RequiredTech.HasValue &&
                    (ConfessionResearchManager.Instance == null ||
                     !ConfessionResearchManager.Instance.IsTechUnlocked(def.RequiredTech.Value))
@@ -980,7 +1013,11 @@ public class CityScreenPanel : MonoBehaviour
                 },
             CityBuildStatus.ClergySlotsFull
                 => "<color=#FFCC88>Clergy roster full  -  one per role, expand via Seminary district.</color>",
-            _ => "<color=#888888>Finish current production first.</color>"
+            _ when def.UsesProduction && activeCity.Production.IsProdBusy
+                => "<color=#888888>Production track busy  -  finish or cancel the secular project first (mss/turn jobs can still run).</color>",
+            _ when !def.UsesProduction && activeCity.Production.IsTimerBusy
+                => "<color=#888888>Manuscript/turn track busy  -  finish or cancel that project first (production-point builds can still run).</color>",
+            _ => "<color=#888888>Cannot start this project right now.</color>"
         };
     }
 
@@ -1151,6 +1188,7 @@ public class CityScreenPanel : MonoBehaviour
             panelRoot.SetActive(open);
 
         TerrainInfoPanel.Instance?.SetBottomHudVisible(!open && !(ConfessionTechPanel.Instance?.IsOpen ?? false));
+        GameHUD.SetQueuePanelVisible(!open && !(ConfessionTechPanel.Instance?.IsOpen ?? false));
 
         if (!open)
         {

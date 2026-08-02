@@ -15,7 +15,7 @@ public class MatchController : MonoBehaviour
 
     const float AdherenceWinPercent = 100f;
     const int AdherenceWinTurns = 5;
-    const int FameWinThreshold = 75;
+    const int FameWinThreshold = 120;
 
     public float AdherenceWinTarget => AdherenceWinPercent;
     public int AdherenceWinTurnsRequired => AdherenceWinTurns;

@@ -55,6 +55,12 @@ public class GameHUD : MonoBehaviour
         Instance?.SetDashboardVisibleInternal(visible);
     }
 
+    /// <summary>Hide only the BUILD/RESEARCH box; keep pop / adherence / manuscripts / Walther.</summary>
+    public static void SetQueuePanelVisible(bool visible)
+    {
+        Instance?.SetQueuePanelVisibleInternal(visible);
+    }
+
     public void EnsureDashboardVisible()
     {
         ResolveReferences();
@@ -72,6 +78,15 @@ public class GameHUD : MonoBehaviour
         SetRowVisible(adherenceText, visible);
         SetRowVisible(manuscriptText, visible);
         SetRowVisible(waltherText, visible);
+        if (visible)
+            Relayout();
+    }
+
+    void SetQueuePanelVisibleInternal(bool visible)
+    {
+        ResolveReferences();
+        SetRowVisible(queueReviewPanel, visible);
+        Relayout();
     }
 
     static void SetRowVisible(TextMeshProUGUI tmp, bool visible)
@@ -309,6 +324,8 @@ public class GameHUD : MonoBehaviour
     float PlaceQueueReviewRow(float y)
     {
         if (queueReviewText == null || queueReviewPanel == null)
+            return y;
+        if (!queueReviewPanel.gameObject.activeSelf)
             return y;
 
         queueReviewText.fontSize = queueFontSize;

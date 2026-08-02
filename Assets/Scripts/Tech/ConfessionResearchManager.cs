@@ -374,6 +374,7 @@ public class ConfessionResearchManager : MonoBehaviour
         Debug.Log($"Unlocked ({tree}): {node.Name}{figure}  -  {node.EffectSummary}{receptionNote}");
         SynodicalEmphasisManager.Instance?.OnTechUnlocked(id);
         Tier2EmphasisManager.Instance?.OnTechUnlocked(id);
+        TestimonyColloquyManager.Instance?.OnTechUnlocked(id);
         ResearchChanged?.Invoke();
         Faction?.RefreshDashboard();
         MatchController.Instance?.EvaluateConditions();

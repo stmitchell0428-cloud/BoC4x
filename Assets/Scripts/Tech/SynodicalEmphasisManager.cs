@@ -24,6 +24,9 @@ public class SynodicalEmphasisManager : MonoBehaviour, IChoiceCardPresenter
     int secondaryCooldownUntilTurn = -1;
     int integrationCooldownUntilTurn = -1;
     Coroutine deferredPresentRoutine;
+    string pendingTitle;
+    string pendingBody;
+    List<CrisisCardChoice> pendingChoices;
 
     public bool IsAwaitingPlayerChoice { get; private set; }
     public SynodicalEmphasisId PrimaryEmphasis => primaryEmphasis;
@@ -53,6 +56,7 @@ public class SynodicalEmphasisManager : MonoBehaviour, IChoiceCardPresenter
     public void OnChoiceCardDismissed()
     {
         IsAwaitingPlayerChoice = false;
+        ClearPendingCard();
         ConfessionResearchManager.Instance?.NotifyAdherenceChanged();
         FirstSteps.Instance?.RefreshDashboard();
         TurnPhaseBanner.Instance?.Refresh();
@@ -64,6 +68,7 @@ public class SynodicalEmphasisManager : MonoBehaviour, IChoiceCardPresenter
         if (primaryEmphasis == SynodicalEmphasisId.None)
             ApplyPrimary(SynodicalEmphasisId.WaltherPastoral, deferred: true);
         IsAwaitingPlayerChoice = false;
+        ClearPendingCard();
         FirstSteps.Instance?.RefreshDashboard();
         TurnPhaseBanner.Instance?.Refresh("Synod deferred — Walther pastoral emphasis applied by default.");
     }
@@ -179,14 +184,61 @@ public class SynodicalEmphasisManager : MonoBehaviour, IChoiceCardPresenter
             choices);
     }
 
-    public void EnsureSecondaryChoiceVisible()
+    public void EnsureSecondaryChoiceVisible() => EnsurePendingChoiceVisible();
+
+    /// <summary>Re-show pending synodical card, or present primary/secondary/integration if due.</summary>
+    public void EnsurePendingChoiceVisible()
     {
+        if (IsAwaitingPlayerChoice)
+        {
+            if (CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible)
+            {
+                CrisisCardPanel.Instance.BringToFront();
+                return;
+            }
+
+            if (pendingChoices != null && pendingChoices.Count > 0)
+            {
+                TryShowImmediate(pendingTitle, pendingBody, pendingChoices);
+                return;
+            }
+
+            // Stale awaiting with no stored card (e.g. mid-session before this fix) — re-offer.
+            IsAwaitingPlayerChoice = false;
+            if (primaryEmphasis == SynodicalEmphasisId.None &&
+                ConfessionResearchManager.Instance != null &&
+                ConfessionResearchManager.Instance.IsTechUnlocked(ConfessionTechId.SynodicalEmphasis))
+            {
+                PresentPrimaryChoice();
+                return;
+            }
+
+            TryPresentSecondaryChoice();
+            TryPresentIntegrationChoice();
+            return;
+        }
+
+        if (primaryEmphasis == SynodicalEmphasisId.None &&
+            ConfessionResearchManager.Instance != null &&
+            ConfessionResearchManager.Instance.IsTechUnlocked(ConfessionTechId.SynodicalEmphasis))
+        {
+            PresentPrimaryChoice();
+            return;
+        }
+
         if (ConfessionResearchManager.Instance == null ||
             !ConfessionResearchManager.Instance.IsTechUnlocked(SecondaryUnlockTech))
             return;
 
         TryPresentSecondaryChoice();
         TryPresentIntegrationChoice();
+    }
+
+    void ClearPendingCard()
+    {
+        pendingTitle = null;
+        pendingBody = null;
+        pendingChoices = null;
     }
 
     void TryPresentIntegrationChoice()
@@ -327,6 +379,11 @@ public class SynodicalEmphasisManager : MonoBehaviour, IChoiceCardPresenter
             return false;
 
         IsAwaitingPlayerChoice = true;
+        pendingTitle = title;
+        pendingBody = body;
+        pendingChoices = choices is List<CrisisCardChoice> list
+            ? list
+            : new List<CrisisCardChoice>(choices);
         FirstSteps.Instance?.RefreshDashboard();
         TurnPhaseBanner.Instance?.Refresh();
         return true;
@@ -334,14 +391,21 @@ public class SynodicalEmphasisManager : MonoBehaviour, IChoiceCardPresenter
 
     IEnumerator RetryPresentDeferred(string title, string body, List<CrisisCardChoice> choices)
     {
+        pendingTitle = title;
+        pendingBody = body;
+        pendingChoices = choices;
+
         for (int i = 0; i < 8; i++)
         {
             yield return null;
             if (i == 0)
                 yield return new WaitForEndOfFrame();
 
-            if (IsAwaitingPlayerChoice)
+            if (CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible && IsAwaitingPlayerChoice)
+            {
+                deferredPresentRoutine = null;
                 yield break;
+            }
 
             if (TryShowImmediate(title, body, choices))
             {
@@ -351,6 +415,9 @@ public class SynodicalEmphasisManager : MonoBehaviour, IChoiceCardPresenter
         }
 
         deferredPresentRoutine = null;
-        Debug.LogWarning("Synodical emphasis card could not open after deferred retries.");
+        // Keep pending so End Turn can still re-show; mark awaiting if primary is unpaid.
+        if (primaryEmphasis == SynodicalEmphasisId.None)
+            IsAwaitingPlayerChoice = true;
+        Debug.LogWarning("Synodical emphasis card could not open after deferred retries — End Turn will retry.");
     }
 }

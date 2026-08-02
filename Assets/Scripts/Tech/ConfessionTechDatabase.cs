@@ -254,6 +254,16 @@ public static class ConfessionTechDatabase
                 figureName: "Carl Linnaeus", lifespan: "1707-1778",
                 prerequisites: new[] { ConfessionTechId.OrderedCreation, ConfessionTechId.SacramentalLife }),
 
+            new ConfessionTechNode(
+                ConfessionTechId.CoastalWharves,
+                "River Trade & Wharves",
+                "Wharves and fishing along Pomeranian and Baltic shores — Bugenhagen's church order meeting coastal commerce.",
+                "Wharf, fishing post, coastal patrol & explorer at coastal cities",
+                confessions, tier: 2, manuscriptCost: 2, turnsToComplete: 2, minAdherence: 42f,
+                track: TechTrack.Secular,
+                figureName: "Johannes Bugenhagen", lifespan: "1485-1558",
+                prerequisites: new[] { ConfessionTechId.OrderedCreation, ConfessionTechId.LawAndGospel }),
+
             //  -  -  Tier 3: Age of Orthodoxy  -  - 
             new ConfessionTechNode(
                 ConfessionTechId.MartinChemnitz,
@@ -263,6 +273,16 @@ public static class ConfessionTechDatabase
                 orthodoxy, tier: 3, manuscriptCost: 3, turnsToComplete: 3, minAdherence: 55f,
                 figureName: "Martin Chemnitz", lifespan: "1524-1586",
                 prerequisites: new[] { ConfessionTechId.AugsburgConfession, ConfessionTechId.FormulaOfConcord }),
+
+            new ConfessionTechNode(
+                ConfessionTechId.NavalWarfare,
+                "Naval Warfare & War Docks",
+                "After Chemnitz's patristic reception, fortify Baltic shores — war docks and galleys for confessional defense.",
+                "War dock, galley; coastal patrol & galley +1 move (requires wharf + Chemnitz)",
+                orthodoxy, tier: 3, manuscriptCost: 3, turnsToComplete: 3, minAdherence: 55f,
+                track: TechTrack.Secular,
+                figureName: "Martin Chemnitz", lifespan: "1524-1586",
+                prerequisites: new[] { ConfessionTechId.CoastalWharves, ConfessionTechId.MartinChemnitz }),
 
             new ConfessionTechNode(
                 ConfessionTechId.JohannGerhard,
@@ -358,6 +378,16 @@ public static class ConfessionTechDatabase
                 track: TechTrack.Secular, minAdherence: 62f,
                 figureName: "Otto von Guericke", lifespan: "1602-1686",
                 prerequisites: new[] { ConfessionTechId.IsaacNewton }),
+
+            new ConfessionTechNode(
+                ConfessionTechId.OpenOceanNavigation,
+                "Open-Ocean Navigation",
+                "Guericke's Magdeburg inquiry meets North Sea charts — heavy hulls for crossings beyond coastal waters.",
+                "Deep-sea ship; explorer +1 sight; galley & deep-sea +1 move",
+                synodical, tier: 4, manuscriptCost: 4, turnsToComplete: 3, minAdherence: 58f,
+                track: TechTrack.Secular,
+                figureName: "Otto von Guericke", lifespan: "1602-1686",
+                prerequisites: new[] { ConfessionTechId.NavalWarfare, ConfessionTechId.OttoVonGuericke }),
 
             new ConfessionTechNode(
                 ConfessionTechId.MichaelFaraday,
@@ -612,9 +642,7 @@ public static class ConfessionTechDatabase
         SetBranch(dict, ConfessionTechId.AugsburgConfession, "confessional", "Era2-Confession");
         SetBranch(dict, ConfessionTechId.GutenbergPress, "confessional", "Era2-Confession");
 
-        // Synodical era — mission sending vs liturgical cantatas.
-        SetBranch(dict, ConfessionTechId.MissionarySending, "culture", "Era4-Synodical");
-        SetBranch(dict, ConfessionTechId.JohannSebastianBach, "culture", "Era4-Synodical");
+        // Synodical era — mission sending is no longer forked; Bach stands alone (no era fork).
     }
 
     static void SetBranch(

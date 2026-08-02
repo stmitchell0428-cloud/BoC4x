@@ -271,7 +271,9 @@ public class TerrainInfoPanel : MonoBehaviour
             UnitType.Cantor => "c",
             UnitType.SiegeEngine => "s",
             UnitType.CoastalPatrol => "~",
+            UnitType.CoastalExplorer => "e",
             UnitType.CoastalGalley => "<>",
+            UnitType.DeepSeaShip => "S",
             _ => "+"
         };
         SetPanelText(selectionText,
@@ -412,7 +414,9 @@ public class TerrainInfoPanel : MonoBehaviour
                     UnitType.Cantor => "c",
                     UnitType.SiegeEngine => "s",
                     UnitType.CoastalPatrol => "~",
+                    UnitType.CoastalExplorer => "e",
                     UnitType.CoastalGalley => "<>",
+                    UnitType.DeepSeaShip => "S",
                     _ => "+"
                 };
                 string actionHint = unit.CanFoundNomadicCapital

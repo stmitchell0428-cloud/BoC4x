@@ -9,6 +9,9 @@ public static class CityLoyaltySystem
     public const float HamletLoyalty = 55f;
     public const float SchismaticCapitalLoyalty = 80f;
 
+    /// <summary>Per-turn restore when the city is not under enemy siege/occupation.</summary>
+    public const float BaseLoyaltyRecovery = 5f;
+
     public static float GetStartingLoyalty(City city)
     {
         if (city == null) return CityLoyalty;
@@ -121,6 +124,116 @@ public static class CityLoyaltySystem
         }
     }
 
+    /// <summary>
+    /// After siege ends, loyalty climbs back toward starting hold.
+    /// Friendly clergy on the city hex restore faster.
+    /// </summary>
+    public static void ProcessEndTurnRecovery(
+        FactionId ownerFaction,
+        SynodPlayerId synodFilter = SynodPlayerId.None,
+        SchismaticBlocId blocFilter = SchismaticBlocId.None)
+    {
+        if (CityManager.Instance == null)
+            return;
+
+        foreach (var city in CityManager.Instance.AllCities)
+        {
+            if (city == null || city.Faction != ownerFaction)
+                continue;
+            if (ownerFaction == FactionId.LutheranSynod &&
+                synodFilter != SynodPlayerId.None &&
+                city.SynodPlayer != synodFilter)
+                continue;
+            if (ownerFaction == FactionId.Schismatic &&
+                blocFilter != SchismaticBlocId.None &&
+                city.SchismaticBloc != blocFilter)
+                continue;
+
+            TryRecoverLoyalty(city);
+        }
+    }
+
+    public static bool TryRecoverLoyalty(City city)
+    {
+        if (city == null || IsCityUnderEnemyOccupation(city))
+            return false;
+
+        float ceiling = GetStartingLoyalty(city);
+        if (city.Loyalty >= ceiling)
+            return false;
+
+        float amount = GetLoyaltyRecoveryAmount(city);
+        if (amount <= 0f)
+            return false;
+
+        float before = city.Loyalty;
+        float room = ceiling - before;
+        city.AdjustLoyalty(Mathf.Min(amount, room));
+        if (city.Loyalty > before)
+        {
+            Debug.Log(
+                $"{city.CityName} loyalty recovered +{city.Loyalty - before:F0} -> {city.Loyalty:F0}% " +
+                $"(ceiling {ceiling:F0}%)");
+            return true;
+        }
+
+        return false;
+    }
+
+    public static float GetLoyaltyRecoveryAmount(City city)
+    {
+        if (city == null)
+            return 0f;
+
+        float amount = BaseLoyaltyRecovery;
+        var clergy = GetFriendlyClergyOnCity(city);
+        if (clergy != null)
+            amount = Mathf.Max(amount, GetClergyLoyaltyRecovery(clergy));
+        return amount;
+    }
+
+    public static float GetClergyLoyaltyRecovery(Unit unit)
+    {
+        if (unit == null || !unit.IsAlive || !unit.CanPreachOrHymn)
+            return 0f;
+        return GetClergyLoyaltyRecovery(unit.Type);
+    }
+
+    public static float GetClergyLoyaltyRecovery(UnitType type) => type switch
+    {
+        UnitType.Archbishop => 16f,
+        UnitType.Bishop => 14f,
+        UnitType.Pastor => 12f,
+        UnitType.Chaplain => 10f,
+        UnitType.Deaconess => 8f,
+        UnitType.Missionary => 7f,
+        UnitType.Cantor => 6f,
+        _ => 0f
+    };
+
+    static Unit GetFriendlyClergyOnCity(City city)
+    {
+        if (city == null || HexGridMap.Instance == null)
+            return null;
+        if (!HexGridMap.Instance.TryGetTile(city.HexPosition, out var tile))
+            return null;
+
+        var unit = tile.Occupant;
+        if (unit == null || !unit.IsAlive || !unit.CanPreachOrHymn)
+            return null;
+        if (unit.Faction != city.Faction)
+            return null;
+        if (city.Faction == FactionId.LutheranSynod && unit.SynodPlayer != city.SynodPlayer)
+            return null;
+        if (city.Faction == FactionId.Schismatic &&
+            unit.SchismaticBloc != SchismaticBlocId.None &&
+            city.SchismaticBloc != SchismaticBlocId.None &&
+            unit.SchismaticBloc != city.SchismaticBloc)
+            return null;
+
+        return GetClergyLoyaltyRecovery(unit) > 0f ? unit : null;
+    }
+
     public static float DisplayLoyalty(City city)
     {
         if (city == null) return 0f;
@@ -144,6 +257,11 @@ public static class CityLoyaltySystem
         {
             if (IsCityUnderEnemyOccupation(city))
                 return $"Under siege  -  {city.Loyalty:F0}% synod hold";
+            if (city.Loyalty < GetStartingLoyalty(city))
+            {
+                float recover = GetLoyaltyRecoveryAmount(city);
+                return $"Synod loyalty  -  {city.Loyalty:F0}% (+{recover:F0}/turn recovering)";
+            }
             return $"Synod loyalty  -  {city.Loyalty:F0}%";
         }
 
@@ -234,8 +352,18 @@ public static class CityLoyaltySystem
         }
         else if (IsCityUnderEnemyOccupation(city))
             sb.Append("  -  <color=#FFCC66>under siege</color>");
-        else if (CityDefenses.HasWalls(city))
-            sb.Append("\n<size=11><color=#AABBCC>Walls hold — hostiles cannot enter until loyalty falls.</color></size>");
+        else
+        {
+            if (city.Loyalty < GetStartingLoyalty(city))
+            {
+                float recover = GetLoyaltyRecoveryAmount(city);
+                var clergy = GetFriendlyClergyOnCity(city);
+                string who = clergy != null ? $" with {Unit.TypeDisplayName(clergy.Type)}" : "";
+                sb.Append($"\n<size=11><color=#88CC88>Recovering +{recover:F0}/turn{who} (siege clear)</color></size>");
+            }
+            if (CityDefenses.HasWalls(city))
+                sb.Append("\n<size=11><color=#AABBCC>Walls hold — hostiles cannot enter until loyalty falls.</color></size>");
+        }
 
         if (selectedUnit != null && selectedUnit.Faction == FactionId.LutheranSynod && city.Faction != selectedUnit.Faction)
         {

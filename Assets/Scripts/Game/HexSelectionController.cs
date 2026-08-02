@@ -127,6 +127,26 @@ public class HexSelectionController : MonoBehaviour
         if (city.Faction == FactionId.LutheranSynod &&
             city.SynodPlayer != TurnManager.Instance.ActiveSynodPlayer)
             return;
+
+        var selected = TurnManager.Instance.SelectedUnit;
+        if (selected != null &&
+            selected.IsOnMap &&
+            selected.Faction == city.Faction &&
+            (city.Faction != FactionId.LutheranSynod || selected.SynodPlayer == city.SynodPlayer) &&
+            selected.HexPosition != city.HexPosition)
+        {
+            // Move intent: selected unit can path onto the city hex → move, don't open build screen.
+            if (selected.TryMoveTo(city.HexPosition) || selected.TryIssueMoveOrder(city.HexPosition))
+            {
+                CityManager.Instance?.TryCaptureCityAt(selected, city.HexPosition);
+                ShowReachable(selected);
+                TerrainInfoPanel.Instance?.RefreshMissionaryTile();
+                TerrainInfoPanel.Instance?.RefreshUnitDisplay();
+                PlayerUnitCycle.Instance?.OnUnitOrdersChanged();
+                return;
+            }
+        }
+
         CityScreenPanel.Instance?.Open(city);
     }
 
@@ -259,7 +279,7 @@ public class HexSelectionController : MonoBehaviour
 
         if (tile.Occupant == null)
         {
-            if (selected.Type == UnitType.CoastalGalley &&
+            if (selected.Type is UnitType.CoastalGalley or UnitType.DeepSeaShip &&
                 AmphibiousTransport.TryDisembark(
                     selected,
                     hex,
@@ -313,7 +333,7 @@ public class HexSelectionController : MonoBehaviour
             AppealOverlayController.Instance.Refresh();
     }
 
-    void MarkHighlight(HexCoordinates coords, HighlightKind kind)
+    public void MarkHighlight(HexCoordinates coords, HighlightKind kind)
     {
         if (HexGridMap.Instance == null || !HexGridMap.Instance.TryGetTile(coords, out var tile))
             return;
@@ -324,7 +344,7 @@ public class HexSelectionController : MonoBehaviour
 
     void HighlightDisembarkShores(Unit selected)
     {
-        if (selected == null || selected.Type != UnitType.CoastalGalley)
+        if (selected == null || selected.Type is not (UnitType.CoastalGalley or UnitType.DeepSeaShip))
             return;
 
         foreach (var coords in AmphibiousTransport.GetDisembarkHexes(selected))

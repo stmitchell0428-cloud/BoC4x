@@ -108,8 +108,10 @@ Hover any hex to see yields, manuscript bonuses, resource, owner, and worked sta
 |-------|------|-------|
 | **Ring + cross** | Settler | Game-start only; preach + survey + bind catechism, then **F** founds Wittenberg |
 | **Triangle (small)** | Scout | Fast mover; 4 hex sight |
-| **Triangle (small)** | Coastal Patrol | Market on coast; land + navigable water; +1 move on shore/water |
-| **Diamond** | Coastal Galley | Dock + coast; shore + navigable water only; strong attack |
+| **Triangle (small)** | Coastal Patrol | Wharf + Tier 2 wharves; land + navigable water; +1 move on shore/water |
+| **Diamond** | Coastal Galley | War Dock + coast; shore + navigable water; strong attack; cargo |
+| **Diamond (dark)** | Deep-Sea Ship | War Dock; all ocean tiles; cargo; archipelago crossings |
+| **e** | Coastal Explorer | Wharf + Tier 2 wharves; land + navigable water; wide sight |
 | **Cross** | Missionary | Train at city; **upgrade to Pastor** on city hex (Large Catechism) |
 | **Square (large)** | Defender | **Upgrade from Soldier** at city (Martin Chemnitz) |
 | **Square** | Soldier | Combat; upgrade path to Defender |
@@ -157,8 +159,8 @@ Ocean, lake, and river tiles are **bright blue** and impassable. Shore tiles gra
 - **Organic districts:** after **2+ turns of food surplus**, the game may offer a district site inside your borders (accept / defer / decline). Specialty is suggested from your building mix.
 - **Mission House chain:** build a **Mission House** (Wilhelm Loehe tech) to unlock **Train Frontier Settler** cluster-wide. With exactly one independent city, train a settler and press **F** on valid land to found a **second independent city**; the settler becomes a missionary. Each house yields **+1 fame/turn** and discounts settler/missionary training.
 - **Siege engines:** Garrison districts with an **Armory** and **James Clerk Maxwell** research can train **Siege Engines** — slow but apply high loyalty pressure/turn (partially bypasses fortifications). **Otto von Guericke**, **Maxwell**, and a synod **Armory** further boost siege pressure.
-- **Coastal patrol:** Market districts touching shore or naval coast can train **Coastal Patrol** after **Missionary Sending** — moves on land and **navigable water**; +1 move when starting on shore or water. **Deep ocean** beyond coastal range is impassable (wider range on Archipelago maps).
-- **Dock and galley:** build a **Dock** at coastal Market districts, then train **Coastal Galleys**. **O** boards adjacent troops; **L** or click highlighted shore lands them (2 cargo). AI rivals on coast may blockade and invade by sea.
+- **Early coastal (Tier 2 River Trade & Wharves):** any coastal city can build a **Wharf** (production), then **Fishing Post**, **Coastal Patrol**, and **Coastal Explorer** (near-shore scout boat). Capital coastal cities included — no Market district required.
+- **Late naval (Tier 3–4 secular):** **Naval Warfare & War Docks** (Tier 3, after wharf + Chemnitz) → War Dock + Galley; **Open-Ocean Navigation** (Tier 4) → Deep-Sea Ship. **Frontier Mission** is missionaries/settlers only — no Bach fork lock.
 - **Lobby rivals:** set **Players** to 2–4 in the match lobby to spawn 1–3 active schismatic blocs at game start (in addition to crisis schisms later).
 - **Ordain Pastor** — upgrade missionary on city hex (Large Catechism); or train at capital after **Parish Church** / **Seminary** building, or at Seminary districts.
 - **Commission Deaconess** at Seminary districts only (Large Catechism).
@@ -210,7 +212,7 @@ Ocean, lake, and river tiles are **bright blue** and impassable. Shore tiles gra
 
 **Civic tech (traditional 4X):** **Earthen Vessels** (pottery), **Parish Granary**, **Shepherd's Sling** — secular/confessional tier 1–2.
 - **Bind Catechism** (2 mss, 1 turn) — craft portable catechisms; preaching with one costs no manuscript and grants **+4 adherence**.
-- **Found Hamlet** (2 mss, 2 turns) — spawns a tribute hamlet on an adjacent hex. Hamlets send manuscripts and fame each turn; they cannot build secular projects.
+- **Found Hamlet** (2 mss, 2 turns) — spawns a tribute hamlet on an adjacent hex. Hamlets send manuscripts each turn; they cannot build secular projects.
 
 **Confessional buildings:** Scriptorium, Parish School, Chapel, **Seminary** (+research speed), **Cathedral** (capital only), **Hospital**, **Mission House**, **Fortifications**, **Orphanage**.
 

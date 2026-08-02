@@ -106,8 +106,10 @@ public static class MissionHouseChain
 
         if (houses > 0)
         {
-            faction.AddFame(houses);
-            Debug.Log($"Mission houses: +{houses} fame from frontier witness.");
+            // Half-rate passive fame so mission houses do not rush the fame victory.
+            int fame = Mathf.Max(1, (houses + 1) / 2);
+            faction.AddFame(fame);
+            Debug.Log($"Mission houses: +{fame} fame from {houses} frontier house(s).");
         }
     }
 }

@@ -13,13 +13,14 @@ public static class SynodTradeSystem
 
         bool marketHall = city.Production.HasBuilding(CityBuildId.BuildMarketHall);
         bool dock = city.Production.HasBuilding(CityBuildId.BuildDock);
+        bool wharf = city.Production.HasBuilding(CityBuildId.BuildWharf);
 
-        if (city.IsHamlet && city.Specialty == HamletSpecialty.Market && (marketHall || dock))
+        if (city.IsHamlet && city.Specialty == HamletSpecialty.Market && (marketHall || dock || wharf))
             return true;
 
         if (!city.IsHamlet)
         {
-            if (dock)
+            if (dock || wharf)
                 return true;
             if (marketHall && CityManager.Instance != null && CityManager.Instance.CityTouchesNavalCoast(city))
                 return true;

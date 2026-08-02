@@ -185,9 +185,11 @@ public class CrisisCardPanel : MonoBehaviour
             bodyRect.offsetMax = new Vector2(-24f, -72f);
             bodyText = bodyGo.AddComponent<TextMeshProUGUI>();
             ApplyFont(bodyText);
-            bodyText.fontSize = 16f;
-            bodyText.alignment = TextAlignmentOptions.TopLeft;
-            bodyText.richText = true;
+        bodyText.fontSize = 16f;
+        bodyText.alignment = TextAlignmentOptions.TopLeft;
+        bodyText.richText = true;
+        bodyText.textWrappingMode = TextWrappingModes.Normal;
+        bodyText.overflowMode = TextOverflowModes.Ellipsis;
 
             var rowGo = new GameObject("ButtonRow", typeof(RectTransform));
             rowGo.transform.SetParent(box.transform, false);
@@ -301,10 +303,16 @@ public class CrisisCardPanel : MonoBehaviour
         for (int i = 0; i < choices.Count; i++)
             CreateChoiceButton(choices[i], buttonWidth);
 
-        panelRoot.transform.SetAsLastSibling();
+        BringToFront();
         panelRoot.SetActive(true);
         Canvas.ForceUpdateCanvases();
         return true;
+    }
+
+    public void BringToFront()
+    {
+        if (panelRoot != null)
+            panelRoot.transform.SetAsLastSibling();
     }
 
     public void Hide()

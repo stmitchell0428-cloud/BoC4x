@@ -49,6 +49,16 @@ public class EndTurnPhaseController : MonoBehaviour
 
         if (TryGetEndTurnBlockReason(out string blockReason))
         {
+            // Brief / other modals can sit above the choice card; clear them and re-show.
+            SynodBriefPanel.Instance?.Hide();
+            CrisisManager.Instance?.EnsurePendingCrisisCardVisible();
+            PastoralBriefingManager.Instance?.EnsurePendingBriefingVisible();
+            NarrativeEventManager.Instance?.EnsurePendingEventVisible();
+            LiturgicalEventManager.Instance?.EnsurePendingEventVisible();
+            TestimonyColloquyManager.Instance?.EnsurePendingColloquyVisible();
+            SynodicalEmphasisManager.Instance?.EnsurePendingChoiceVisible();
+            Tier2EmphasisManager.Instance?.EnsurePendingChoicesVisible();
+            CrisisCardPanel.Instance?.BringToFront();
             TurnPhaseBanner.Instance?.Refresh(blockReason);
             Debug.LogWarning($"End Turn blocked: {StripRichText(blockReason)}");
             return false;
@@ -67,13 +77,22 @@ public class EndTurnPhaseController : MonoBehaviour
         else
             CrisisManager.Instance?.EnsurePendingCrisisCardVisible();
 
-        SynodicalEmphasisManager.Instance?.EnsureSecondaryChoiceVisible();
+        SynodicalEmphasisManager.Instance?.EnsurePendingChoiceVisible();
         Tier2EmphasisManager.Instance?.EnsurePendingChoicesVisible();
 
         SanitizeStaleChoicePanels();
 
         if (TryGetEndTurnBlockReason(out string blockReasonAfterPhases))
         {
+            SynodBriefPanel.Instance?.Hide();
+            CrisisManager.Instance?.EnsurePendingCrisisCardVisible();
+            PastoralBriefingManager.Instance?.EnsurePendingBriefingVisible();
+            NarrativeEventManager.Instance?.EnsurePendingEventVisible();
+            LiturgicalEventManager.Instance?.EnsurePendingEventVisible();
+            TestimonyColloquyManager.Instance?.EnsurePendingColloquyVisible();
+            SynodicalEmphasisManager.Instance?.EnsurePendingChoiceVisible();
+            Tier2EmphasisManager.Instance?.EnsurePendingChoicesVisible();
+            CrisisCardPanel.Instance?.BringToFront();
             TurnPhaseBanner.Instance?.Refresh(blockReasonAfterPhases);
             Debug.LogWarning($"End Turn blocked after phases: {StripRichText(blockReasonAfterPhases)}");
             return false;
@@ -110,6 +129,24 @@ public class EndTurnPhaseController : MonoBehaviour
         if (PastoralBriefingManager.Instance != null && PastoralBriefingManager.Instance.IsAwaitingPlayerChoice)
         {
             reason = "<color=#88CCFF><b>Pastoral briefing</b>  -  choose Law/Gospel (Esc defers)</color>";
+            return true;
+        }
+
+        if (NarrativeEventManager.Instance != null && NarrativeEventManager.Instance.IsAwaitingPlayerChoice)
+        {
+            reason = "<color=#DDBB88><b>Narrative chronology</b>  -  choose the synod's witness</color>";
+            return true;
+        }
+
+        if (LiturgicalEventManager.Instance != null && LiturgicalEventManager.Instance.IsAwaitingPlayerChoice)
+        {
+            reason = "<color=#DDBB88><b>Church-year feast</b>  -  choose the synod's witness</color>";
+            return true;
+        }
+
+        if (TestimonyColloquyManager.Instance != null && TestimonyColloquyManager.Instance.IsAwaitingPlayerChoice)
+        {
+            reason = "<color=#88CCFF><b>Testimony colloquy</b>  -  choose patristic reception</color>";
             return true;
         }
 
@@ -170,6 +207,9 @@ public class EndTurnPhaseController : MonoBehaviour
     static bool AnyChoicePresenterAwaiting() =>
         (CrisisManager.Instance != null && CrisisManager.Instance.IsAwaitingPlayerChoice) ||
         (PastoralBriefingManager.Instance != null && PastoralBriefingManager.Instance.IsAwaitingPlayerChoice) ||
+        (NarrativeEventManager.Instance != null && NarrativeEventManager.Instance.IsAwaitingPlayerChoice) ||
+        (LiturgicalEventManager.Instance != null && LiturgicalEventManager.Instance.IsAwaitingPlayerChoice) ||
+        (TestimonyColloquyManager.Instance != null && TestimonyColloquyManager.Instance.IsAwaitingPlayerChoice) ||
         (SynodicalEmphasisManager.Instance != null && SynodicalEmphasisManager.Instance.IsAwaitingPlayerChoice) ||
         (Tier2EmphasisManager.Instance != null && Tier2EmphasisManager.Instance.IsAwaitingPlayerChoice);
 
