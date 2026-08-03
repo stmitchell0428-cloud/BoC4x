@@ -89,6 +89,9 @@ public class EndTurnPhaseController : MonoBehaviour
         SynodicalEmphasisManager.Instance?.EnsurePendingChoiceVisible();
         Tier2EmphasisManager.Instance?.EnsurePendingChoicesVisible();
 
+        if (EndTurnDeferHelper.HasDeferrableChoicePending)
+            EndTurnDeferHelper.DeferPendingChoices();
+
         SanitizeStaleChoicePanels();
 
         if (TryGetEndTurnBlockReason(out string blockReasonAfterPhases))
@@ -135,12 +138,7 @@ public class EndTurnPhaseController : MonoBehaviour
             return true;
         }
 
-        if (PastoralBriefingManager.Instance != null && PastoralBriefingManager.Instance.IsAwaitingPlayerChoice)
-        {
-            reason = "<color=#88CCFF><b>Pastoral briefing</b>  -  choose Law/Gospel (Esc defers)</color>";
-            return true;
-        }
-
+        // Pastoral briefing + district offers auto-defer via EndTurnDeferHelper (do not block).
         if (NarrativeEventManager.Instance != null && NarrativeEventManager.Instance.IsAwaitingPlayerChoice)
         {
             reason = "<color=#DDBB88><b>Narrative chronology</b>  -  choose the synod's witness</color>";
@@ -180,12 +178,6 @@ public class EndTurnPhaseController : MonoBehaviour
         if (CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible)
         {
             reason = "<color=#FFAA66><b>Choice card open</b>  -  pick an option or press Esc</color>";
-            return true;
-        }
-
-        if (DistrictOfferPanel.Instance != null && DistrictOfferPanel.Instance.IsVisible)
-        {
-            reason = "<color=#FFDD88><b>District offer</b>  -  accept or decline</color>";
             return true;
         }
 

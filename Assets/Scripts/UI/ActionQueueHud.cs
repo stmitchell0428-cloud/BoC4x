@@ -9,7 +9,7 @@ public static class ActionQueueHud
 
         string research = ConfessionResearchManager.Instance != null
             ? ConfessionResearchManager.Instance.FormatProminentResearchBlock()
-            : "<size=21><color=#77CCFF><b>RESEARCH</b></color></size>  unavailable";
+            : "<size=21><color=#77CCFF><b>SCRIPTURE</b></color></size>  unavailable";
 
         return build + "\n" + research;
     }
@@ -24,6 +24,6 @@ public static class ActionQueueHud
             ? ConfessionResearchManager.Instance.FormatCompactResearchSummary()
             : "research —";
 
-        return $"<color=#FFCC55><b>Build</b></color> {build}  |  <color=#77CCFF><b>Research</b></color> {research}";
+        return $"<color=#FFCC55><b>Build</b></color> {build}  |  <color=#77CCFF><b>Scripture</b></color> {research}";
     }
 }

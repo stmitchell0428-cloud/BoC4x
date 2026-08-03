@@ -1,19 +1,37 @@
-# Playtest checklist — audit batch (Aug 2026)
+# Playtest checklist — merged sync (Aug 2026)
 
-Use `**- [ ]**` → `**- [x]**` to check items (works in Cursor/VS Code preview and on GitHub).
+Use `- [ ]` → `- [x]` to check items (works in Cursor/VS Code preview and on GitHub).
 
 **Before you start:** Exit Play → recompile → **new match from lobby** (no mid-run resume).
 
-**Recommended setup:** Solo · Grand · Archipelago · Full canon · **coastal capital** · fame win 120
+**Recommended setup:** Solo · Grand · Archipelago · Full canon · **coastal capital** · fame win **120**
 
-**Build under test:** Aug 3 post-playtest batch — naval feel pass, HUD panels, combat counter-damage, Synod Brief yields fix, clergy roster bootstrap, cargo panel layout, schism heresy variety.
+**Build under test:** Merged local + agent tree — naval feel, HUD, combat, tightening batch (PlayerCapital, pop grace, End Turn defer, Synod Brief, salvation history intro).
 
 ---
 
 ## Pre-flight
 
-- [x] Scripts recompiled
-- [x] Fresh match started from lobby
+- [ ] Scripts recompiled
+- [ ] Fresh match started from lobby
+- [ ] EditMode → **BoC4x.Editor.Tests** → Run All (spot-check)
+
+---
+
+## Priority — Tightening batch (verify first)
+
+- [ ] **BUILD / SCRIPTURE HUD** — Upper-left queue panel shows **BUILD** and **SCRIPTURE** lines; turn banner says Build | Scripture
+- [ ] **End Turn defer** — With **pastoral briefing** or **district offer** open, End Turn **advances** (auto-defers); crisis/emphasis/narrative/liturgical/testimony still **block**
+- [ ] **Synod Brief CITY YIELDS** — After districts/hamlets exist, **Y** brief shows real yields — not “No city production yet” falsely
+- [ ] **Military witness (Y + T)** — **Y** brief → Military witness + emphasis gates; **T** tech sidebar shows gate summary when no tech selected
+- [ ] **Diplomacy in brief** — Lobby **2 players** → **Y** shows rival lines; **Colloquy truce** button spends 2 mss, 10-turn truce; **D** panel still works
+- [ ] **PlayerCapital win** — Post-schism: schismatic capture of **your capital** ends match (banner names capital)
+- [ ] **Population grace** — Drop synod pop to **0** → banner shows grace countdown; defeat only after **2 turns** at 0; warning at **≤3**
+- [ ] **Left HUD column** — Dashboard rows sit on dark backing / column
+- [ ] **Modal stack banner** — Open **Y**, **T**, or **C** → turn banner shows `[N panels open]`
+- [ ] **District appeal flash** — District offer highlights hex + shows appeal score; **G** toggles full appeal map
+- [ ] **AI turn budget** — 2-player lobby: AI rivals act but turns don’t stall on huge unit stacks
+- [ ] **Salvation history intro** — “In the Beginning” card with Confess / Pastor / Study hexameron; Law/Gospel hint visible
 
 ---
 
@@ -21,21 +39,21 @@ Use `**- [ ]**` → `**- [x]**` to check items (works in Cursor/VS Code preview 
 
 ### Core movement
 
-- [x] Scout / settler move at game start
-- [x] Move-range highlight readable (ring overlays)
-- [x] Coastal Explorer cannot walk inland
-- [x] Explorer cannot portage across peninsula
-- [x] Explorer hugs shoreline; mouth landing OK
+- [ ] Scout / settler move at game start
+- [ ] Move-range highlight readable (ring overlays)
+- [ ] Coastal Explorer cannot walk inland
+- [ ] Explorer cannot portage across peninsula
+- [ ] Explorer hugs shoreline; mouth landing OK
 
 ### Economy & UX
 
 - [ ] Parish Granary: +3 food/turn; no pop spike on complete
-- [x] Worked tiles tint + toggle
-- [x] Skip turn (J); H/J blocked when panels open
-- [x] **Synod Brief CITY YIELDS** shows production when districts exist (not false “No city production”)
-- [x] **Clergy roster (R)** opens assignment panel
-- [x] **Left HUD** stat rows + terrain readout have dark backing
-- [x] **Galley/Ship cargo** panel above End Turn button
+- [ ] Worked tiles tint + toggle
+- [ ] Skip turn (J); H/J blocked when panels open
+- [ ] **Synod Brief CITY YIELDS** shows production when districts exist
+- [ ] **Clergy roster (R)** opens assignment panel
+- [ ] **Left HUD** stat rows + terrain readout have dark backing
+- [ ] **Galley/Ship cargo** panel above End Turn button
 
 ### Naval feel pass (Aug 3 post-playtest)
 
@@ -47,20 +65,20 @@ Use `**- [ ]**` → `**- [x]**` to check items (works in Cursor/VS Code preview 
 
 ### Naval build chain
 
-- [x] Coastal Patrol absent
-- [x] Explorer at coastal capital via Wharf chain
-- [x] War Dock + Galley at coastal Garrison
+- [ ] Coastal Patrol absent
+- [ ] Explorer at coastal capital via Wharf chain
+- [ ] War Dock + Galley at coastal Garrison
 - [ ] Deep-Sea Ship at coastal Garrison with War Dock (Open-Ocean Navigation)
-- [x] Explorer sight **5**
+- [ ] Explorer sight **5**
 
 ### Military & combat
 
-- [x] Promote to Defender: 1 mss with local Armory; UI shows discount
+- [ ] Promote to Defender: 1 mss with local Armory; UI shows discount
 - [ ] **Melee counter-damage:** scales with defender fight left; **no chip** on overkill (e.g. soldier vs 1 HP scout)
 
 ### Schism
 
-- [x] Drift/crisis before fame win (retuned batch)
+- [ ] Drift/crisis before fame win (retuned batch)
 - [ ] At 3 blocs: dashboard shows **Union strife**, not `Crisis: antinomian schism`
 - [ ] New schism crises prefer **unused heresy** (no duplicate Libertine bloc)
 - [ ] Saturated overflow cards (colloquy / feed dissent / purge)
@@ -69,60 +87,34 @@ Use `**- [ ]**` → `**- [x]**` to check items (works in Cursor/VS Code preview 
 
 ## Mid–late match
 
-- [x] Formula bound → fame path cue on dashboard
-- [x] Fame 120 pacing readable
-- [x] Emphasis cards block End Turn
+- [ ] Formula bound → fame path cue on dashboard
+- [ ] Fame **120** pacing readable
+- [ ] Emphasis cards block End Turn
 
 ---
 
-## Run log — winning run (Aug 3)
+## Deferred design (not blocking this playtest)
 
-**End condition:** Fame / synod victory (user confirmed win)
+### Unit experience / veterancy
 
-**Blockers found & fixed post-run:**
+**Request:** Units gain **experience per combat encounter**; XP feeds **attack/defense growth**. Optional **veterancy tiers** with upgrade paths.
 
-```
-Synod Brief “No city production” false positive (district “ - ” in yield string)
-Deep-Sea / Galley walking Naval coast land → water-only movement
-Galley cargo panel covered End Turn
-R key clergy roster not bootstrapped
-Left HUD unreadable over explored map
-Attacker took no reliable damage on melee → counter-damage retune
-Duplicate heresy picks on new schism; Walther antinomian warning at 3 blocs
-```
+**Files (when built):** `CombatSystem`, `Unit`, `UnitUpgradeService`, `TerrainInfoPanel`, possibly `CityScreenPanel`
 
 ---
 
-## Deferred design (not in build)
+## Victory / defeat reference (code truth)
 
-### Unit experience / veterancy (Aug 3 — save for later)
+**Synod win (any one):** 100% adherence × 5 turns · Tier-6 trio (CTCR + Nagel + GLF) · **120** fame
 
-**Request:** Units gain **experience per combat encounter**; XP feeds **attack/defense growth** over time. Optional **veterancy tiers** (e.g. green → seasoned → veteran) with **upgrade paths** at thresholds — not just flat stat bumps.
+**Defeat:** army + cities wiped · pop 0 for **2 turns** · adherence 0%
 
-**Intent:** Reward units that survive campaigns; make chip attacks and garrison duty matter; parallel existing promote-to-Defender / armory upgrades without replacing them.
-
-**Open design:**
-
-- XP sources: deal damage, take counter, kill blow, siege tick, preach-adjacent escort?
-- Caps by unit type; decay on promote/transform?
-- UI: XP bar on selection / city roster; tier name in unit line
-- **Files (when built):** `CombatSystem`, `Unit`, `UnitUpgradeService`, `TerrainInfoPanel`, possibly `CityScreenPanel`
+**Schismatic win:** capture player **capital** after schism
 
 ---
 
-## Prior run notes — archived
+## Report back
 
-```
-Jul 31 – Aug 3 (fame 120 win)
-— District food gate ~turn 34 on Grand/coastal
-— Granary +3 food / no completion pop ✓ | worked-tile toggle ✓ | skip turn ✓
-— Defender 1 mss UI fix; Coastal Patrol removed; naval build-site retune
-— Schism pressure v1 retune; movement/highlight fixes
+Note turn number, lobby settings, and pass/fail per row. File issues against failing rows with Console excerpt if any.
 
-Aug 3 interrupted runs
-— StepCost bug; move-highlight opacity; peninsula portage → shared-water rule
-```
-
----
-
-*Companion: `[GUIDED-AUDIT-PASS.md](GUIDED-AUDIT-PASS.md)`*
+*Companion: `GUIDED-AUDIT-PASS.md` · `SYNC.md`*

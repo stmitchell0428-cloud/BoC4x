@@ -89,6 +89,14 @@ public class PastoralBriefingManager : MonoBehaviour, IChoiceCardPresenter
         TurnPhaseBanner.Instance?.Refresh();
     }
 
+    public void DeferForEndTurn()
+    {
+        ApplyDeferredJudgment();
+        IsAwaitingPlayerChoice = false;
+        CrisisCardPanel.Instance?.Hide();
+        FirstSteps.Instance?.RefreshDashboard();
+    }
+
     public void EnsurePendingBriefingVisible()
     {
         if (!IsAwaitingPlayerChoice)

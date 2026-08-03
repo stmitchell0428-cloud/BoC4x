@@ -823,6 +823,23 @@ public class ConfessionTechPanel : MonoBehaviour
         }
 
         UpdateStartResearchButton();
+        AppendEmphasisGateHintToSidebar();
+    }
+
+    void AppendEmphasisGateHintToSidebar()
+    {
+        if (detailText == null || !isOpen || selectedTech.HasValue)
+            return;
+
+        string gates = MatchHistory.Instance?.FormatEmphasisGateSummary();
+        if (string.IsNullOrEmpty(gates))
+            return;
+
+        string hint = TreeSelectionHint(activeTree);
+        if (hint.Contains("Emphasis gates"))
+            return;
+
+        UiDetailPane.SetDetailText(detailText, detailScroll, hint + "\n\n" + gates);
     }
 
     public bool IsOpen => isOpen;

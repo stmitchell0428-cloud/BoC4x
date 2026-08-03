@@ -41,6 +41,8 @@ public class FirstSteps : MonoBehaviour
     }
 
     public float ConfessionalAdherence => confessionalAdherence;
+    public float CivicRestraint => civicRestraint;
+    public float SpiritualComfort => spiritualComfort;
     public int ConfessionalFame => confessionalFame;
     public int BoundCatechisms => boundCatechisms;
 
@@ -70,6 +72,11 @@ public class FirstSteps : MonoBehaviour
     public void AdjustSpiritualComfort(float delta)
     {
         spiritualComfort = Mathf.Clamp(spiritualComfort + delta, 0f, 100f);
+    }
+
+    public void AdjustCivicRestraint(float delta)
+    {
+        civicRestraint = Mathf.Clamp(civicRestraint + delta, 0f, 100f);
     }
 
     public const float MaxCrisisAdherenceFloor = 0f;
@@ -426,7 +433,9 @@ public class FirstSteps : MonoBehaviour
         string factionLine = TurnManager.Instance
             ? $"Lutheran Synod  |  Turn {turn}"
             : $"Turn {turn}";
-        string churchYearLine = ChurchYearFlavor.FormatDashboardLine();
+        string churchYearLine = NomadicFoundingGate.IsNomadicPhase
+            ? SalvationHistoryFlavor.FormatDashboardLine()
+            : ChurchYearFlavor.FormatDashboardLine();
 
         if (queueReviewUIText != null)
             queueReviewUIText.text = TmpTextSanitizer.Sanitize(ActionQueueHud.FormatDashboardBlock());
@@ -434,11 +443,15 @@ public class FirstSteps : MonoBehaviour
         if (populationUIText != null)
         {
             int cityPop = PopulationSync.SumSynodPopulation();
+            string popWarning = MatchController.Instance?.FormatPopulationWarning() ?? "";
+            string popLine = $"<b>Synod population {population}</b>" +
+                             (cityPop != population ? $"  (cities total {cityPop})" : "");
+            if (!string.IsNullOrEmpty(popWarning))
+                popLine += $"\n{popWarning}";
             populationUIText.text = TmpTextSanitizer.Sanitize(
                 $"{factionLine}\n" +
                 $"{churchYearLine}\n" +
-                $"<b>Synod population {population}</b>" +
-                (cityPop != population ? $"  (cities total {cityPop})" : "") + "\n" +
+                popLine + "\n" +
                 $"{synodStatus}");
         }
         if (adherenceUIText != null)
@@ -933,14 +946,25 @@ public class FirstSteps : MonoBehaviour
         }
 
         sections.Add("");
+        sections.Add("<color=#DDCC88><b>MILITARY WITNESS</b></color>");
+        sections.Add(MatchHistory.Instance?.FormatBriefMilitaryWitnessLine()
+                     ?? "<size=13>No combat logged yet.</size>");
+
+        if (MatchHistory.Instance != null)
+            sections.Add(MatchHistory.Instance.FormatEmphasisGateSummary());
+
+        sections.Add("");
         sections.Add("<color=#DDCC88><b>TRADE & DIPLOMACY</b></color>");
         string trade = SynodTradeSystem.FormatNetworkSummary(SynodPlayerId.Player1);
         if (!string.IsNullOrEmpty(trade))
             sections.Add(trade);
+        string rivals = SynodDiplomacyManager.Instance?.FormatBriefRivalSection();
+        if (!string.IsNullOrEmpty(rivals))
+            sections.Add(rivals);
         string diplomacy = SynodDiplomacyManager.Instance?.FormatSummaryLine();
-        if (!string.IsNullOrEmpty(diplomacy))
+        if (!string.IsNullOrEmpty(diplomacy) && string.IsNullOrEmpty(rivals))
             sections.Add(diplomacy);
-        if (string.IsNullOrEmpty(trade) && string.IsNullOrEmpty(diplomacy))
+        if (string.IsNullOrEmpty(trade) && string.IsNullOrEmpty(rivals) && string.IsNullOrEmpty(diplomacy))
             sections.Add("<size=13>No trade links or rival diplomacy yet.</size>");
 
         sections.Add("");

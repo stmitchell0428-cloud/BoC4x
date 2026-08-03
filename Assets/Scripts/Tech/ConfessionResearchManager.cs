@@ -403,7 +403,7 @@ public class ConfessionResearchManager : MonoBehaviour
 
     public string FormatProminentResearchBlock()
     {
-        return "<size=21><color=#77CCFF><b>RESEARCH</b></color></size>\n" +
+        return "<size=21><color=#77CCFF><b>SCRIPTURE</b></color></size>\n" +
                FormatProminentResearchLine(TechTreeCategory.Doctrine, doctrineQueue.Active, doctrineQueue.TurnsRemaining) + "\n" +
                FormatProminentResearchLine(TechTreeCategory.Culture, cultureQueue.Active, cultureQueue.TurnsRemaining) + "\n" +
                FormatProminentResearchLine(TechTreeCategory.Secular, secularQueue.Active, secularQueue.TurnsRemaining);

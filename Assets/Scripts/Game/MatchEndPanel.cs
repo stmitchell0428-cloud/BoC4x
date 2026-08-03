@@ -10,6 +10,8 @@ public class MatchEndPanel : MonoBehaviour
     GameObject panelRoot;
     TextMeshProUGUI bodyText;
 
+    public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
+
     void Awake()
     {
         Instance = this;

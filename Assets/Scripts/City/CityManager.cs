@@ -13,6 +13,7 @@ public class CityManager : MonoBehaviour
 
     readonly List<City> cities = new();
     int hamletCounter;
+    City playerCapital;
 
     void Awake() => Instance = this;
 
@@ -289,6 +290,9 @@ public class CityManager : MonoBehaviour
 
     public City GetSynodPlayerCapital(SynodPlayerId playerId)
     {
+        if (playerId == SynodPlayerId.Player1 && playerCapital != null)
+            return playerCapital;
+
         foreach (var city in GetSynodPlayerCities(playerId))
         {
             if (city.IsCapital)
@@ -302,6 +306,17 @@ public class CityManager : MonoBehaviour
         }
 
         return null;
+    }
+
+    /// <summary>Human player's founded capital (not hardcoded to Wittenberg).</summary>
+    public City PlayerCapital => playerCapital != null ? playerCapital : GetSynodPlayerCapital(SynodPlayerId.Player1);
+
+    public void RegisterPlayerCapital(City city)
+    {
+        if (city == null || city.SynodPlayer != SynodPlayerId.Player1 || !city.IsCapital)
+            return;
+
+        playerCapital = city;
     }
 
     public void AdvancePlayerCities() => AdvanceSynodPlayerCities(SynodPlayerId.Player1);
@@ -465,7 +480,8 @@ public class CityManager : MonoBehaviour
 
         var go = new GameObject($"City_{cityName}");
         go.transform.SetParent(transform);
-        go.AddComponent<City>().Initialize(
+        var city = go.AddComponent<City>();
+        city.Initialize(
             settler.Faction,
             hex,
             cityName,
@@ -477,6 +493,7 @@ public class CityManager : MonoBehaviour
 
         if (settler.SynodPlayer == SynodPlayerId.Player1)
         {
+            RegisterPlayerCapital(city);
             FirstSteps.Instance?.AddFame(10);
             IdentityPickerPanel.Instance?.Show();
         }

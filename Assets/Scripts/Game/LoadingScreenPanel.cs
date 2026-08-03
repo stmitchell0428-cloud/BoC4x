@@ -17,11 +17,17 @@ public class LoadingScreenPanel : MonoBehaviour
     Button skipButton;
     Image progressFill;
 
+    Transform choiceRow;
+    readonly System.Collections.Generic.List<GameObject> choiceButtons = new();
+
     int beatIndex;
+    bool choiceResolved;
     bool loadComplete;
     bool introSkipped;
 
     public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
+
+    static int TotalBeatCount => SalvationHistoryDatabase.IntroBeatCount + LoadingNarrative.BeatCount;
 
     void Awake() => Instance = this;
 
@@ -121,6 +127,24 @@ public class LoadingScreenPanel : MonoBehaviour
         narrativeText.richText = true;
         narrativeText.textWrappingMode = TextWrappingModes.Normal;
         narrativeText.lineSpacing = 2f;
+
+        var choiceGo = new GameObject("ChoiceRow");
+        choiceGo.transform.SetParent(panelRoot.transform, false);
+        choiceRow = choiceGo.transform;
+        var choiceRect = choiceGo.AddComponent<RectTransform>();
+        choiceRect.anchorMin = new Vector2(0.5f, 0f);
+        choiceRect.anchorMax = new Vector2(0.5f, 0f);
+        choiceRect.pivot = new Vector2(0.5f, 0f);
+        choiceRect.sizeDelta = new Vector2(560f, 120f);
+        choiceRect.anchoredPosition = new Vector2(0f, 120f);
+        var choiceLayout = choiceGo.AddComponent<HorizontalLayoutGroup>();
+        choiceLayout.spacing = 8f;
+        choiceLayout.childAlignment = TextAnchor.MiddleCenter;
+        choiceLayout.childControlWidth = true;
+        choiceLayout.childControlHeight = true;
+        choiceLayout.childForceExpandWidth = true;
+        choiceLayout.childForceExpandHeight = true;
+        choiceGo.SetActive(false);
 
         CreateBottomBar(panelRoot.transform);
         CreateContinueButton(panelRoot.transform);
@@ -229,6 +253,7 @@ public class LoadingScreenPanel : MonoBehaviour
 
         panelRoot.transform.SetAsLastSibling();
         beatIndex = 0;
+        choiceResolved = false;
         loadComplete = false;
         introSkipped = false;
         SetLoadProgress(0f);
@@ -261,11 +286,113 @@ public class LoadingScreenPanel : MonoBehaviour
 
     void ShowBeat(int index)
     {
-        var beat = LoadingNarrative.GetBeat(index);
+        beatIndex = index;
+        choiceResolved = false;
+        ClearChoiceButtons();
+
+        if (index < SalvationHistoryDatabase.IntroBeatCount)
+        {
+            var beat = SalvationHistoryDatabase.GetIntroBeat(index);
+            SalvationHistoryFlavor.SyncFromIntroBeat(index);
+
+            if (chapterText != null)
+                chapterText.text = TmpTextSanitizer.Sanitize(beat.Title);
+            if (narrativeText != null)
+            {
+                string body = beat.Body;
+                if (!string.IsNullOrEmpty(beat.ScriptureRef))
+                    body += $"\n\n<i>\"In the beginning God created the heavens and the earth.\"</i>\n<size=12><color=#AABBCC>{beat.ScriptureRef}</color></size>";
+                body += "\n\n" + SalvationHistoryFlavor.FormatWaltherHint();
+                body += "\n" + SalvationHistoryFlavor.FormatCardFooter(beat.NarrativeDay);
+                narrativeText.text = TmpTextSanitizer.Sanitize(body);
+            }
+
+            if (beat.HasChoices)
+            {
+                BuildChoiceButtons(beat.Choices);
+                choiceRow?.gameObject.SetActive(true);
+                RefreshContinueButton();
+            }
+            else
+            {
+                choiceRow?.gameObject.SetActive(false);
+                choiceResolved = true;
+            }
+
+            FirstSteps.Instance?.RefreshDashboard();
+            return;
+        }
+
+        choiceRow?.gameObject.SetActive(false);
+        choiceResolved = true;
+
+        int edenIndex = index - SalvationHistoryDatabase.IntroBeatCount;
+        var eden = LoadingNarrative.GetBeat(edenIndex);
         if (chapterText != null)
-            chapterText.text = TmpTextSanitizer.Sanitize(beat.Chapter);
+            chapterText.text = TmpTextSanitizer.Sanitize(eden.Chapter);
         if (narrativeText != null)
-            narrativeText.text = TmpTextSanitizer.Sanitize(beat.Body);
+            narrativeText.text = TmpTextSanitizer.Sanitize(eden.Body);
+    }
+
+    void ClearChoiceButtons()
+    {
+        foreach (var btn in choiceButtons)
+        {
+            if (btn != null)
+                Destroy(btn);
+        }
+        choiceButtons.Clear();
+    }
+
+    void BuildChoiceButtons(System.Collections.Generic.IReadOnlyList<SalvationHistoryDatabase.Choice> choices)
+    {
+        if (choiceRow == null)
+            return;
+
+        foreach (var choice in choices)
+        {
+            var btnGo = new GameObject(choice.Label);
+            btnGo.transform.SetParent(choiceRow, false);
+            btnGo.AddComponent<LayoutElement>().minWidth = 160f;
+
+            var img = btnGo.AddComponent<Image>();
+            img.color = new Color(0.18f, 0.28f, 0.38f, 1f);
+            var btn = btnGo.AddComponent<Button>();
+            btn.targetGraphic = img;
+
+            var labelGo = new GameObject("Label");
+            labelGo.transform.SetParent(btnGo.transform, false);
+            var labelRect = labelGo.AddComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = new Vector2(6f, 6f);
+            labelRect.offsetMax = new Vector2(-6f, -6f);
+            var tmp = labelGo.AddComponent<TextMeshProUGUI>();
+            CopyFont(tmp);
+            tmp.fontSize = 12f;
+            tmp.alignment = TextAlignmentOptions.TopLeft;
+            tmp.richText = true;
+            tmp.text = TmpTextSanitizer.Sanitize(
+                $"<b>{choice.Label}</b>\n<size=11><color=#CCEEFF>{choice.Description}</color></size>");
+            tmp.raycastTarget = false;
+
+            bool disabled = choice.Label.Contains("hexameron") &&
+                            (FirstSteps.Instance == null || FirstSteps.Instance.ScriptureManuscripts < 2);
+            btn.interactable = !disabled;
+            if (disabled)
+                img.color = new Color(0.12f, 0.14f, 0.18f, 0.85f);
+
+            var captured = choice;
+            btn.onClick.AddListener(() =>
+            {
+                captured.Apply?.Invoke();
+                choiceResolved = true;
+                RefreshContinueButton();
+                FirstSteps.Instance?.RefreshDashboard();
+            });
+
+            choiceButtons.Add(btnGo);
+        }
     }
 
     void RefreshContinueButton()
@@ -273,11 +400,13 @@ public class LoadingScreenPanel : MonoBehaviour
         if (continueButton == null || continueLabel == null)
             return;
 
-        bool onLastBeat = beatIndex >= LoadingNarrative.BeatCount - 1;
+        bool onLastBeat = beatIndex >= TotalBeatCount - 1;
         continueLabel.text = TmpTextSanitizer.Sanitize(onLastBeat
             ? loadComplete ? "Go forth" : "Preparing the land..."
             : "Continue");
-        continueButton.interactable = !onLastBeat || loadComplete;
+
+        bool canAdvance = choiceResolved && (onLastBeat ? loadComplete : true);
+        continueButton.interactable = canAdvance;
 
         if (footerHintText != null)
         {
@@ -287,11 +416,16 @@ public class LoadingScreenPanel : MonoBehaviour
                     ? "Entering the map..."
                     : "Skipping intro  -  the map is still generating...");
             }
+            else if (!choiceResolved)
+            {
+                footerHintText.text = TmpTextSanitizer.Sanitize(
+                    "Choose a response above, then Continue (or Skip intro with Esc).");
+            }
             else
             {
                 footerHintText.text = TmpTextSanitizer.Sanitize(onLastBeat
                     ? loadComplete
-                        ? "Click Go forth or press Space to begin your match."
+                        ? "Click Go forth or press Space to begin. Matches are not saved — use the lobby each session."
                         : "The map is still generating..."
                     : "Click Continue, press Space, or choose Skip intro (Esc).");
             }
@@ -319,13 +453,17 @@ public class LoadingScreenPanel : MonoBehaviour
 
     void ShowSkippedState()
     {
+        ClearChoiceButtons();
+        choiceRow?.gameObject.SetActive(false);
+        choiceResolved = true;
+
         if (chapterText != null)
             chapterText.text = TmpTextSanitizer.Sanitize("Preparing the map");
         if (narrativeText != null)
             narrativeText.text = TmpTextSanitizer.Sanitize(
                 "The chronicle is set aside for now. The wilderness east of Eden is still being laid hex by hex.\n\n" +
                 "You will enter the match as soon as generation finishes.");
-        beatIndex = LoadingNarrative.BeatCount - 1;
+        beatIndex = TotalBeatCount - 1;
     }
 
     void OnContinueClicked()
@@ -333,7 +471,7 @@ public class LoadingScreenPanel : MonoBehaviour
         if (continueButton != null && !continueButton.interactable)
             return;
 
-        if (beatIndex < LoadingNarrative.BeatCount - 1)
+        if (beatIndex < TotalBeatCount - 1)
         {
             beatIndex++;
             ShowBeat(beatIndex);

@@ -21,6 +21,25 @@ public class AppealOverlayController : MonoBehaviour
             Instance = null;
     }
 
+    public void FlashDistrictSite(HexCoordinates hex, float score)
+    {
+        if (HexGridMap.Instance == null || !HexGridMap.Instance.TryGetTile(hex, out var tile))
+            return;
+
+        var kind = score >= ExcellentThreshold
+            ? HighlightKind.AppealExcellent
+            : score >= GoodThreshold
+                ? HighlightKind.AppealGood
+                : HighlightKind.None;
+
+        if (kind != HighlightKind.None)
+            tile.SetHighlight(kind);
+        TurnPhaseBanner.Instance?.Refresh(
+            $"<color=#DDCC88><b>District site appeal</b></color>  -  " +
+            $"{(score >= ExcellentThreshold ? "excellent" : score >= GoodThreshold ? "good" : "fair")} ({score:F0})  |  " +
+            "<color=#AABBCC>G toggles appeal map</color>");
+    }
+
     public void Toggle()
     {
         IsActive = !IsActive;
