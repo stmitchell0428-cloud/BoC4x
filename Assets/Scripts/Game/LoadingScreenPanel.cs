@@ -291,7 +291,7 @@ public class LoadingScreenPanel : MonoBehaviour
             {
                 footerHintText.text = TmpTextSanitizer.Sanitize(onLastBeat
                     ? loadComplete
-                        ? "Click Go forth or press Space to begin your match."
+                        ? "Click Go forth or press Space to begin. Matches are not saved — use the lobby each session."
                         : "The map is still generating..."
                     : "Click Continue, press Space, or choose Skip intro (Esc).");
             }

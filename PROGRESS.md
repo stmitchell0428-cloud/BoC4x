@@ -1,49 +1,64 @@
 # BoC4x — Session Checkpoint
 
-**Saved:** July 30, 2026 (evening) — morning playtest next  
-**Project:** Book of Concord 4X prototype (`C:\Users\stmit\BoC4x`)  
-**Engine:** Unity 6000.5.x — scene `Assets/Scenes/SampleScene.unity`
+**Saved:** August 3, 2026 — tightening batch playtest next  
+**Project:** Book of Concord 4X prototype  
+**Engine:** Unity 6000.5.x — scene `Assets/Scenes/SampleScene.unity`  
+**Branch:** `cursor/tightening-batch-b1b6` · **PR #1**
 
 ---
 
-## Resume here (next session) — morning playtest
+## Resume here (next session) — tightening batch playtest
 
-**Lobby:** solo · Grand · Archipelago · Full canon · coastal capital preferred.  
+**Lobby:** solo first (smoke) · then **2 players** for diplomacy/truce · Archipelago if testing naval  
 **No save/load** — fresh match each Play; lobby settings are not persisted between sessions.
 
 1. Open **`Assets/Scenes/SampleScene.unity`** → wait for recompile.
-2. **Test Runner first:** EditMode → **BoC4x.Editor.Tests** → Run All (incl. `ChurchYearCalendarTests`, `EraBranchRulesTests`, `EmphasisGateTests`).
-3. Play — work this list **in order** (newest / highest risk first). Mark pass/fail as you go.
+2. **Test Runner first:** EditMode → **BoC4x.Editor.Tests** → Run All.
+3. Play — work **`PLAYTEST-AUDIT-BATCH.md`** priority table **in order**. Mark pass/fail as you go.
 
-### Priority checks (do these)
-
-| | Focus | What to verify |
-|---|--------|----------------|
-| [ ] | **Church Year HUD** | Turn 1 dashboard shows **Advent / St. Andrew**; season + date update each turn (~month steps, not weeks) |
-| [ ] | **WATCH turn** | By ~turn 2–3: banner + dashboard show **WATCH** (Name of Jesus / Presentation). Crisis or pastoral card body includes principal-feast watch block |
-| [ ] | **Y brief calendar** | **Y** → Church Year section explains monthly clock + WATCH / principal feasts |
-| [ ] | **Parish care heal** | Wound a unit on Wittenberg (or own city) hex → End Turn → **+4 HP** + log/hint |
-| [ ] | **District offer** | Food surplus → district offer appears; **no** `TerritoryManager` NRE on End Turn |
-| [ ] | **Militia** | Hostile adjacent to independent city at End Turn → militia damage + banner |
-| [ ] | **Parish Walls** | Research **Parish Walls** → build fortification on a city → hostile **cannot enter** walled hex; can siege/preach adjacent until loyalty falls |
-| [ ] | **Era fork UI** | Open **T** near Augsburg/Gutenberg (or Mission/Bach): both show advance lock warning + **Fork** badge / amber tint |
-| [ ] | **Map wrap** | Pan near map edge — no blank Game view; camera stays in home band (spot-check once) |
-
-### If the match runs long enough
+### Priority checks (tightening batch — do these first)
 
 | | Focus | What to verify |
 |---|--------|----------------|
-| [ ] | **Crisis + church year** | Any crisis card shows Church Year block (season/date; WATCH flavor on watch turns) |
-| [ ] | **3rd schism saturation** | At 3 active blocs, further overflow is **honest** (no fake “new schism %”); strife / saturated copy appears |
-| [ ] | **Union strife** | Post-saturation: strife meter, raid, and/or reconciliation path feel coherent |
-| [ ] | **Phase B core** | Found → research queues → first schism contact still feels right (spot-check only) |
+| [ ] | **BUILD / SCRIPTURE HUD** | Left queue: **BUILD** + **SCRIPTURE** labels; banner compact line matches |
+| [ ] | **End Turn defer** | Pastoral or district offer open → End Turn **still advances**; crisis/emphasis **still block** |
+| [ ] | **Y brief yields fix** | Districts/hamlets present → CITY YIELDS shows real lines (not false “no production”) |
+| [ ] | **Military witness** | **Y** brief + **T** sidebar show Augsburg/Smalald gates and combat witness |
+| [ ] | **Brief diplomacy** | 2-player lobby → **Y** rival status + colloquy truce button; **D** panel still works |
+| [ ] | **PlayerCapital win** | Schismatic capture of founded capital triggers defeat with capital name |
+| [ ] | **Population grace** | Pop 0 → 2-turn grace banner; defeat on 3rd turn at 0; critical warning at ≤3 |
+| [ ] | **HUD polish** | Unified left column background; `[N panels open]` on banner when modals open |
+| [ ] | **District appeal** | Offer flashes hex appeal; **G** map toggle still works |
+| [ ] | **AI turn budget** | 2-player: AI turns complete without long stalls (12 actions/turn cap) |
 
-### After smoke (optional same session)
+### Regression (if time)
 
-- Phase **G** retest: fork lock + study colloquy / dual-path reception (see Phase G9 below) if you reach integration.
-- Phase **C** naval only if coasts are convenient.
+| | Focus | What to verify |
+|---|--------|----------------|
+| [ ] | **Church Year / WATCH** | Advent start; WATCH on principal feasts |
+| [ ] | **Parish heal / militia / walls** | +4 HP on city hex; militia strike; walls block entry |
+| [ ] | **Crisis loop** | Pick crisis → single End Turn advances |
+| [ ] | **R — clergy roster** | **R** opens roster (bootstrap fix may still be needed) |
 
-**Workflow:** When the player must restart Play / a match, implement any remaining **⏳ later** items from this file before they resume (don’t leave pending work for the next restart if it was already noted).
+**Full audit:** see **`PLAYTEST-AUDIT-BATCH.md`**.
+
+**Workflow:** Report pass/fail per row. Defer naval retune, combat retaliation, unit XP unless they block core flow.
+
+---
+
+## This session (Aug 3) — implemented (PR #1)
+
+- **PlayerCapital:** schismatic win on capital capture (not hardcoded Wittenberg).
+- **Population grace:** 2 turns at pop 0; critical banner at ≤3.
+- **Synod Brief:** CITY YIELDS fix; military witness + emphasis gates; brief diplomacy + colloquy truce.
+- **HUD:** BUILD / SCRIPTURE labels; unified left column; modal stack on banner.
+- **End Turn:** pastoral + district defer; crisis/emphasis still block.
+- **Appeal flash** on district offers; **AI** 12 actions/turn cap.
+- **Docs:** README + loading screen save/load note.
+
+### ⏳ later (not this PR)
+
+- Combat counter-damage retune · naval feel pass · unit XP · fame 120 balance · **R** roster bootstrap if broken
 
 ---
 
@@ -84,20 +99,20 @@ Church Year depth — park until systems feel settled; do **not** treat as resta
 
 | Setting     | Value                                        |
 | ----------- | -------------------------------------------- |
-| Players     | **1** (solo — no rival synods, no diplomacy) |
-| Map size    | **Grand** (80×52)                            |
-| Coasts      | **Archipelago**                              |
-| Heresy pack | **Full canon** (up to 3 schismatic blocs)    |
-| Capital     | **Coastal** (for naval testing)              |
+| Players     | **1** solo smoke, then **2** for diplomacy   |
+| Map size    | **Standard** or **Grand**                    |
+| Coasts      | **Archipelago** (naval spot-check)           |
+| Heresy pack | **Full canon**                               |
+| Branch      | `cursor/tightening-batch-b1b6`               |
 
 
-**Resume playtest track:** Morning priority list in **Resume here** (Church Year / WATCH → heal → militia → walls → fork UI → saturation if long). Full Phase tables below stay the archive.
+**Resume playtest track:** **`PLAYTEST-AUDIT-BATCH.md`** → tightening batch table first, then regression rows.
 
-**Unity startup:** Hub → **BoC4x** (`6000.5.2f1`) → double-click **`Assets/Scenes/SampleScene.unity`** before Play. A blank **Untitled** scene (Main Camera only) is not the game.
+**Unity startup:** Hub → **BoC4x** (`6000.5.2f1`) → **`Assets/Scenes/SampleScene.unity`** before Play.
 
-**Previously confirmed:** Phase A; G1 core gates; nomadic founding; asymmetric tech; legalism + schism spawn; Jul 29 HUD/research/tech-scroll/Found-Wittenberg hide.  
-**Morning focus (unverified in Play):** Church Year + WATCH, parish heal, militia, Parish Walls, era-fork UI, post–3rd saturation.  
-**Automated:** Run full EditMode suite first (see **Resume here**).
+**Morning focus (Aug 3):** BUILD/SCRIPTURE HUD, End Turn defer, Y brief fixes, PlayerCapital win, population grace, brief diplomacy.
+
+**Victory reference (code):** 100% adherence × 5 turns · CTCR+Nagel+GLF trio · 75 fame · schismatic capital capture after schism.
 
 **Phase log:** Report pass/fail per row below.
 
@@ -348,7 +363,9 @@ Schismatic blocs **ignore diplomacy** in all cases.
 
 ### Victory path (long horizon)
 
-- 95%+ adherence for 5 turns, **or** CTCR + Nagel + Global Lutheran Fellowship, **or** 75 confessional fame
+- 100% adherence for 5 turns, **or** CTCR + Nagel + Global Lutheran Fellowship, **or** 75 confessional fame
+- Population 0: **2-turn grace** before defeat (critical banner at ≤3)
+- Schismatic win: capture player **capital** after schism
 
 ---
 
@@ -390,6 +407,11 @@ Schismatic blocs **ignore diplomacy** in all cases.
 | —    | Tech panel TMP glyphs (ASCII-safe) | ✅ (needs retest) |
 | —    | Tech detail pane scroll (all long blurbs) | ✅ playtest OK |
 | —    | Map wrap camera nearest-image + clone cull | ✅ so far; blank Game view until pan fixed (home-band follow) |
+| —    | Design audit tightening batch (PR #1) | ✅ (needs playtest) |
+| —    | PlayerCapital + population grace | ✅ (needs playtest) |
+| —    | BUILD/SCRIPTURE HUD + End Turn defer | ✅ (needs playtest) |
+| —    | Synod Brief diplomacy + military witness | ✅ (needs playtest) |
+| —    | AI turn action budget (12/turn) | ✅ (needs playtest) |
 | —    | Synod vs schism unit colors + enemy sighted alert | ✅ (needs retest) |
 
 
