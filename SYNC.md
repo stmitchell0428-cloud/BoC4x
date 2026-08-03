@@ -8,16 +8,46 @@ Features that exist only on your PC (salvation-history intro cards, hexameron ch
 
 ## One-time: push your local game to GitHub
 
-In your local project folder (`BoC4x`):
+In your local project folder (`BoC4x` on your PC):
 
 ```bash
+cd path/to/BoC4x
 git status
-git add -A
-git commit -m "Salvation history intro, local playtest fixes"
-git push origin master
+git remote -v
 ```
 
-If you work on a feature branch, push that branch instead and open a PR.
+If `origin` is not set:
+
+```bash
+git remote add origin https://github.com/stmitchell0428-cloud/BoC4x.git
+```
+
+Push everything on your current branch:
+
+```bash
+git add -A
+git commit -m "Full local tree: salvation history intro, playtest fixes"
+git push -u origin HEAD
+```
+
+If `master` on GitHub is behind and push is rejected:
+
+```bash
+git fetch origin
+git pull origin master --rebase
+git push -u origin HEAD
+```
+
+Or push to a dedicated branch (safer when agent PRs are open):
+
+```bash
+git checkout -b local/full-tree-aug3
+git add -A
+git commit -m "Full local tree snapshot"
+git push -u origin local/full-tree-aug3
+```
+
+Then open a PR on GitHub: **local/full-tree-aug3 → master**.
 
 ## Day to day
 
