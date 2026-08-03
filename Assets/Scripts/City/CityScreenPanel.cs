@@ -27,6 +27,8 @@ public class CityScreenPanel : MonoBehaviour
     UnitUpgradeId? selectedUpgrade;
     Button startBuildButton;
     TextMeshProUGUI startBuildButtonLabel;
+    Button workedTilesButton;
+    TextMeshProUGUI workedTilesButtonLabel;
     GameObject loyaltyBarRoot;
     Image loyaltyBarFill;
     TextMeshProUGUI loyaltyBarLabel;
@@ -150,6 +152,7 @@ public class CityScreenPanel : MonoBehaviour
         tabsLayout.childForceExpandWidth = false;
         tabsLayout.childForceExpandHeight = true;
         cityTabsRoot = tabsGo.transform;
+        CreateWorkedTilesToggle(tabsGo.transform);
 
         productionStatusText = CreateLayoutLabel(headerGo.transform, "ProductionStatus", 22f, 14f,
             TextAlignmentOptions.TopLeft, FontStyles.Bold);
@@ -410,6 +413,68 @@ public class CityScreenPanel : MonoBehaviour
         return tmp;
     }
 
+    void CreateWorkedTilesToggle(Transform parent)
+    {
+        var btnGo = new GameObject("WorkedTilesToggle");
+        btnGo.transform.SetParent(parent, false);
+        var le = btnGo.AddComponent<LayoutElement>();
+        le.preferredWidth = 148f;
+        le.minWidth = 148f;
+        le.preferredHeight = 36f;
+
+        var img = btnGo.AddComponent<Image>();
+        img.color = new Color(0.16f, 0.22f, 0.30f, 1f);
+
+        workedTilesButton = btnGo.AddComponent<Button>();
+        workedTilesButton.targetGraphic = img;
+        workedTilesButton.onClick.AddListener(ToggleWorkedTilesOverlay);
+
+        var labelGo = new GameObject("Label");
+        labelGo.transform.SetParent(btnGo.transform, false);
+        var labelRect = labelGo.AddComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = new Vector2(6f, 2f);
+        labelRect.offsetMax = new Vector2(-6f, -2f);
+
+        workedTilesButtonLabel = labelGo.AddComponent<TextMeshProUGUI>();
+        if (uiFont != null) workedTilesButtonLabel.font = uiFont;
+        workedTilesButtonLabel.fontSize = 13f;
+        workedTilesButtonLabel.alignment = TextAlignmentOptions.Center;
+        workedTilesButtonLabel.color = new Color(0.92f, 0.88f, 0.62f);
+        workedTilesButtonLabel.text = "Worked tiles";
+        workedTilesButtonLabel.raycastTarget = false;
+    }
+
+    void ToggleWorkedTilesOverlay()
+    {
+        if (activeCity == null)
+            return;
+
+        WorkedTileOverlayController.Instance?.Toggle(activeCity);
+        UpdateWorkedTilesButtonLabel();
+    }
+
+    void UpdateWorkedTilesButtonLabel()
+    {
+        if (workedTilesButtonLabel == null)
+            return;
+
+        bool on = WorkedTileOverlayController.Instance != null &&
+                  WorkedTileOverlayController.Instance.IsActive &&
+                  WorkedTileOverlayController.Instance.FocusCity ==
+                  WorkedTileOverlayController.ResolveTerritoryCity(activeCity);
+        workedTilesButtonLabel.text = on ? "Worked tiles ON" : "Worked tiles";
+        if (workedTilesButton != null)
+        {
+            var img = workedTilesButton.GetComponent<Image>();
+            if (img != null)
+                img.color = on
+                    ? new Color(0.28f, 0.34f, 0.18f, 1f)
+                    : new Color(0.16f, 0.22f, 0.30f, 1f);
+        }
+    }
+
     void CreateCloseButton(Transform parent)
     {
         var btnGo = new GameObject("CloseButton");
@@ -542,6 +607,18 @@ public class CityScreenPanel : MonoBehaviour
         label.text = FormatUpgradeButtonLabel(def, UnitUpgradeStatus.Locked);
     }
 
+    static string FormatUpgradeCost(UnitUpgradeDefinition def, Unit unit)
+    {
+        if (unit == null)
+            return $"{def.ManuscriptCost} mss";
+
+        int effective = UnitUpgradeService.GetManuscriptCost(unit, def.Id);
+        if (effective < def.ManuscriptCost)
+            return $"{effective} mss (local Armory −{def.ManuscriptCost - effective})";
+
+        return $"{effective} mss";
+    }
+
     string FormatUpgradeButtonLabel(UnitUpgradeDefinition def, UnitUpgradeStatus status)
     {
         string tag = status switch
@@ -554,7 +631,7 @@ public class CityScreenPanel : MonoBehaviour
             UnitUpgradeStatus.NeedsParishChurch => "P",
             _ => "!"
         };
-        string cost = $"{def.ManuscriptCost} mss";
+        string cost = FormatUpgradeCost(def, TurnManager.Instance?.SelectedUnit);
         string from = Unit.TypeDisplayName(def.FromType);
         string to = Unit.TypeDisplayName(def.ToType);
         return $"<b>{tag} {def.Name}</b>\n<size=11><color=#AABBCC>{from} to {to} | {cost}</color></size>";
@@ -587,7 +664,7 @@ public class CityScreenPanel : MonoBehaviour
         sb.AppendLine();
         sb.AppendLine($"<b>Effect</b>\n{def.EffectSummary}");
         sb.AppendLine();
-        sb.AppendLine($"<b>Cost</b>  {def.ManuscriptCost} manuscripts (instant)");
+        sb.AppendLine($"<b>Cost</b>  {FormatUpgradeCost(def, unit)} (instant)");
         sb.AppendLine($"<b>Path</b>  {Unit.TypeDisplayName(def.FromType)} -> {Unit.TypeDisplayName(def.ToType)}");
         var techName = ConfessionTechDatabase.Get(def.RequiredTech).Name;
         bool techOk = ConfessionResearchManager.Instance != null &&
@@ -700,14 +777,23 @@ public class CityScreenPanel : MonoBehaviour
                     : "Needs Mission House in cluster";
         }
         else if (status == CityBuildStatus.Locked && def.Id == CityBuildId.TrainSiegeEngine &&
-                 activeCity != null && CityManager.Instance != null &&
-                 !CityManager.Instance.ClusterHasBuilding(activeCity, CityBuildId.BuildArmory))
+                 activeCity?.Production?.HasBuilding(CityBuildId.BuildArmory) != true)
         {
-            costLine = "Needs Armory in cluster";
+            costLine = HamletSpecialtyDatabase.IsBuildAllowed(activeCity, CityBuildId.TrainSiegeEngine)
+                ? "Needs Armory in this city"
+                : "Garrison district only";
+        }
+        else if (status == CityBuildStatus.Locked &&
+                 (def.Id == CityBuildId.BuildDock || def.Id == CityBuildId.TrainCoastalGalley ||
+                  def.Id == CityBuildId.TrainDeepSeaShip) &&
+                 activeCity != null &&
+                 !HamletSpecialtyDatabase.IsBuildAllowed(activeCity, def.Id))
+        {
+            costLine = "Coastal Garrison district only";
         }
         else if (status == CityBuildStatus.Locked &&
                  (def.Id == CityBuildId.BuildWharf || def.Id == CityBuildId.BuildFishingPost ||
-                  def.Id == CityBuildId.BuildDock || def.Id == CityBuildId.TrainCoastalPatrol ||
+                  def.Id == CityBuildId.BuildDock ||
                   def.Id == CityBuildId.TrainCoastalExplorer || def.Id == CityBuildId.TrainCoastalGalley ||
                   def.Id == CityBuildId.TrainDeepSeaShip) &&
                  activeCity != null && CityManager.Instance != null &&
@@ -731,11 +817,11 @@ public class CityScreenPanel : MonoBehaviour
         {
             costLine = "Needs War Dock";
         }
-        else if (status == CityBuildStatus.Locked && def.RequiredTech.HasValue &&
-            (ConfessionResearchManager.Instance == null ||
-             !ConfessionResearchManager.Instance.IsTechUnlocked(def.RequiredTech.Value)))
+        else if (status == CityBuildStatus.Locked)
         {
-            costLine = $"Needs {ConfessionTechDatabase.Get(def.RequiredTech.Value).Name}";
+            string missingTech = CityBuildDatabase.FormatMissingTechRequirement(def);
+            if (!string.IsNullOrEmpty(missingTech))
+                costLine = missingTech;
         }
 
         return $"<b>{statusTag} {def.Name}</b>\n<size=11><color=#AABBCC>{costLine}</color></size>{progressLine}";
@@ -904,11 +990,11 @@ public class CityScreenPanel : MonoBehaviour
         if (def.UsesProduction && activeCity != null)
             sb.AppendLine($"<b>City yield</b>  {activeCity.ProductionYieldLabel()}");
 
-        if (def.RequiredTech.HasValue)
+        foreach (var tech in CityBuildDatabase.RequiredTechs(def))
         {
-            var techName = ConfessionTechDatabase.Get(def.RequiredTech.Value).Name;
+            var techName = ConfessionTechDatabase.Get(tech).Name;
             bool unlocked = ConfessionResearchManager.Instance != null &&
-                            ConfessionResearchManager.Instance.IsTechUnlocked(def.RequiredTech.Value);
+                            ConfessionResearchManager.Instance.IsTechUnlocked(tech);
             sb.AppendLine();
             sb.AppendLine(unlocked
                 ? $"<b>Tech</b>  {techName} (unlocked)"
@@ -975,11 +1061,17 @@ public class CityScreenPanel : MonoBehaviour
                         ? "<color=#888888>Train frontier settlers only while you have a single independent city.</color>"
                         : "<color=#888888>Build a Mission House anywhere in this city cluster first.</color>",
             _ when id == CityBuildId.TrainSiegeEngine &&
-                   activeCity != null && CityManager.Instance != null &&
-                   !CityManager.Instance.ClusterHasBuilding(activeCity, CityBuildId.BuildArmory)
-                => "<color=#888888>Requires an Armory in this city cluster.</color>",
+                   activeCity?.Production?.HasBuilding(CityBuildId.BuildArmory) != true
+                => HamletSpecialtyDatabase.IsBuildAllowed(activeCity, CityBuildId.TrainSiegeEngine)
+                    ? "<color=#888888>Requires an Armory in this city.</color>"
+                    : "<color=#888888>Train siege engines at a Garrison district with a local armory.</color>",
+            _ when (id == CityBuildId.BuildDock || id == CityBuildId.TrainCoastalGalley ||
+                    id == CityBuildId.TrainDeepSeaShip) &&
+                   activeCity != null &&
+                   !HamletSpecialtyDatabase.IsBuildAllowed(activeCity, id)
+                => "<color=#888888>Build war docks and galleys at a coastal Garrison district.</color>",
             _ when (id == CityBuildId.BuildWharf || id == CityBuildId.BuildFishingPost ||
-                     id == CityBuildId.BuildDock || id == CityBuildId.TrainCoastalPatrol ||
+                     id == CityBuildId.BuildDock ||
                      id == CityBuildId.TrainCoastalExplorer || id == CityBuildId.TrainCoastalGalley ||
                      id == CityBuildId.TrainDeepSeaShip) &&
                    activeCity != null &&
@@ -995,10 +1087,8 @@ public class CityScreenPanel : MonoBehaviour
             _ when NavalMovementRules.RequiresDock(id) &&
                    activeCity?.Production?.HasBuilding(CityBuildId.BuildDock) != true
                 => "<color=#888888>Requires a War Dock in this city.</color>",
-            _ when def.RequiredTech.HasValue &&
-                   (ConfessionResearchManager.Instance == null ||
-                    !ConfessionResearchManager.Instance.IsTechUnlocked(def.RequiredTech.Value))
-                => "<color=#888888>Requires secular tech first.</color>",
+            _ when !CityBuildDatabase.MeetsTechRequirements(def)
+                => $"<color=#888888>{CityBuildDatabase.FormatMissingTechRequirement(def)}.</color>",
             _ when def.UsesProduction && CityGrowthSystem.GetProductionWorkerMultiplier(activeCity) < 0.5f
                 => "<color=#FFCC88>Workers stretched  -  production at reduced speed.</color>",
             _ when activeCity != null && selectedBuild.HasValue &&
@@ -1095,6 +1185,7 @@ public class CityScreenPanel : MonoBehaviour
         if (buildListsRect != null)
             LayoutRebuilder.ForceRebuildLayoutImmediate(buildListsRect);
 
+        UpdateWorkedTilesButtonLabel();
         Canvas.ForceUpdateCanvases();
     }
 
@@ -1194,6 +1285,7 @@ public class CityScreenPanel : MonoBehaviour
 
         if (!open)
         {
+            WorkedTileOverlayController.Instance?.SetActive(false);
             if (activeCity != null && activeCity.Production != null)
                 activeCity.Production.ProductionChanged -= Refresh;
             activeCity = null;

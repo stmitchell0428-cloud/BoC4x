@@ -339,8 +339,8 @@ This guided pass assumes **you** are choosing — nothing is decided until you f
 | **B** | Move figures | Balance pass |
 | **C** | Tooltips with dates | Keep tiers; add figure lifespan in panel |
 
-**Your pick:** ___  
-**Notes:** ___
+**Your pick:** **A** — column headers `Era IV · Synodical` (short names); game-era note **detail pane only** (no column subtitle, no panel blurb)  
+**Notes:** Figure lifespans already in detail when present; no full **C** (dates on tree buttons).
 
 ---
 
@@ -354,7 +354,7 @@ This guided pass assumes **you** are choosing — nothing is decided until you f
 | **B** | Earlier siege tech | Maxwell buffs pressure only |
 | **C** | Flavor only | Keep mechanic; add "ordered mechanics" text |
 
-**Your pick:** ___  
+**Your pick:** **A** — artillery retheme; **Maxwell + Chytraeus** to train; unit stays **Siege Engine** (field artillery via upgrades later)  
 **Notes:** ___
 
 ---
@@ -368,8 +368,8 @@ This guided pass assumes **you** are choosing — nothing is decided until you f
 | **A** | Fix copy *(recommended)* | Coastal scout boat |
 | **B** | Rebrand unit | Mounted coastal patrol, land-only |
 
-**Your pick:** ___  
-**Notes:** ___
+**Your pick:** **A** — already matches code (coastal scout boat copy)  
+**Notes:** No change needed.
 
 ---
 
@@ -383,8 +383,8 @@ This guided pass assumes **you** are choosing — nothing is decided until you f
 | **B** | Confessional timer track | Move to manuscript/turn track |
 | **C** | Tooltip only | No category change |
 
-**Your pick:** ___  
-**Notes:** ___
+**Your pick:** **A** — already matches code (`ConfessionalBuilding` + secular prod track)  
+**Notes:** No change needed.
 
 ---
 
@@ -397,8 +397,8 @@ This guided pass assumes **you** are choosing — nothing is decided until you f
 | **A** | Gate on narrative + tier *(recommended)* | e.g. cap woodcut until Church Year |
 | **B** | Tier only | Accept visual/history drift |
 
-**Your pick:** ___  
-**Notes:** ___
+**Your pick:** **A** — already matches code (Salvation History caps visual tier at 2 / woodcut)  
+**Notes:** No change needed.
 
 ---
 
@@ -410,12 +410,13 @@ This guided pass assumes **you** are choosing — nothing is decided until you f
 
 | | Choice | Meaning |
 |---|--------|---------|
-| **A** | Dedupe by heresy type *(recommended)* | Skip active types when allocating |
+| **A′** | Same-flavor reinforcement *(your pick)* | Crisis keeps its heresy flavor; matching active bloc grows instead of spawning a duplicate or swapping flavor |
+| **A** | Dedupe by skipping active types | *(superseded by A′)* |
 | **B** | Weight by pack | Prefer unused heresy pack entries |
 | **C** | Wait | Next playtest |
 
-**Your pick:** ___  
-**Notes:** ___
+**Your pick:** **A′** — antinomian crisis → Libertine bloc grows if already on map; legalism → Pharisaic; no forced flavor swap  
+**Notes:** `ResolveSchism` → `ReinforceExistingBloc`; overflow card only when a **new** flavor hits the 3-bloc cap.
 
 ---
 
@@ -428,8 +429,8 @@ This guided pass assumes **you** are choosing — nothing is decided until you f
 | **A** | Suppress type banner *(recommended)* | Show Union Strife / saturation only |
 | **B** | Overflow copy | Redirect crisis card text |
 
-**Your pick:** ___  
-**Notes:** ___
+**Your pick:** **A** — already matches code (suppress legalism/antinomian banner at 3-bloc cap; Union Strife shows instead)  
+**Notes:** No change needed.
 
 ---
 
@@ -443,8 +444,8 @@ This guided pass assumes **you** are choosing — nothing is decided until you f
 | **B** | Post-Formula beats | Chemnitz, Gerhard as narrative cards |
 | **C** | Tier A only *(current)* | Until ≥3 full playtest matches |
 
-**Your pick:** ___  
-**Notes:** ___
+**Your pick:** **C** — Tier A only for now; feast/martyr depth via virtue track **V** after audit batch playtest  
+**Notes:** Avoid double-building narrative spine + **V**.
 
 ---
 
@@ -457,8 +458,8 @@ This guided pass assumes **you** are choosing — nothing is decided until you f
 | **A** | Western computus | Movable Easter / Pentecost |
 | **B** | Fixed LSB *(current)* | Keep as-is |
 
-**Your pick:** ___  
-**Notes:** ___
+**Your pick:** **B** — keep fixed LSB 1-year calendar; defer computus  
+**Notes:** Revisit after Church Year playtests if movable Easter matters.
 
 ---
 
@@ -495,7 +496,7 @@ First calendar hit → full choice card. Every later year → **annual tick B** 
 
 No witness-fame gate. Legacy trait **variants** by dominant tag at 25/55 (optional V6).
 
-### V5 · Annual tick magnitudes `[OPEN]`
+### V5 · Annual tick magnitudes `[DECIDED]`
 
 | | Choice | Meaning |
 |---|--------|---------|
@@ -503,9 +504,17 @@ No witness-fame gate. Legacy trait **variants** by dominant tag at 25/55 (option
 | **B** | Moderate *(recommended)* | Tick follows first choice lean; tiny martyr fame |
 | **C** | Dashboard only | Flavor until playtest |
 
-**Your pick:** ___
+**Your pick:** **B** — annual tick mirrors **first-choice lean** on that observance:
 
-### V6 · Legacy variants `[OPEN]`
+| First-choice lean | Annual tick |
+|-------------------|-------------|
+| Law / First Table / Honor | +1 adherence or +1 Law |
+| Gospel / Neighbor / Mercy | +1 spiritual comfort or +1 Gospel |
+| Martyrial Witness (martyr feasts) | lean tick **+** +1 confessional fame every **3rd** annual tick |
+
+Dashboard one-liner per tick (no card): e.g. `St. Stephen (annual) · Martyrial Witness +1 comfort`.
+
+### V6 · Legacy variants `[DECIDED]`
 
 | | Choice | Meaning |
 |---|--------|---------|
@@ -513,48 +522,61 @@ No witness-fame gate. Legacy trait **variants** by dominant tag at 25/55 (option
 | **B** | Display-only until playtest |
 | **C** | New virtue oath slot |
 
-**Your pick:** ___
+**Your pick:** **A** — at fame **25** and **55**, dominant virtue tag tints legacy trait **name + soft modifier** in existing `SynodLegacyTraitId` slots (no new win gate; fame 120 unchanged).
 
-**Implement after P1.** Cross-links: audit **#18**, **#27**.
+**Implement after audit batch playtest.** Cross-links: audit **#18**, **#27**.
+
+### V7 · Independent AI synod research `[DEFERRED — much later]`
+
+Rivals should run their **own** confession research (same starting unlocks as player; optional higher starting tier on harder difficulty later). Today all factions share `ConfessionResearchManager` — AI builds only when **player** has unlocked the tech.
+
+**Your pick:** defer · implement after virtue track / multi-synod balance pass  
+**Notes:** Logged from guided pass #2 (Aug 2026).
+
+### Dashboard dual-clock labels `[DONE]`
+
+Church-year line reads e.g. `Salvation day 540 · Church Year: Lent · Mar 12` (not buried suffix). Logged from guided pass **#17** (Aug 2026).
 
 ---
 
 ## Progress tracker
 
-| # | Topic | Your pick | Implemented? |
-|---|-------|-----------|--------------|
-| 1 | Adherence floors | | |
-| 2 | AI synod production | | |
-| 2b | AI train scope | | |
-| 3 | Walther/Pieper copy | | |
-| 4 | Capital vs district | | |
-| 5 | Siege + armory | | |
-| 6 | Pastor tech | | |
-| 7 | Armory discount | | |
-| 8 | Seminary placement | | |
-| 9 | Hospital/granary | | |
-| 10 | Gutenberg vs press | | |
-| 11 | Hidden modifier copy | | |
-| 12 | Naval defense | | |
-| 13 | Card queue | | |
-| 14 | Emphasis blocking | | |
-| 15 | Identity picker | | |
-| 16 | Double-hit crisis | | |
-| 17 | Dual clocks | | |
-| 18 | Victory pacing | **V4: soft only** | |
-| 19 | Lobby copy | | |
-| 20 | Historical tiers | | |
-| 21 | Maxwell siege | | |
-| 22 | Coastal patrol copy | | |
-| 23 | Library category | | |
-| 24 | Art era gating | | |
-| 25 | Schism dedupe | | |
-| 26 | Crisis banner cap | | |
-| 27 | Narrative Tier B | **→ Virtue track V** | |
-| 28 | Computus | | |
-| V0–V4 | Virtue framework | **Decided** | |
-| V5 | Annual tick strength | | |
-| V6 | Legacy variants | | |
+**Commit `42a83ba`** applied branch **A** for most audit nodes (pre–guided-pass batch). Legend: ✅ in commit · ⚠️ partial · ❌ not in commit · 📋 design only
+
+| # | Topic | Branch A means | Current |
+|---|-------|----------------|---------|
+| 1 | Adherence floors | Wire `EffectiveMinAdherenceFloor` from tech modifiers (Preus 40, Chytraeus +12, Riojas +5, CTCR 50) | ✅ **A** |
+| 2 | AI synod production | Allow `TryStartAiBuild` when `SynodPlayer != Player1` | ✅ **A** · *follow-up: independent AI research (later)* |
+| 2b | AI train scope | Extend AI: archer, horseman, mission house, wharf/siege chain | ✅ **A** |
+| 3 | Walther/Pieper copy | Rewrite EffectSummary to match modifiers (+8 preach comfort; decay −10%) | ✅ **A** confirmed |
+| 4 | Capital vs district | Capital metropolitan allow-list; districts keep exclusives | ✅ **A** confirmed |
+| 5 | Siege + armory | **Local** armory only; train siege at Garrison district (UI + AI) | ✅ **B** confirmed |
+| 6 | Pastor tech | Both TrainPastor and upgrade → **Large Catechism**; pastor slot via parish church or seminary/cathedral | ✅ **A** confirmed |
+| 7 | Armory discount | −1 mss Soldier→Defender when **local** city has armory | ✅ **A** confirmed |
+| 8 | Seminary placement | **BuildSeminary** on Scholastic district (+ capital metro list) | ✅ **A** confirmed |
+| 9 | Hospital/granary | Match code to copy: hospital +1/turn; granary 50% growth tick | ✅ **A** confirmed |
+| 10 | Gutenberg vs press | Printing press requires **GutenbergPress** (not Kepler) | ✅ **A** confirmed |
+| 11 | Hidden modifier copy | Expose wharves mss, Guericke siege, naval defense in EffectSummary | ✅ **A** confirmed |
+| 12 | Naval defense | `CoastalNavalDefenseBonus` on galleys/deep-sea | ✅ **A** confirmed |
+| 13 | Card queue | `ChoiceCardQueue`: max **one** turn-start choice card | ✅ **A** confirmed |
+| 14 | Emphasis blocking | Synodical/Tier2 emphasis in `ChoiceCardBlocking` | ✅ **A** confirmed |
+| 15 | Identity picker | Block End Turn while identity panel open | ✅ **A** confirmed |
+| 16 | Double-hit crisis | Remove pre-card pop/adherence hit; crisis card only | ✅ **A** confirmed |
+| 17 | Dual clocks | Explicit labels (`Salvation day N · Church Year: …`) | ✅ **A** confirmed |
+| 18 | Victory pacing | Formula witness cue + expand with virtue dashboard (**V4** soft) | ✅ **A** confirmed · partial in commit |
+| 19 | Lobby copy | Clarify AI synod neighbors + heresy pack schism pool | ✅ **A** confirmed |
+| 20 | Historical tiers | **A**: `Era IV · Synodical` headers + detail-pane era line | ✅ **A** confirmed |
+| 21 | Maxwell siege | **A**: Maxwell + Chytraeus gate; Siege Engine name kept | ✅ **A** confirmed |
+| 22 | Coastal patrol copy | Fix to coastal scout **boat** (not riders) | ✅ **A** |
+| 23 | Library category | **ConfessionalBuilding** category; keep secular prod track | ✅ **A** |
+| 24 | Art era gating | Cap visual era during **Salvation History** phase | ✅ **A** confirmed |
+| 25 | Schism dedupe | **A′**: same-flavor crisis reinforces existing bloc | ✅ **A′** confirmed |
+| 26 | Crisis banner cap | **A**: suppress schism-type banner; Union Strife at cap | ✅ **A** confirmed |
+| 27 | Narrative Tier B | **C** — Tier A only; **V** for feasts/martyrs later | ✅ **C** confirmed |
+| 28 | Computus | **B** — fixed LSB calendar | ✅ **B** confirmed |
+| V0–V4 | Virtue framework | Option C, 5 tags, first-then-annual, soft fame | 📋 **decided**; not coded |
+| V5 | Annual tick strength | **B** — lean-following tick; martyr +1 fame / 3yr | ✅ **B** confirmed |
+| V6 | Legacy variants | **A** — dominant tag tints legacy at 25/55 | ✅ **A** confirmed |
 
 ---
 

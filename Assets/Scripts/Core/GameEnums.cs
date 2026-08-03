@@ -55,7 +55,6 @@ public enum UnitType
     Archbishop,
     Deaconess,
     SiegeEngine,
-    CoastalPatrol,
     CoastalExplorer,
     CoastalGalley,
     DeepSeaShip

@@ -11,8 +11,8 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
     const float DriftTension = 52f;
     const float DriftBreaking = 46f;
     const int BreakingTurnsBeforeForcedSchism = 2;
-    const int SchismPressurePerTurn = 5;
-    const int SchismPressureThreshold = 70;
+    const int SchismPressurePerTurn = 8;
+    const int SchismPressureThreshold = 58;
 
     int schismPressure;
     int breakingTurnsUnresolved;
@@ -209,11 +209,38 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
 
     void TickSchismPressure(FirstSteps faction, bool hasCapital)
     {
-        if (SchismManager.Instance != null && SchismManager.Instance.HasSchismed)
+        int activeBlocs = SchismaticBlocRegistry.Instance?.ActiveCount ?? 0;
+        if (activeBlocs >= SchismaticBlocRegistry.MaxBlocs)
             return;
 
-        schismPressure += hasCapital ? SchismPressurePerTurn : 3;
-        if (schismPressure < SchismPressureThreshold)
+        int perTurn = hasCapital ? SchismPressurePerTurn : 3;
+        if (activeBlocs > 0)
+            perTurn += activeBlocs;
+
+        bool complacent = faction.civicRestraint > 85f && faction.spiritualComfort > 85f;
+        if (complacent)
+            perTurn += 4;
+
+        if (faction.ConfessionalAdherence > 80f && faction.civicRestraint > 75f && faction.spiritualComfort > 75f)
+            perTurn += 3;
+
+        schismPressure += perTurn;
+
+        float floor = faction.EffectiveMinAdherenceFloor;
+        if (activeBlocs > 0)
+        {
+            faction.confessionalAdherence = Mathf.Clamp(
+                faction.confessionalAdherence - activeBlocs * 0.65f, floor, 100f);
+        }
+
+        if (complacent)
+        {
+            faction.confessionalAdherence = Mathf.Clamp(
+                faction.confessionalAdherence - 1f, floor, 100f);
+        }
+
+        int threshold = activeBlocs > 0 ? 85 : SchismPressureThreshold;
+        if (schismPressure < threshold)
             return;
 
         schismPressure = 0;
@@ -221,10 +248,17 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
             return;
 
         NudgeTowardCrisis(faction);
-        TryTriggerPressureCrisis(faction);
+        TryTriggerPressureCrisis(faction, activeBlocs, complacent);
     }
 
     void TryTriggerPressureCrisis(FirstSteps faction)
+    {
+        int activeBlocs = SchismaticBlocRegistry.Instance?.ActiveCount ?? 0;
+        bool complacent = faction.civicRestraint > 85f && faction.spiritualComfort > 85f;
+        TryTriggerPressureCrisis(faction, activeBlocs, complacent);
+    }
+
+    void TryTriggerPressureCrisis(FirstSteps faction, int activeBlocs, bool complacent)
     {
         if (IsAwaitingPlayerChoice || ActiveCrisis != CrisisType.None)
             return;
@@ -235,6 +269,31 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
             QueueAntinomianCrisis();
         else if (faction.ConfessionalAdherence <= DriftRumblings)
             EvaluateDoctrinalDrift(faction);
+        else if (activeBlocs > 0 && faction.ConfessionalAdherence <= 75f)
+            EvaluateDoctrinalDrift(faction);
+        else if (activeBlocs > 0)
+        {
+            if (complacent)
+            {
+                float floor = faction.EffectiveMinAdherenceFloor;
+                faction.confessionalAdherence = Mathf.Clamp(
+                    faction.confessionalAdherence - 4f, floor, 100f);
+            }
+
+            if (ActiveCrisis == CrisisType.DoctrinalDrift)
+            {
+                EvaluateDoctrinalDrift(faction);
+                return;
+            }
+
+            if (faction.ConfessionalAdherence > DriftRumblings)
+            {
+                SetCrisis(CrisisType.DoctrinalDrift, CrisisStage.Rumblings);
+                TryPresentDriftCard(CrisisStage.Rumblings);
+            }
+            else
+                EvaluateDoctrinalDrift(faction);
+        }
     }
 
     void NudgeTowardCrisis(FirstSteps faction)
@@ -823,6 +882,14 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
     {
         var heresy = PickHeresy(CrisisType.DoctrinalDrift);
         var registry = SchismaticBlocRegistry.Instance;
+        if (registry != null && registry.PickBlocForHeresy(heresy) is SchismaticBlocId existingBloc)
+        {
+            ResolveSameHeresyReinforcement(
+                existingBloc,
+                "Controlled separation sought — dissent rejoined an existing party of the same mind.");
+            return;
+        }
+
         if (registry != null && registry.ActiveCount >= SchismaticBlocRegistry.MaxBlocs)
         {
             PresentDissentOverflowCard(
@@ -839,13 +906,30 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
         FirstSteps.Instance?.RefreshDashboard();
     }
 
+    void ResolveSameHeresyReinforcement(SchismaticBlocId blocId, string reason)
+    {
+        SchismManager.Instance?.ReinforceExistingBloc(blocId, reason, nearPlayer: true);
+        UnionStrifeManager.AddStrife(8);
+        ClearCrisis();
+        FirstSteps.Instance?.RefreshDashboard();
+    }
+
     void ResolveSchism(HeresyType heresy, string reason)
     {
         var registry = SchismaticBlocRegistry.Instance;
-        if (registry != null && registry.ActiveCount >= SchismaticBlocRegistry.MaxBlocs)
+        if (registry != null)
         {
-            PresentDissentOverflowCard(heresy, reason);
-            return;
+            if (registry.PickBlocForHeresy(heresy) is SchismaticBlocId existingBloc)
+            {
+                ResolveSameHeresyReinforcement(existingBloc, reason);
+                return;
+            }
+
+            if (registry.ActiveCount >= SchismaticBlocRegistry.MaxBlocs)
+            {
+                PresentDissentOverflowCard(heresy, reason);
+                return;
+            }
         }
 
         if (SchismManager.Instance?.TryTriggerSchism(heresy, reason) == true)

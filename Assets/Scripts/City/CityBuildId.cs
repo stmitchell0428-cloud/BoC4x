@@ -37,7 +37,6 @@ public enum CityBuildId
     BuildMarketHall,
     BuildMill,
     TrainSiegeEngine,
-    TrainCoastalPatrol,
     BuildWharf,
     BuildFishingPost,
     TrainCoastalExplorer,

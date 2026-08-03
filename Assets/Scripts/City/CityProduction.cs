@@ -181,9 +181,7 @@ public class CityProduction : MonoBehaviour
             return CityBuildStatus.Locked;
         }
 
-        if (def.RequiredTech.HasValue &&
-            (ConfessionResearchManager.Instance == null ||
-             !ConfessionResearchManager.Instance.IsTechUnlocked(def.RequiredTech.Value)))
+        if (!CityBuildDatabase.MeetsTechRequirements(def))
             return CityBuildStatus.Locked;
 
         if (city.IsHamlet && !city.HasChosenSpecialty)
@@ -199,11 +197,10 @@ public class CityProduction : MonoBehaviour
             return CityBuildStatus.Locked;
 
         if (id == CityBuildId.TrainSiegeEngine &&
-            (CityManager.Instance == null ||
-             !CityManager.Instance.ClusterHasBuilding(city, CityBuildId.BuildArmory)))
+            (city.Production == null || !city.Production.HasBuilding(CityBuildId.BuildArmory)))
             return CityBuildStatus.Locked;
 
-        if (id == CityBuildId.TrainCoastalPatrol && !CityManager.Instance.CityTouchesNavalCoast(city))
+        if (id == CityBuildId.TrainCoastalExplorer && !CityManager.Instance.CityTouchesNavalCoast(city))
             return CityBuildStatus.Locked;
 
         if ((id == CityBuildId.BuildWharf || id == CityBuildId.BuildFishingPost ||
@@ -310,9 +307,7 @@ public class CityProduction : MonoBehaviour
         if (def.UniquePerCity && completedBuildings.Contains(id))
             return false;
 
-        if (def.RequiredTech.HasValue &&
-            (ConfessionResearchManager.Instance == null ||
-             !ConfessionResearchManager.Instance.IsTechUnlocked(def.RequiredTech.Value)))
+        if (!CityBuildDatabase.MeetsTechRequirements(def))
             return false;
 
         if (def.UsesProduction)
@@ -519,8 +514,7 @@ public class CityProduction : MonoBehaviour
                 city.RefreshAppearance();
                 break;
             case CityBuildId.BuildGranary:
-                city.Population += 2;
-                city.RefreshAppearance();
+                Debug.Log($"{city.CityName}: Parish Granary ready  -  +3 food/turn from stored grain.");
                 break;
             case CityBuildId.BuildParishChurch:
                 faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 8f, 0f, 100f);

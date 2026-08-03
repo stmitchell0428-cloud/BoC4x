@@ -138,8 +138,8 @@ public static class HamletSpecialtyDatabase
         [HamletSpecialty.Garrison] = new HamletSpecialtyDefinition(
             HamletSpecialty.Garrison,
             "Garrison District",
-            "Sword, bow, and horse — siege engines in later tiers",
-            "Trains soldiers, slingers, archers, siege engines; breaching at Maxwell tier.",
+            "Sword, bow, horse — and Baltic war docks in later tiers",
+            "Trains soldiers, slingers, archers, siege engines; coastal garrisons host war docks and galleys.",
             new[]
             {
                 CityBuildId.TrainSoldier,
@@ -152,7 +152,12 @@ public static class HamletSpecialtyDatabase
                 CityBuildId.BuildStable,
                 CityBuildId.BuildArmory,
                 CityBuildId.BuildFortification,
-                CityBuildId.BuildWatchtower
+                CityBuildId.BuildWatchtower,
+                CityBuildId.BuildWharf,
+                CityBuildId.BuildFishingPost,
+                CityBuildId.BuildDock,
+                CityBuildId.TrainCoastalGalley,
+                CityBuildId.TrainDeepSeaShip
             },
             new[] { UnitUpgradeId.SoldierToDefender }),
 
@@ -165,10 +170,7 @@ public static class HamletSpecialtyDatabase
             {
                 CityBuildId.TrainFrontierSettler,
                 CityBuildId.TrainScout,
-                CityBuildId.TrainCoastalPatrol,
                 CityBuildId.TrainCoastalExplorer,
-                CityBuildId.TrainCoastalGalley,
-                CityBuildId.TrainDeepSeaShip,
                 CityBuildId.BuildWharf,
                 CityBuildId.BuildFishingPost,
                 CityBuildId.BuildGuildWorkshop,
@@ -177,8 +179,7 @@ public static class HamletSpecialtyDatabase
                 CityBuildId.BuildMarketHall,
                 CityBuildId.BuildMill,
                 CityBuildId.BuildPrintingPress,
-                CityBuildId.BuildMissionHouse,
-                CityBuildId.BuildDock
+                CityBuildId.BuildMissionHouse
             }),
 
         [HamletSpecialty.Scholastic] = new HamletSpecialtyDefinition(
@@ -216,6 +217,7 @@ public static class HamletSpecialtyDatabase
             CityBuildId.BuildOrphanage,
             CityBuildId.BuildWharf,
             CityBuildId.BuildFishingPost,
+            CityBuildId.TrainCoastalExplorer,
             CityBuildId.TrainMissionary,
             CityBuildId.TrainSoldier,
             CityBuildId.TrainSlinger,

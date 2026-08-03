@@ -182,6 +182,6 @@ public class PlayerUnitCycle : MonoBehaviour
             ? "  |  End Turn again to finish turn"
             : "  |  End Turn cycles";
         TurnPhaseBanner.Instance?.Refresh(
-            $"Orders {index}/{actionable.Count} of {all.Count}  |  Tab next{suffix}");
+            $"Orders {index}/{actionable.Count} of {all.Count}  |  Tab next  |  H fortify  J skip{suffix}");
     }
 }

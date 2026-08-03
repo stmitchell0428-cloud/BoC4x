@@ -18,18 +18,21 @@ public class HexTile : MonoBehaviour
     SpriteRenderer spriteRenderer;
     SpriteRenderer resourceMarker;
     SpriteRenderer workedRing;
+    SpriteRenderer highlightRing;
     Color baseColor;
     HighlightKind currentHighlight = HighlightKind.None;
 
-    static readonly Color HighlightMove = new(0.45f, 0.75f, 1f, 1f);
-    static readonly Color HighlightMovePath = new(0.35f, 0.55f, 0.82f, 0.75f);
-    static readonly Color HighlightAttack = new(1f, 0.45f, 0.45f, 1f);
-    static readonly Color HighlightSelected = new(0.95f, 0.9f, 0.35f, 1f);
+    static readonly Color HighlightMove = new(0.35f, 0.88f, 1f, 0.95f);
+    static readonly Color HighlightMovePath = new(0.45f, 0.68f, 0.98f, 0.78f);
+    static readonly Color HighlightAttack = new(1f, 0.38f, 0.38f, 0.95f);
+    static readonly Color HighlightSelected = new(1f, 0.92f, 0.28f, 1f);
     static readonly Color HighlightPlacementExcellent = new(0.45f, 0.95f, 0.55f, 1f);
     static readonly Color HighlightPlacementGood = new(0.55f, 0.85f, 0.65f, 0.85f);
     static readonly Color HighlightAppealExcellent = new(0.92f, 0.82f, 0.35f, 1f);
     static readonly Color HighlightAppealGood = new(0.62f, 0.52f, 0.88f, 0.85f);
     static readonly Color UnexploredFog = new(0.06f, 0.06f, 0.09f, 1f);
+    static readonly Color WorkedTerritoryTint = new(0.94f, 0.90f, 0.42f, 1f);
+    static readonly Color UnworkedTerritoryTint = new(0.48f, 0.50f, 0.54f, 1f);
 
     public void Initialize(HexCoordinates coords, TerrainType terrain)
     {
@@ -53,7 +56,11 @@ public class HexTile : MonoBehaviour
 
     public void SetNavalCoast(bool isNavalCoast) => IsNavalCoast = isNavalCoast;
 
-    public void SetNavigableWater(bool isNavigableWater) => IsNavigableWater = isNavigableWater;
+    public void SetNavigableWater(bool isNavigableWater)
+    {
+        IsNavigableWater = isNavigableWater;
+        ApplyColor();
+    }
 
     public void SetResource(MapResourceType resource)
     {
@@ -72,8 +79,7 @@ public class HexTile : MonoBehaviour
         TerritoryOwner = owner;
         IsWorked = worked;
         EnsureWorkedRing();
-        if (workedRing != null)
-            workedRing.enabled = worked && FogVisibility == FogVisibility.Visible;
+        RefreshWorkedRingVisual();
         ApplyColor();
     }
 
@@ -87,8 +93,7 @@ public class HexTile : MonoBehaviour
 
         FogVisibility = visibility;
         UpdateResourceMarkerVisibility();
-        if (workedRing != null)
-            workedRing.enabled = IsWorked && visibility == FogVisibility.Visible;
+        RefreshWorkedRingVisual();
         ApplyColor();
     }
 
@@ -116,23 +121,36 @@ public class HexTile : MonoBehaviour
 
         Color display = baseColor;
 
+        if (TerrainRules.IsWater(Terrain) && FogVisibility != FogVisibility.Unexplored)
+        {
+            display = Terrain switch
+            {
+                TerrainType.River or TerrainType.Lake when IsNavigableWater =>
+                    Color.Lerp(display, new Color(0.38f, 0.78f, 0.74f), 0.28f),
+                TerrainType.Ocean when IsNavigableWater =>
+                    Color.Lerp(display, new Color(0.30f, 0.52f, 0.82f), 0.32f),
+                TerrainType.Ocean =>
+                    Color.Lerp(display, new Color(0.14f, 0.20f, 0.36f), 0.38f),
+                _ => display
+            };
+        }
+
         if (TerritoryOwner != null && FogVisibility != FogVisibility.Unexplored)
         {
             var factionColor = Unit.FactionColor(TerritoryOwner.Faction);
-            display = display * 0.82f + factionColor * 0.18f;
+            if (IsWorked)
+                display = display * 0.58f + WorkedTerritoryTint * 0.42f;
+            else
+                display = display * 0.72f + factionColor * 0.12f + UnworkedTerritoryTint * 0.16f;
         }
 
-        if (IsWorked && FogVisibility == FogVisibility.Visible)
-            display = display * 0.88f + Color.white * 0.12f;
+        bool drawHighlight = ShouldDrawHighlight(FogVisibility, currentHighlight);
+        bool ringHighlight = drawHighlight && UsesRingHighlight(currentHighlight);
 
-        if (ShouldDrawHighlight(FogVisibility, currentHighlight))
+        if (drawHighlight && !ringHighlight)
         {
             Color highlight = currentHighlight switch
             {
-                HighlightKind.Move => HighlightMove,
-                HighlightKind.MovePath => HighlightMovePath,
-                HighlightKind.Attack => HighlightAttack,
-                HighlightKind.Selected => HighlightSelected,
                 HighlightKind.PlacementExcellent => HighlightPlacementExcellent,
                 HighlightKind.PlacementGood => HighlightPlacementGood,
                 HighlightKind.AppealExcellent => HighlightAppealExcellent,
@@ -145,10 +163,10 @@ public class HexTile : MonoBehaviour
                 Color explored = TerrainRules.IsWater(Terrain)
                     ? display * 0.82f + Color.black * 0.18f
                     : display * 0.62f + Color.black * 0.38f;
-                spriteRenderer.color = Color.Lerp(explored, highlight, 0.82f);
+                spriteRenderer.color = Color.Lerp(explored, highlight, HighlightBlend(currentHighlight));
             }
             else
-                spriteRenderer.color = highlight;
+                spriteRenderer.color = Color.Lerp(display, highlight, HighlightBlend(currentHighlight));
         }
         else
         {
@@ -161,6 +179,8 @@ public class HexTile : MonoBehaviour
                 _ => display
             };
         }
+
+        RefreshHighlightRing(ringHighlight ? currentHighlight : HighlightKind.None);
 
         MapWrapVisuals.Instance?.SyncTile(this);
     }
@@ -202,11 +222,80 @@ public class HexTile : MonoBehaviour
         var go = new GameObject("WorkedRing");
         go.transform.SetParent(transform, false);
         go.transform.localPosition = Vector3.zero;
-        go.transform.localScale = Vector3.one * 1.08f;
+        go.transform.localScale = Vector3.one * 1.12f;
         workedRing = go.AddComponent<SpriteRenderer>();
         workedRing.sprite = CreateRingSprite();
-        workedRing.color = new Color(0.95f, 0.92f, 0.55f, 0.55f);
-        workedRing.sortingOrder = 1;
+        workedRing.color = new Color(0.98f, 0.92f, 0.38f, 0.82f);
+        workedRing.sortingOrder = 2;
+    }
+
+    void EnsureHighlightRing()
+    {
+        if (highlightRing != null)
+            return;
+
+        var go = new GameObject("HighlightRing");
+        go.transform.SetParent(transform, false);
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localScale = Vector3.one * 1.1f;
+        highlightRing = go.AddComponent<SpriteRenderer>();
+        highlightRing.sprite = CreateRingSprite();
+        highlightRing.sortingOrder = 4;
+        highlightRing.enabled = false;
+    }
+
+    void RefreshHighlightRing(HighlightKind kind)
+    {
+        EnsureHighlightRing();
+
+        if (kind == HighlightKind.None)
+        {
+            highlightRing.enabled = false;
+            return;
+        }
+
+        highlightRing.enabled = true;
+        highlightRing.color = kind switch
+        {
+            HighlightKind.Move => HighlightMove,
+            HighlightKind.MovePath => HighlightMovePath,
+            HighlightKind.Attack => HighlightAttack,
+            HighlightKind.Selected => HighlightSelected,
+            _ => HighlightMove
+        };
+        highlightRing.transform.localScale = Vector3.one * (kind switch
+        {
+            HighlightKind.Selected => 1.16f,
+            HighlightKind.Attack => 1.12f,
+            HighlightKind.MovePath => 1.06f,
+            _ => 1.1f
+        });
+    }
+
+    void RefreshWorkedRingVisual()
+    {
+        if (workedRing == null)
+            return;
+
+        bool overlay = WorkedTileOverlayController.Instance != null &&
+                       WorkedTileOverlayController.Instance.IsActive &&
+                       WorkedTileOverlayController.Instance.IsOverlayHex(Coordinates);
+        bool show = IsWorked && FogVisibility == FogVisibility.Visible;
+        workedRing.enabled = show;
+
+        if (!show)
+            return;
+
+        if (overlay)
+        {
+            workedRing.color = new Color(1f, 0.94f, 0.28f, 0.95f);
+            workedRing.transform.localScale = Vector3.one * 1.18f;
+        }
+        else
+        {
+            workedRing.color = new Color(0.98f, 0.92f, 0.38f, 0.82f);
+            workedRing.transform.localScale = Vector3.one * 1.12f;
+        }
     }
 
     static Color ResourceMarkerColor(MapResourceType resource) => resource switch
@@ -275,6 +364,18 @@ public class HexTile : MonoBehaviour
 
     static Color TerrainColor(TerrainType terrain) =>
         ArtEraPalette.TerrainColor(terrain, VisualArtEra.WoodcutPaper);
+
+    static float HighlightBlend(HighlightKind kind) => kind switch
+    {
+        HighlightKind.PlacementExcellent => 0.4f,
+        HighlightKind.PlacementGood => 0.32f,
+        HighlightKind.AppealExcellent => 0.4f,
+        HighlightKind.AppealGood => 0.32f,
+        _ => 0.35f
+    };
+
+    static bool UsesRingHighlight(HighlightKind kind) =>
+        kind is HighlightKind.Move or HighlightKind.MovePath or HighlightKind.Attack or HighlightKind.Selected;
 
     static bool IsAppealHighlight(HighlightKind kind) =>
         kind is HighlightKind.AppealExcellent or HighlightKind.AppealGood;

@@ -151,6 +151,12 @@ public static class UnitUpgradeService
         return false;
     }
 
+    public static int GetManuscriptCost(Unit unit, UnitUpgradeId id)
+    {
+        var def = UnitUpgradeDatabase.Get(id);
+        return EffectiveManuscriptCost(unit, id, def);
+    }
+
     static int EffectiveManuscriptCost(Unit unit, UnitUpgradeId id, UnitUpgradeDefinition def)
     {
         int cost = def.ManuscriptCost;
@@ -158,8 +164,7 @@ public static class UnitUpgradeService
             return cost;
 
         var city = CityManager.Instance?.GetCityForUnit(unit);
-        if (city != null &&
-            CityManager.Instance.ClusterHasBuilding(city, CityBuildId.BuildArmory))
+        if (city != null && city.Production?.HasBuilding(CityBuildId.BuildArmory) == true)
             cost = Mathf.Max(0, cost - 1);
 
         return cost;

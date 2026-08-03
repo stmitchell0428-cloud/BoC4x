@@ -1,6 +1,6 @@
 # BoC4x — Session Checkpoint
 
-**Saved:** August 2, 2026 — naval split + church-year events + testimony colloquies shipped  
+**Saved:** August 3, 2026 — post-playtest batch (naval feel, HUD, combat, brief/roster fixes)  
 **Project:** Book of Concord 4X prototype (`C:\Users\stmit\BoC4x`)  
 **Engine:** Unity 6000.5.x — scene `Assets/Scenes/SampleScene.unity`
 
@@ -12,33 +12,28 @@
 **No save/load** — recompile / Exit Play **wipes the match**. Fresh lobby match only.
 
 1. Hub → **BoC4x** → `Assets/Scenes/SampleScene.unity` → wait for clean recompile → Play.
-2. Smoke **New this restart** first, then pick up **⏳ later** schism items if time.
+2. Use `PLAYTEST-AUDIT-BATCH.md` **Shipped fixes — verify next run** for smoke pass.
 
-### New this restart — verify
+### Shipped Aug 3 post-playtest
 
-|     | Focus | What to verify |
-| --- | ----- | -------------- |
-| [ ] | **Salvation history** | Turns 1–~15: sparse narrative cards (Creation → Sinai → Nativity → Passion → Easter) |
-| [ ] | **Ascension pivot** | Ascension card → dashboard switches to **Church Year**; LSB calendar active |
-| [ ] | **Reformation beats** | After Ascension: 1517 / Augsburg / Formula narrative cards unlock Luther & confessional commemorations |
-| [ ] | **Quiet turns** | Most turns advance narrative day (+18) with **no** card |
-| [ ] | **Early wharf chain** | Tier 2 **River Trade & Wharves** → Wharf at coastal **capital** → Fishing Post → Coastal Patrol / Explorer |
-| [ ] | **Late war dock** | Tier 3 **Naval Warfare** (after Chemnitz + wharf) → War Dock → Galley |
-| [ ] | **Deep sea** | Tier 4 **Open-Ocean Navigation** (after Guericke) → Deep-Sea Ship on open ocean |
-| [ ] | **Feast-day cards** | Principal feast / martyr in turn window → spawn → decision card next turn |
-| [ ] | **Martyr briefings** | Martyr in 28-day window → Stephen/Polycarp/Ignatius pastoral (no spawn required) |
-| [ ] | **Bugenhagen window** | Apr 20 commemoration turn → +1 food at coastal wharf cities |
-| [ ] | **Smalcald Catalog** | Unlock Smalcald Articles → Catalog colloquy on **next turn start** |
-| [ ] | **Patristic colloquies** | Chemnitz + Gerhard unlocks → testimony cards next turn; Library colloquy → patristic pool after resolve |
+- **Naval feel pass** — Explorer no Ocean; Galley/Deep-Sea water-only; coastal navigable depth **3**; water hover/tint tiers
+- **Left HUD readability** — semi-opaque backing on dashboard stat rows + `TerrainInfoPanel`
+- **Synod Brief** — CITY YIELDS no longer false-empty when districts use ` - ` in text
+- **Clergy roster (R)** — `ClergyRosterPanel` bootstrapped in `HexGridMap.EnsureGameSystems`
+- **Galley cargo panel** — raised above End Turn; “Ship cargo” for deep-sea
+- **Combat** — melee counter-damage scales with defender strength / fight left; no chip on overkill
+- **Schism** — new crises prefer unused heresy; Walther schism warnings suppressed at 3-bloc cap (Union strife line)
 
-### ⏳ later (from Jul 31 playtest)
+### ⏳ later
 
-1. **Schism variety** — avoid duplicate Libertine blocs; diversify crisis heresy picks.
-2. **Walther crisis line at schism cap** — no `Crisis: antinomian schism` when 3 blocs already up.
+1. **Schism saturated cards** — verify colloquy / feed dissent / purge appear reliably at cap in play
+2. **AI naval build** — rivals wharf, soldiers, galleys
+3. **Siege / armory UI copy** — cluster armory must not unlock local siege messaging
+4. **Unit XP / veterancy** — XP per encounter → atk/def growth; tier names + optional upgrade branches (see `PLAYTEST-AUDIT-BATCH.md` § Deferred design)
 
 ### Passed (prior playtests) — spot-check if odd
 
-District occupancy, schism rebalance, fame 120 / no tribute fame, dual production, specialty picker, art era, map wrap, loyalty recovery, Confessions emphasis.
+District occupancy, schism rebalance, fame 120, dual production, specialty picker, art era, map wrap, loyalty recovery.
 
 ---
 
@@ -52,9 +47,9 @@ District occupancy, schism rebalance, fame 120 / no tribute fame, dual productio
 - Liturgical feast cards **only after** Church Year phase
 
 **Naval split**
-- Tier 2 secular **River Trade & Wharves** (`CoastalWharves`, Bugenhagen): Wharf (12 prod), Fishing Post (8 prod, +2 food), Coastal Patrol, Coastal Explorer
-- Wharf/fishing/patrol/explorer at **any coastal city** (capital OK); not Market-district-exclusive
-- Tier 3 secular **Naval Warfare** (Chemnitz figure; requires wharf + Chemnitz): War Dock → Galley; coastal naval +1 move
+- Tier 2 secular **River Trade & Wharves** (`CoastalWharves`, Bugenhagen): Wharf (12 prod), Fishing Post (8 prod, +2 food), Coastal Explorer
+- Wharf/fishing/explorer at **coastal capital** or **Market** district; capital needs no district for early scout boat
+- Tier 3 secular **Naval Warfare** (Chemnitz figure; requires wharf + Chemnitz): War Dock + Galley at **coastal Garrison** district
 - Tier 4 secular **Open-Ocean Navigation** (Guericke figure): Deep-Sea Ship; explorer +1 sight, galley/deep-sea +1 move
 - **Frontier Mission** — missionaries/settlers only; no war dock, no Bach fork lock
 
@@ -67,7 +62,7 @@ District occupancy, schism rebalance, fame 120 / no tribute fame, dual productio
 
 ### Explore much later
 
-- Wonders grant fame; more district specialties; Church Year window copy; Decision 16 era forks; map wrap deeper fix
+- Wonders grant fame; more district specialties; Church Year window copy; Decision 16 era forks; map wrap deeper fix; **unit veterancy / XP tiers**
 
 ---
 

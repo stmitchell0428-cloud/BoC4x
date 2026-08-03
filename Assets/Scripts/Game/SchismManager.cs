@@ -172,6 +172,16 @@ public class SchismManager : MonoBehaviour
         string reason =
             $"{synodName} fractured under {tensionLabel} — {profile.DisplayName} broke away near {sourceCity.CityName}.";
 
+        if (registry.PickBlocForHeresy(heresy) is SchismaticBlocId existingBloc)
+        {
+            WeakenAiSynod(playerId, sourceCity);
+            ReinforceExistingBloc(existingBloc, reason, nearPlayer: false);
+            TurnPhaseBanner.Instance?.Refresh(
+                $"Schism pressure! Unrest joined existing {profile.DisplayName}.");
+            Debug.LogWarning($"AI SCHISM REINFORCE ({existingBloc}): {reason}");
+            return true;
+        }
+
         var record = new SchismRecord(
             blocId.Value,
             heresy,
@@ -486,6 +496,16 @@ public class SchismManager : MonoBehaviour
         }
 
         return avoid;
+    }
+
+    public bool TryReinforceMatchingBloc(HeresyType heresy, string reason, bool nearPlayer = true)
+    {
+        var blocId = SchismaticBlocRegistry.Instance?.PickBlocForHeresy(heresy);
+        if (blocId == null)
+            return false;
+
+        ReinforceExistingBloc(blocId.Value, reason, nearPlayer);
+        return true;
     }
 
     /// <summary>Dissent overflow when three blocs already exist — strengthens an existing heresy.</summary>

@@ -299,6 +299,8 @@ public class TerritoryManager : MonoBehaviour
             worked.Add(entry.hex);
     }
 
+    public void RefreshTileVisuals() => ApplyTileVisuals();
+
     void ApplyTileVisuals()
     {
         if (HexGridMap.Instance == null) return;

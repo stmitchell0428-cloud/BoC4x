@@ -160,13 +160,14 @@ public static class HeresyDatabase
         System.Collections.Generic.IReadOnlyCollection<HeresyType> active,
         HeresyPackId pack)
     {
-        if (!isRepeat)
-        {
-            var crisisHeresy = ForCrisis(crisis);
-            if (System.Array.IndexOf(GetHeresyPool(pack), crisisHeresy) >= 0 &&
-                !active.Contains(crisisHeresy))
-                return crisisHeresy;
-        }
+        var crisisHeresy = ForCrisis(crisis);
+        bool inPack = System.Array.IndexOf(GetHeresyPool(pack), crisisHeresy) >= 0;
+
+        if (isRepeat && inPack)
+            return crisisHeresy;
+
+        if (inPack && (active == null || !active.Contains(crisisHeresy)))
+            return crisisHeresy;
 
         return PickRepeatHeresy(active, pack);
     }

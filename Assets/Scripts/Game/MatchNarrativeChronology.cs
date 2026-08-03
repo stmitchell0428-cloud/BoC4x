@@ -135,18 +135,18 @@ public class MatchNarrativeChronology : MonoBehaviour
     public static string FormatDashboardLine()
     {
         if (Instance == null)
-            return "<color=#C9B896>Chronology:</color> Salvation history";
+            return "<color=#C9B896>Salvation day 0</color>  ·  Salvation history";
 
         if (Instance.Phase == NarrativeChronologyPhase.ChurchYear)
-        {
-            string church = ChurchYearFlavor.FormatDashboardLine();
-            return $"<color=#C9B896>Chronology:</color> Church Year  ·  {church}";
-        }
+            return ChurchYearFlavor.FormatDashboardLine();
 
         if (NarrativeEventDatabase.TryGetById(GetCurrentEraHintId(), out var next))
-            return $"<color=#C9B896>Chronology:</color> {next.EraLabel}  ·  day {Instance.NarrativeDay}";
+        {
+            return $"<color=#C9B896>Salvation day {Instance.NarrativeDay}</color>  ·  " +
+                   $"{next.EraLabel}";
+        }
 
-        return $"<color=#C9B896>Chronology:</color> Salvation history  ·  day {Instance.NarrativeDay}";
+        return $"<color=#C9B896>Salvation day {Instance.NarrativeDay}</color>  ·  Salvation history";
     }
 
     static string GetCurrentEraHintId()

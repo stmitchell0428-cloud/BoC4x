@@ -470,20 +470,17 @@ Martyrs and feasts share pipeline
 
 **Gap vs code today:** feasts spawn once per match; no annual return tick yet.
 
-### V5. Annual tick strength `[OPEN]`
+### V5. Annual tick strength `[DECIDED — B]`
 
 ```
-├─ A) Minimal (+1 comfort or adherence)
-├─ B) Moderate — tick follows first-choice lean (Recommended)
-└─ C) Dashboard flavor only
+Moderate: annual tick follows first-choice lean; martyr feasts +1 fame every 3rd annual tick
+Dashboard one-liner, no card on return years
 ```
 
-### V6. Legacy trait variants `[OPEN]`
+### V6. Legacy trait variants `[DECIDED — A]`
 
 ```
-├─ A) Dominant tag picks variant at fame 25/55 (Recommended)
-├─ B) Display-only until playtest
-└─ C) New virtue slot type
+Dominant virtue tag tints legacy name + soft modifier at fame 25/55 (existing SynodLegacyTraitId slots)
 ```
 
 **Files:** `VirtueProfile` (new), `FeastObservanceRegistry` (new), `LiturgicalEventManager.cs`, `NarrativeEventManager.cs`, `SynodLegacyManager.cs`, `FirstSteps.cs`

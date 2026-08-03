@@ -172,6 +172,8 @@ public class FirstSteps : MonoBehaviour
     {
         if (Keyboard.current == null) return;
         if (!TurnManager.Instance || !TurnManager.Instance.IsPlayerTurn) return;
+        if (CityScreenPanel.Instance != null && CityScreenPanel.Instance.IsOpen) return;
+        if (ConfessionTechPanel.Instance != null && ConfessionTechPanel.Instance.IsOpen) return;
 
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
             PreachPureWord();
@@ -200,11 +202,30 @@ public class FirstSteps : MonoBehaviour
         if (Keyboard.current.hKey.wasPressedThisFrame)
             TryToggleFortifySelected();
 
+        if (Keyboard.current.jKey.wasPressedThisFrame)
+            TrySkipTurnSelected();
+
         if (Keyboard.current.dKey.wasPressedThisFrame)
             DiplomacyPanel.Instance?.Toggle();
 
         if (Keyboard.current.yKey.wasPressedThisFrame)
             SynodBriefPanel.Instance?.Toggle();
+    }
+
+    void TrySkipTurnSelected()
+    {
+        var unit = TurnManager.Instance?.SelectedUnit;
+        if (unit == null || !unit.IsOnMap)
+            return;
+        if (!unit.ToggleSkipTurn())
+            return;
+
+        TerrainInfoPanel.Instance?.RefreshUnitDisplay();
+        PlayerUnitCycle.Instance?.OnUnitOrdersChanged();
+        TurnPhaseBanner.Instance?.Refresh(
+            unit.SkippedThisTurn
+                ? $"{Unit.TypeDisplayName(unit.Type)} skipped this turn (J to undo)"
+                : $"{Unit.TypeDisplayName(unit.Type)} back in order queue");
     }
 
     void TryToggleFortifySelected()
@@ -457,7 +478,7 @@ public class FirstSteps : MonoBehaviour
             if (string.IsNullOrEmpty(crisis))
                 crisis = FormatWaltherCrisisWarning();
             waltherDashboardUIText.text = TmpTextSanitizer.Sanitize(
-                "Walther Dialectic  (T tech  |  C city  |  Y brief  |  H fortify)\n" +
+                "Walther Dialectic  (T tech  |  C city  |  Y brief  |  H fortify  |  J skip unit)\n" +
                 $"  Civic Restraint (Law)  {civicRestraint:F0}%\n" +
                 $"  Spiritual Comfort (Gospel)  {spiritualComfort:F0}%" +
                 (string.IsNullOrEmpty(crisis) ? "" : $"\n  {crisis}"));
@@ -906,10 +927,9 @@ public class FirstSteps : MonoBehaviour
         sections.Add("<color=#DDCC88><b>CITY YIELDS</b></color>");
         if (CityManager.Instance != null)
         {
-            string yields = CityManager.Instance.FormatPlayerCityYieldLine();
-            sections.Add(string.IsNullOrWhiteSpace(yields) || yields.Contains(" - ")
-                ? "<size=13>No city production yet.</size>"
-                : yields);
+            sections.Add(CityManager.Instance.HasPlayerCityProduction()
+                ? CityManager.Instance.FormatPlayerCityYieldLine()
+                : "<size=13>No city production yet.</size>");
         }
 
         sections.Add("");
@@ -985,6 +1005,9 @@ public class FirstSteps : MonoBehaviour
         if (PastoralBriefingManager.Instance != null && PastoralBriefingManager.Instance.IsAwaitingPlayerChoice)
             return "";
 
+        if (UnionStrifeManager.IsSaturated)
+            return "";
+
         var mods = Modifiers;
 
         if (civicRestraint > 62f && spiritualComfort < 52f && !mods.LegalismGuard)
@@ -992,6 +1015,13 @@ public class FirstSteps : MonoBehaviour
 
         if (spiritualComfort > 58f && confessionalAdherence < 72f && !mods.AntinomianGuard)
             return "<color=#FFAA66><b>Warning:</b> antinomian drift — take Formula emphasis or preach (schism risk)</color>";
+
+        if (SchismaticBlocRegistry.Instance != null &&
+            SchismaticBlocRegistry.Instance.HasAnySchism &&
+            confessionalAdherence > 70f &&
+            civicRestraint > 75f &&
+            spiritualComfort > 75f)
+            return "<color=#DDAA66><b>Note:</b> outward peace — dissent synods still press the land</color>";
 
         if (confessionalAdherence <= 58f)
             return "<color=#FFAA66><b>Warning:</b> adherence falling  -  dissent may split the synod</color>";

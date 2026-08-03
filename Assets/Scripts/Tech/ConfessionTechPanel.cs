@@ -30,16 +30,6 @@ public class ConfessionTechPanel : MonoBehaviour
 
     TMP_FontAsset uiFont;
 
-    static readonly string[] EraNames =
-    {
-        "Reformation",
-        "Confessions",
-        "Age of Orthodoxy",
-        "Synodical Era",
-        "Modern Confession",
-        "Global Witness"
-    };
-
     void Awake()
     {
         Instance = this;
@@ -489,7 +479,7 @@ public class ConfessionTechPanel : MonoBehaviour
             headerGo.transform.SetParent(col.transform, false);
             var header = headerGo.AddComponent<TextMeshProUGUI>();
             ApplyFont(header);
-            header.text = EraNames[tier - 1];
+            header.text = ConfessionalUiVocabulary.FormatGameEraLabel(tier);
             header.raycastTarget = false;
             header.fontSize = 15f;
             header.fontStyle = FontStyles.Bold;
@@ -623,6 +613,9 @@ public class ConfessionTechPanel : MonoBehaviour
 
         if (node.HasFigure)
             sb.AppendLine($"<color=#C9B896>{node.FigureName} ({node.Lifespan})</color>");
+
+        sb.AppendLine(
+            $"<size=12><color=#AABBCC>{ConfessionalUiVocabulary.FormatGameEraLabel(node.Tier)}</color></size>");
 
         sb.AppendLine();
         sb.AppendLine(node.Description);

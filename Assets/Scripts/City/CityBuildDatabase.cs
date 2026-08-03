@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 public class CityBuildDefinition
 {
@@ -14,6 +15,7 @@ public class CityBuildDefinition
     public bool UniquePerCity;
     public UnitType? SpawnsUnit;
     public ConfessionTechId? RequiredTech;
+    public ConfessionTechId? RequiredTechSecondary;
 
     public bool UsesProduction => Track == CityBuildTrack.Secular && ProductionCost > 0;
 
@@ -29,7 +31,8 @@ public class CityBuildDefinition
         int productionCost = 0,
         bool uniquePerCity = false,
         UnitType? spawnsUnit = null,
-        ConfessionTechId? requiredTech = null)
+        ConfessionTechId? requiredTech = null,
+        ConfessionTechId? requiredTechSecondary = null)
     {
         Id = id;
         Name = name;
@@ -43,6 +46,7 @@ public class CityBuildDefinition
         UniquePerCity = uniquePerCity;
         SpawnsUnit = spawnsUnit;
         RequiredTech = requiredTech;
+        RequiredTechSecondary = requiredTechSecondary;
     }
 }
 
@@ -53,6 +57,48 @@ public static class CityBuildDatabase
     public static CityBuildDefinition Get(CityBuildId id) => defs[id];
 
     public static IEnumerable<CityBuildDefinition> All => defs.Values;
+
+    public static IEnumerable<ConfessionTechId> RequiredTechs(CityBuildDefinition def)
+    {
+        if (def.RequiredTech.HasValue)
+            yield return def.RequiredTech.Value;
+        if (def.RequiredTechSecondary.HasValue)
+            yield return def.RequiredTechSecondary.Value;
+    }
+
+    public static bool MeetsTechRequirements(CityBuildDefinition def)
+    {
+        var rm = ConfessionResearchManager.Instance;
+        if (rm == null)
+            return false;
+
+        foreach (var tech in RequiredTechs(def))
+        {
+            if (!rm.IsTechUnlocked(tech))
+                return false;
+        }
+
+        return true;
+    }
+
+    public static string FormatMissingTechRequirement(CityBuildDefinition def)
+    {
+        var rm = ConfessionResearchManager.Instance;
+        if (rm == null)
+            return "Research required";
+
+        var missing = RequiredTechs(def)
+            .Where(tech => !rm.IsTechUnlocked(tech))
+            .Select(tech => ConfessionTechDatabase.Get(tech).Name)
+            .ToList();
+
+        if (missing.Count == 0)
+            return null;
+
+        return missing.Count == 1
+            ? $"Needs {missing[0]}"
+            : $"Needs {string.Join(" + ", missing)}";
+    }
 
     public static IEnumerable<CityBuildDefinition> ByCategory(CityBuildCategory category)
     {
@@ -137,32 +183,21 @@ public static class CityBuildDatabase
         [CityBuildId.TrainSiegeEngine] = new CityBuildDefinition(
             CityBuildId.TrainSiegeEngine,
             "Build Siege Engine",
-            "Artillery science — breaching engines from ordered mechanics (Maxwell tier).",
-            "Spawns a siege engine (slow, high loyalty pressure vs walls; cluster armory required)",
+            "Artillery science — breaching engines from ordered mechanics and confessional polemic.",
+            "Spawns a siege engine (slow, high loyalty pressure vs walls; local armory + Chytraeus + Maxwell)",
             CityBuildCategory.Unit,
             CityBuildTrack.Confessional,
             manuscriptCost: 4,
             turnsToComplete: 3,
             spawnsUnit: UnitType.SiegeEngine,
-            requiredTech: ConfessionTechId.JamesClerkMaxwell),
-
-        [CityBuildId.TrainCoastalPatrol] = new CityBuildDefinition(
-            CityBuildId.TrainCoastalPatrol,
-            "Train Coastal Patrol",
-            "Light coastal craft to scout shorelines, rivers, and near-shore waters.",
-            "Spawns a coastal patrol boat (near-shore naval; +1 move on coast/water)",
-            CityBuildCategory.Unit,
-            CityBuildTrack.Confessional,
-            manuscriptCost: 2,
-            turnsToComplete: 1,
-            spawnsUnit: UnitType.CoastalPatrol,
-            requiredTech: ConfessionTechId.CoastalWharves),
+            requiredTech: ConfessionTechId.JamesClerkMaxwell,
+            requiredTechSecondary: ConfessionTechId.DavidChytraeus),
 
         [CityBuildId.BuildWharf] = new CityBuildDefinition(
             CityBuildId.BuildWharf,
             "Build Wharf",
             "Timber slips and landings for fishing boats and river trade.",
-            "Enables coastal patrol & explorer; +1 food at coastal cities",
+            "Enables coastal explorer; +1 food at coastal cities",
             CityBuildCategory.SecularBuilding,
             CityBuildTrack.Secular,
             productionCost: 12,
@@ -184,7 +219,7 @@ public static class CityBuildDatabase
             CityBuildId.TrainCoastalExplorer,
             "Build Coastal Explorer",
             "Light fishing boat for rivers, lakes, and near-shore mapping.",
-            "Spawns an explorer (land + navigable water; wide sight)",
+            "Spawns a coastal explorer (shore + navigable water; wide sight)",
             CityBuildCategory.Unit,
             CityBuildTrack.Confessional,
             manuscriptCost: 2,
@@ -352,7 +387,7 @@ public static class CityBuildDatabase
             CityBuildId.BuildGranary,
             "Parish Granary",
             "Store grain against famine; tithe and distribute to the needy.",
-            "+2 city population when complete; +1 pop growth chance",
+            "+3 food each turn when complete",
             CityBuildCategory.ConfessionalBuilding,
             CityBuildTrack.Confessional,
             manuscriptCost: 3,
@@ -528,7 +563,7 @@ public static class CityBuildDatabase
             CityBuildId.BuildArmory,
             "Armory",
             "Store arms and armor for defenders of the confession.",
-            "Promote Defender -1 manuscript; +1 district production",
+            "Promote Defender -1 manuscript when this city has an armory; +1 district production",
             CityBuildCategory.ConfessionalBuilding,
             CityBuildTrack.Confessional,
             manuscriptCost: 4,

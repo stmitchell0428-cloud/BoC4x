@@ -18,6 +18,9 @@ public static class ConfessionTechDetailText
         if (node.HasFigure)
             sb.AppendLine($"<color=#C9B896>{node.FigureName} ({node.Lifespan})</color>");
 
+        sb.AppendLine(
+            $"<size=12><color=#AABBCC>{ConfessionalUiVocabulary.FormatGameEraLabel(node.Tier)}</color></size>");
+
         sb.AppendLine();
         sb.AppendLine(node.Description);
         sb.AppendLine();

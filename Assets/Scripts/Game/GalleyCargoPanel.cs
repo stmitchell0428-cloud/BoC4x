@@ -44,7 +44,7 @@ public class GalleyCargoPanel : MonoBehaviour
         rect.anchorMax = new Vector2(1f, 0f);
         rect.pivot = new Vector2(1f, 0f);
         rect.sizeDelta = new Vector2(300f, 168f);
-        rect.anchoredPosition = new Vector2(-12f, 12f);
+        rect.anchoredPosition = new Vector2(-12f, 148f);
 
         var bg = panelRoot.AddComponent<Image>();
         bg.color = new Color(0.06f, 0.1f, 0.16f, 0.94f);
@@ -60,6 +60,9 @@ public class GalleyCargoPanel : MonoBehaviour
         slotRect.sizeDelta = new Vector2(280f, 96f);
         slotRect.anchoredPosition = new Vector2(0f, -34f);
     }
+
+    static string CargoPanelTitle(Unit unit) =>
+        unit.Type == UnitType.DeepSeaShip ? "Ship cargo" : "Galley cargo";
 
     public void Refresh(Unit unit)
     {
@@ -77,7 +80,7 @@ public class GalleyCargoPanel : MonoBehaviour
         EnsureUI();
         panelRoot.SetActive(true);
         headerText.text = TmpTextSanitizer.Sanitize(
-            $"<b>Galley cargo</b>  {unit.EmbarkedCount}/{unit.EmbarkCapacity}" +
+            $"<b>{CargoPanelTitle(unit)}</b>  {unit.EmbarkedCount}/{unit.EmbarkCapacity}" +
             (unit.EmbarkedCount > 0
                 ? "  |  click shore or <color=#FFDD66>Land</color>"
                 : "  |  <color=#88CCFF>O</color> board adjacent troops"));

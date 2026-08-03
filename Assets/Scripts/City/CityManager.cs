@@ -187,6 +187,17 @@ public class CityManager : MonoBehaviour
         return summaries.Count > 0 ? string.Join("\n", summaries) : "City production:  - ";
     }
 
+    public bool HasPlayerCityProduction()
+    {
+        foreach (var city in cities)
+        {
+            if (city.Faction == FactionId.LutheranSynod)
+                return true;
+        }
+
+        return false;
+    }
+
     public string FormatPlayerProductionQueueLine()
     {
         var parts = new List<string>();

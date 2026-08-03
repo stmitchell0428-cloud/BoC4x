@@ -236,7 +236,7 @@ public static class CityGrowthSystem
             return 0;
 
         int food = 0;
-        if (production.HasBuilding(CityBuildId.BuildGranary)) food += 2;
+        if (production.HasBuilding(CityBuildId.BuildGranary)) food += 3;
         if (production.HasBuilding(CityBuildId.BuildMill)) food += 1;
         if (production.HasBuilding(CityBuildId.BuildMarketHall)) food += 1;
         if (production.HasBuilding(CityBuildId.BuildWharf) &&

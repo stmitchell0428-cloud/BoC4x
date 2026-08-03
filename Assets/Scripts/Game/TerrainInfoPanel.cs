@@ -14,6 +14,7 @@ public class TerrainInfoPanel : MonoBehaviour
     RectTransform rootRect;
     GameObject rootObject;
     RectMask2D rootMask;
+    Image panelBackground;
     HexCoordinates? hoveredHex;
 
     const float LegendHeight = 28f;
@@ -22,6 +23,7 @@ public class TerrainInfoPanel : MonoBehaviour
     const float BottomPadding = 12f;
     const float TopHudGap = 20f;
     const float MinPanelHeight = 96f;
+    static readonly Color PanelBackgroundColor = new(0.05f, 0.08f, 0.13f, 0.82f);
 
     float topHudClearance = 280f;
 
@@ -52,6 +54,18 @@ public class TerrainInfoPanel : MonoBehaviour
         rootRect.pivot = Vector2.zero;
         rootRect.anchoredPosition = new Vector2(12f, BottomPadding);
         rootRect.sizeDelta = new Vector2(PanelWidth, 168f);
+
+        var bgGo = new GameObject("PanelBackground");
+        bgGo.transform.SetParent(root.transform, false);
+        panelBackground = bgGo.AddComponent<Image>();
+        panelBackground.color = PanelBackgroundColor;
+        panelBackground.raycastTarget = false;
+        var bgRect = bgGo.GetComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+
         rootMask = root.AddComponent<RectMask2D>();
 
         selectionText = CreateText(root.transform, "SelectionText", 16f);
@@ -59,7 +73,7 @@ public class TerrainInfoPanel : MonoBehaviour
         missionaryText = CreateText(root.transform, "MissionaryText", 15f);
         hoverText = CreateText(root.transform, "HoverText", 15f);
         CreateText(root.transform, "LegendLine1", 12f).text =
-            "O+ settler  > scout  ~ patrol  <> galley  + missionary  # soldier  |  O board  L land troops";
+            "O+ settler  > scout  e explorer  <> galley  + missionary  # soldier  |  O board  L land troops";
         CreateText(root.transform, "LegendLine2", 12f).text =
             "Settler/colonist: green = best founding hex  |  hover for yield rating";
 
@@ -270,7 +284,6 @@ public class TerrainInfoPanel : MonoBehaviour
             UnitType.Missionary => "x",
             UnitType.Cantor => "c",
             UnitType.SiegeEngine => "s",
-            UnitType.CoastalPatrol => "~",
             UnitType.CoastalExplorer => "e",
             UnitType.CoastalGalley => "<>",
             UnitType.DeepSeaShip => "S",
@@ -282,8 +295,24 @@ public class TerrainInfoPanel : MonoBehaviour
             AmphibiousTransport.FormatGalleyCargoHint(selected) +
             AmphibiousTransport.FormatEmbarkHint(selected) +
             FormatPlacementSelectionAdvice(selected) +
+            FormatUnitOrderHint(selected) +
             FormatParishCareHint(selected));
         RelayoutPanel();
+    }
+
+    static string FormatUnitOrderHint(Unit selected)
+    {
+        if (selected == null || selected.Faction != FactionId.LutheranSynod ||
+            selected.SynodPlayer != SynodPlayerId.Player1)
+            return "";
+
+        if (selected.IsFortified)
+            return "\n<color=#AABBCC>H fortify — unit holds position (H to wake)</color>";
+        if (selected.SkippedThisTurn)
+            return "\n<color=#AABBCC>J skip — done for this turn (J to undo)</color>";
+        if (selected.NeedsOrders)
+            return "\n<color=#AABBCC>H fortify  |  J skip turn</color>";
+        return "";
     }
 
     static string FormatParishCareHint(Unit selected)
@@ -413,7 +442,6 @@ public class TerrainInfoPanel : MonoBehaviour
                     UnitType.Missionary => "x",
                     UnitType.Cantor => "c",
                     UnitType.SiegeEngine => "s",
-                    UnitType.CoastalPatrol => "~",
                     UnitType.CoastalExplorer => "e",
                     UnitType.CoastalGalley => "<>",
                     UnitType.DeepSeaShip => "S",

@@ -37,9 +37,11 @@ public class Unit : MonoBehaviour
     HexCoordinates? moveOrderTarget;
     bool pendingMoveOrderAdvance;
     bool isFortified;
+    bool skippedThisTurn;
     public bool HasMoveOrder => moveOrderTarget.HasValue;
     public HexCoordinates? MoveOrderTarget => moveOrderTarget;
     public bool IsFortified => isFortified;
+    public bool SkippedThisTurn => skippedThisTurn;
 
     SpriteRenderer spriteRenderer;
     CircleCollider2D clickCollider;
@@ -85,6 +87,8 @@ public class Unit : MonoBehaviour
             if (!IsOnMap || Faction != FactionId.LutheranSynod || SynodPlayer != SynodPlayerId.Player1)
                 return false;
             if (isFortified)
+                return false;
+            if (skippedThisTurn)
                 return false;
             // Mid-march: auto-advance at turn start; don't nag every End Turn / Tab.
             if (HasMoveOrder)
@@ -138,7 +142,6 @@ public class Unit : MonoBehaviour
     {
         UnitType.Scout => 4,
         UnitType.CoastalExplorer => 5,
-        UnitType.CoastalPatrol => 3,
         UnitType.Missionary => 3,
         UnitType.Chaplain => 2,
         UnitType.Cantor => 2,
@@ -244,12 +247,6 @@ public class Unit : MonoBehaviour
                 MaxHealth = 15;
                 baseAttack = 3;
                 baseDefense = 1;
-                baseMovementRange = 3;
-                break;
-            case UnitType.CoastalPatrol:
-                MaxHealth = 16;
-                baseAttack = 4;
-                baseDefense = 2;
                 baseMovementRange = 3;
                 break;
             case UnitType.CoastalExplorer:
@@ -381,7 +378,6 @@ public class Unit : MonoBehaviour
             UnitType.Archbishop => 0.62f,
             UnitType.Deaconess => 0.44f,
             UnitType.SiegeEngine => 0.70f,
-            UnitType.CoastalPatrol => 0.50f,
             UnitType.CoastalExplorer => 0.48f,
             UnitType.CoastalGalley => 0.58f,
             UnitType.DeepSeaShip => 0.62f,
@@ -440,9 +436,6 @@ public class Unit : MonoBehaviour
                 break;
             case UnitType.Scout:
                 MaxHealth = 15; baseAttack = 3; baseDefense = 1; baseMovementRange = 3;
-                break;
-            case UnitType.CoastalPatrol:
-                MaxHealth = 16; baseAttack = 4; baseDefense = 2; baseMovementRange = 3;
                 break;
             case UnitType.CoastalExplorer:
                 MaxHealth = 14; baseAttack = 3; baseDefense = 1; baseMovementRange = 3;
@@ -518,7 +511,6 @@ public class Unit : MonoBehaviour
             UnitType.Archbishop => 0.62f,
             UnitType.Deaconess => 0.44f,
             UnitType.SiegeEngine => 0.70f,
-            UnitType.CoastalPatrol => 0.50f,
             UnitType.CoastalExplorer => 0.48f,
             UnitType.CoastalGalley => 0.58f,
             UnitType.DeepSeaShip => 0.62f,
@@ -543,7 +535,6 @@ public class Unit : MonoBehaviour
     {
         UnitType.Settler => CreateSettlerSprite(),
         UnitType.Scout => CreateScoutSprite(),
-        UnitType.CoastalPatrol => CreateScoutSprite(),
         UnitType.CoastalExplorer => CreateScoutSprite(),
         UnitType.CoastalGalley => CreateDiamondSprite(),
         UnitType.DeepSeaShip => CreateDiamondSprite(),
@@ -594,15 +585,9 @@ public class Unit : MonoBehaviour
     public void RefreshTurn()
     {
         MovementRemaining = MovementRange;
-        if (Type == UnitType.CoastalPatrol && HexGridMap.Instance != null &&
-            HexGridMap.Instance.TryGetTile(HexPosition, out var tile) &&
-            NavalMovementRules.GetsCoastalMoveBonus(Type, tile))
-        {
-            MovementRemaining = Mathf.Min(MovementRange + 1, MovementRemaining + 1);
-        }
-
         HasAttacked = false;
         HasPreached = false;
+        skippedThisTurn = false;
 
         if (IsPlayerControlledSynod)
             pendingMoveOrderAdvance = HasMoveOrder;
@@ -628,11 +613,28 @@ public class Unit : MonoBehaviour
             ClearMoveOrder();
     }
 
+    public void ClearSkipTurn() => skippedThisTurn = false;
+
+    public bool ToggleSkipTurn()
+    {
+        if (!IsOnMap || Faction != FactionId.LutheranSynod || SynodPlayer != SynodPlayerId.Player1)
+            return false;
+        if (isFortified)
+            return false;
+
+        skippedThisTurn = !skippedThisTurn;
+        if (skippedThisTurn)
+            ClearMoveOrder();
+        return true;
+    }
+
     public bool ToggleFortify()
     {
         if (!IsOnMap || Faction != FactionId.LutheranSynod || SynodPlayer != SynodPlayerId.Player1)
             return false;
         SetFortified(!isFortified);
+        if (isFortified)
+            skippedThisTurn = false;
         return true;
     }
 
@@ -673,6 +675,7 @@ public class Unit : MonoBehaviour
             return false;
 
         ClearFortify();
+        ClearSkipTurn();
         pendingMoveOrderAdvance = false;
         moveOrderTarget = target;
 
@@ -779,6 +782,7 @@ public class Unit : MonoBehaviour
             return false;
 
         ClearFortify();
+        ClearSkipTurn();
         ClearMoveOrder();
         return ExecuteMoveAlongPath(target, path, cost);
     }
@@ -794,6 +798,7 @@ public class Unit : MonoBehaviour
 
     bool ExecuteMoveAlongPath(HexCoordinates destination, System.Collections.Generic.List<HexCoordinates> path, int cost)
     {
+        ClearSkipTurn();
         ClearTile();
         HexPosition = destination;
         MovementRemaining -= cost;
@@ -956,6 +961,7 @@ public class Unit : MonoBehaviour
     {
         HasAttacked = true;
         ClearFortify();
+        ClearSkipTurn();
         ClearMoveOrder();
     }
 
@@ -963,6 +969,7 @@ public class Unit : MonoBehaviour
     {
         HasPreached = true;
         ClearFortify();
+        ClearSkipTurn();
     }
 
     public static Color FactionColor(FactionId faction, SynodPlayerId synodPlayer = SynodPlayerId.Player1) =>
@@ -995,7 +1002,6 @@ public class Unit : MonoBehaviour
     {
         UnitType.Settler => "Settler",
         UnitType.Scout => "Scout",
-        UnitType.CoastalPatrol => "Coastal Patrol",
         UnitType.CoastalExplorer => "Coastal Explorer",
         UnitType.CoastalGalley => "Coastal Galley",
         UnitType.DeepSeaShip => "Deep-Sea Ship",
@@ -1019,6 +1025,8 @@ public class Unit : MonoBehaviour
     public string MovementSummary =>
         isFortified
             ? $"{MovementRemaining}/{MovementRange} move | fortified"
+            : skippedThisTurn
+                ? $"{MovementRemaining}/{MovementRange} move | skipped"
             : HasMoveOrder
                 ? $"{MovementRemaining}/{MovementRange} move | marching"
                 : $"{MovementRemaining}/{MovementRange} move";
@@ -1033,14 +1041,12 @@ public class Unit : MonoBehaviour
                     : $"{HealthLabel} | {MovementSummary}",
         UnitType.Scout =>
             $"{HealthLabel} | {MovementSummary} | sight {SightRange}",
-        UnitType.CoastalPatrol =>
-            $"{HealthLabel} | {MovementSummary} | sight {SightRange} | +1 move on shore/water",
         UnitType.CoastalExplorer =>
-            $"{HealthLabel} | {MovementSummary} | sight {SightRange} | near-shore scout",
+            $"{HealthLabel} | {MovementSummary} | sight {SightRange} | rivers, lakes, shore",
         UnitType.CoastalGalley =>
-            $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def | cargo {EmbarkedCount}/{EmbarkCapacity} | shore + water{GarrisonBonus.FormatRoleSuffix(this)}",
+            $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def | cargo {EmbarkedCount}/{EmbarkCapacity} | water only{GarrisonBonus.FormatRoleSuffix(this)}",
         UnitType.DeepSeaShip =>
-            $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def | cargo {EmbarkedCount}/{EmbarkCapacity} | deep ocean{GarrisonBonus.FormatRoleSuffix(this)}",
+            $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def | cargo {EmbarkedCount}/{EmbarkCapacity} | all ocean, water only{GarrisonBonus.FormatRoleSuffix(this)}",
         UnitType.Soldier =>
             $"{HealthLabel} | {MovementSummary} | {Attack} atk | {Defense} def{GarrisonBonus.FormatRoleSuffix(this)}",
         UnitType.Slinger =>

@@ -1,6 +1,26 @@
 /// <summary>Player-facing confessional language for emphasis, documents, and era forks.</summary>
 public static class ConfessionalUiVocabulary
 {
+    static readonly string[] GameEraShortNames =
+    {
+        "Reformation",
+        "Confessions",
+        "Orthodoxy",
+        "Synodical",
+        "Modern",
+        "Global"
+    };
+
+    static readonly string[] GameEraRoman = { "I", "II", "III", "IV", "V", "VI" };
+
+    /// <summary>Compact game-era label for tech tree columns and detail pane (progression tier, not strict history).</summary>
+    public static string FormatGameEraLabel(int tier)
+    {
+        if (tier < 1 || tier > GameEraShortNames.Length)
+            return "";
+        return $"Era {GameEraRoman[tier - 1]} · {GameEraShortNames[tier - 1]}";
+    }
+
     /// <summary>Integrated era-fork sibling — study without full institutional adoption.</summary>
     public const string PartialReception = "partial reception (half institutional strength)";
 

@@ -22,41 +22,31 @@ public static class ChurchYearFlavor
             MatchNarrativeChronology.Instance.Phase == NarrativeChronologyPhase.SalvationHistory)
             return MatchNarrativeChronology.FormatDashboardLine();
 
+        int salvationDay = MatchNarrativeChronology.Instance?.NarrativeDay ?? 0;
         GetToday(out int month, out int day, out var season);
         string seasonName = ChurchYearCalendar.SeasonDisplayName(season);
 
         if (ChurchYearCalendar.TryGetPrincipalWatchesForTurn(CurrentTurn, out var watch, out var also))
         {
-            string line = $"<color=#C9B896>Church Year:</color> {seasonName}  -  " +
+            string line = $"<color=#C9B896>Salvation day {salvationDay}</color>  ·  " +
+                          $"<color=#C9B896>Church Year:</color> {seasonName}  -  " +
                           $"<color=#E8D5A3><b>WATCH</b></color> {watch.Name} " +
                           $"({MonthName(watch.Month)} {watch.Day})";
             if (also.HasValue)
                 line += $"  ·  also {also.Value.Name} ({MonthName(also.Value.Month)} {also.Value.Day})";
-            return AppendSalvationDay(line);
+            return line;
         }
 
         var entry = ChurchYearCalendar.PrimaryEntryForTurn(CurrentTurn);
         if (entry.HasValue)
         {
-            return AppendSalvationDay(
-                $"<color=#C9B896>Church Year:</color> {seasonName}  -  " +
-                $"{MonthName(month)} {day}: {entry.Value.Name}");
+            return $"<color=#C9B896>Salvation day {salvationDay}</color>  ·  " +
+                   $"<color=#C9B896>Church Year:</color> {seasonName}  ·  " +
+                   $"{MonthName(month)} {day}: {entry.Value.Name}";
         }
 
-        return AppendSalvationDay(
-            $"<color=#C9B896>Church Year:</color> {seasonName}  -  {MonthName(month)} {day}");
-    }
-
-    static string AppendSalvationDay(string line)
-    {
-        if (MatchNarrativeChronology.Instance != null &&
-            MatchNarrativeChronology.Instance.Phase == NarrativeChronologyPhase.ChurchYear)
-        {
-            int narrativeDay = MatchNarrativeChronology.Instance.NarrativeDay;
-            return $"{line}  ·  <color=#AABB99>salvation day {narrativeDay}</color>";
-        }
-
-        return line;
+        return $"<color=#C9B896>Salvation day {salvationDay}</color>  ·  " +
+               $"<color=#C9B896>Church Year:</color> {seasonName}  ·  {MonthName(month)} {day}";
     }
 
     /// <summary>Short banner line when this turn's month holds a principal feast of Christ.</summary>

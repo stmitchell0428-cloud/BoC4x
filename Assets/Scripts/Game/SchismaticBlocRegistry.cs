@@ -121,15 +121,13 @@ public class SchismaticBlocRegistry : MonoBehaviour
 
     public SchismaticBlocId? PickBlocForHeresy(HeresyType heresy)
     {
-        SchismaticBlocId? fallback = null;
         foreach (var record in activeBlocs.Values)
         {
-            fallback = record.BlocId;
             if (record.Heresy == heresy)
                 return record.BlocId;
         }
 
-        return fallback;
+        return null;
     }
 
     public SchismaticBlocId? PickWeakestBloc()

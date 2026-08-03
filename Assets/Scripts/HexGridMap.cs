@@ -171,12 +171,16 @@ public class HexGridMap : MonoBehaviour
             gameObject.AddComponent<DistrictOfferPanel>();
         if (FindAnyObjectByType<GalleyCargoPanel>() == null)
             gameObject.AddComponent<GalleyCargoPanel>();
+        if (FindAnyObjectByType<ClergyRosterPanel>() == null)
+            gameObject.AddComponent<ClergyRosterPanel>();
         if (FindAnyObjectByType<SynodDiplomacyManager>() == null)
             gameObject.AddComponent<SynodDiplomacyManager>();
         if (FindAnyObjectByType<DiplomacyPanel>() == null)
             gameObject.AddComponent<DiplomacyPanel>();
         if (FindAnyObjectByType<AppealOverlayController>() == null)
             gameObject.AddComponent<AppealOverlayController>();
+        if (FindAnyObjectByType<WorkedTileOverlayController>() == null)
+            gameObject.AddComponent<WorkedTileOverlayController>();
         if (FindAnyObjectByType<LoadingScreenPanel>() == null)
             gameObject.AddComponent<LoadingScreenPanel>();
         if (FindAnyObjectByType<MatchLobbyPanel>() == null)
@@ -609,8 +613,7 @@ public class HexGridMap : MonoBehaviour
         }
     }
 
-    int GetCoastalNavigableDepth() =>
-        coastalDensity == CoastalDensity.Archipelago ? 5 : 3;
+    int GetCoastalNavigableDepth() => 3;
 
     void TagRiverNavigableWater()
     {
@@ -1438,11 +1441,14 @@ public class HexGridMap : MonoBehaviour
         {
             var current = queue.Dequeue();
             int currentCost = best[current];
+            if (!TryGetTile(current, out var currentTile))
+                continue;
 
             foreach (var neighbor in GetWrappedNeighbors(current))
             {
                 if (!TryGetTile(neighbor, out var tile)) continue;
                 if (!NavalMovementRules.CanEnterTile(unitType, tile)) continue;
+                if (!NavalMovementRules.CanTraverse(currentTile, tile, unitType)) continue;
                 if (tile.Occupant != null) continue;
 
                 int nextCost = currentCost + NavalMovementRules.StepCost(unitType, tile);
@@ -1499,12 +1505,16 @@ public class HexGridMap : MonoBehaviour
         {
             var current = queue.Dequeue();
             int currentCost = best[current];
+            if (!TryGetTile(current, out var currentTile))
+                continue;
 
             foreach (var neighbor in GetWrappedNeighbors(current))
             {
                 if (!TryGetTile(neighbor, out var tile))
                     continue;
                 if (!NavalMovementRules.CanEnterTile(unitType, tile))
+                    continue;
+                if (!NavalMovementRules.CanTraverse(currentTile, tile, unitType))
                     continue;
                 if (tile.Occupant != null)
                     continue;
@@ -1770,12 +1780,7 @@ public readonly struct TerrainTileInfo
             line += "  |  <color=#DDDD88>worked</color>";
         if (HasCity)
             line += $"  |  City: {CityName}";
-        if (IsNavigableWater)
-            line += "  |  <color=#88CCFF>Navigable water</color>";
-        else if (TerrainRules.IsWater(Type))
-            line += "  |  <color=#6688AA>Deep water (impassable)</color>";
-        else if (IsNavalCoast)
-            line += "  |  <color=#88CCFF>Naval coast</color>";
+        line += NavalMovementRules.FormatTerrainNavalHint(Type, IsNavalCoast, IsNavigableWater);
         return line;
     }
 

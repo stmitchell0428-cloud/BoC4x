@@ -1,0 +1,12 @@
+---
+description: Unity recompile wipes Play matches — never imply mid-run resume
+alwaysApply: true
+---
+
+# Unity Play state
+
+- There is **no save/load**. Exiting Play or a domain reload / script recompile **destroys the current match**.
+- After code changes that trigger recompile, the player must start a **fresh match** from the lobby. Do **not** suggest continuing “from where they left off,” “restart Play to pick this up mid-run,” or similar.
+- When a fix needs a recompile, say clearly that it requires a **new match** after Exit Play → recompile → Play.
+- Prefer batching playtest-facing changes so they are not forced to abandon a long mid-game run for tiny tweaks when avoidable.
+- **During an active playtest:** do **not** edit code, assets, or `PROGRESS.md` until the user says they are done with that playtest (answers / logging only unless they explicitly ask to change something mid-run).

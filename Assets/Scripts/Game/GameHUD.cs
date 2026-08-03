@@ -26,10 +26,13 @@ public class GameHUD : MonoBehaviour
     TextMeshProUGUI adherenceText;
     TextMeshProUGUI manuscriptText;
     TextMeshProUGUI waltherText;
+    RectTransform statsPanel;
 
     public float DashboardBottomY { get; private set; }
 
     static readonly Color DashboardColor = new(0.92f, 0.9f, 0.85f);
+    static readonly Color StatsPanelColor = new(0.05f, 0.08f, 0.13f, 0.88f);
+    static readonly Color StatsPanelBorderColor = new(0.35f, 0.48f, 0.62f, 0.75f);
     static readonly Color QueuePanelColor = new(0.05f, 0.08f, 0.13f, 0.94f);
     static readonly Color QueuePanelBorderColor = new(0.35f, 0.48f, 0.62f, 0.9f);
     static readonly Color NomadicPanelColor = new(0.12f, 0.09f, 0.05f, 0.94f);
@@ -78,6 +81,7 @@ public class GameHUD : MonoBehaviour
         SetRowVisible(adherenceText, visible);
         SetRowVisible(manuscriptText, visible);
         SetRowVisible(waltherText, visible);
+        SetRowVisible(statsPanel, visible);
         if (visible)
             Relayout();
     }
@@ -205,10 +209,12 @@ public class GameHUD : MonoBehaviour
         float y = -topPadding;
         y = PlaceNomadicFoundingRow(y);
         y = PlaceQueueReviewRow(y);
+        float statsTopY = y;
         y = PlaceRow(populationText, y, primaryFontSize);
         y = PlaceRow(adherenceText, y, primaryFontSize);
         y = PlaceRow(manuscriptText, y, primaryFontSize);
         y = PlaceRow(waltherText, y, secondaryFontSize);
+        PlaceStatsPanel(statsTopY, y);
 
         DashboardBottomY = ComputeDashboardBottomY();
         TurnPhaseBanner.Instance?.ApplyHudClearance(QueuePanelRightEdge + 8f, topPadding);
@@ -378,5 +384,61 @@ public class GameHUD : MonoBehaviour
         float height = Mathf.Max(minRowHeight, tmp.preferredHeight + 6f);
         rect.sizeDelta = new Vector2(panelWidth, height);
         return y - height - rowGap;
+    }
+
+    void PlaceStatsPanel(float topY, float bottomY)
+    {
+        if (populationText == null && adherenceText == null &&
+            manuscriptText == null && waltherText == null)
+        {
+            SetRowVisible(statsPanel, false);
+            return;
+        }
+
+        EnsureStatsPanel();
+        if (statsPanel == null)
+            return;
+
+        bool anyVisible =
+            IsRowActive(populationText) || IsRowActive(adherenceText) ||
+            IsRowActive(manuscriptText) || IsRowActive(waltherText);
+        statsPanel.gameObject.SetActive(anyVisible);
+        if (!anyVisible)
+            return;
+
+        float height = topY - bottomY + rowGap;
+        statsPanel.anchorMin = new Vector2(0f, 1f);
+        statsPanel.anchorMax = new Vector2(0f, 1f);
+        statsPanel.pivot = new Vector2(0f, 1f);
+        statsPanel.anchoredPosition = new Vector2(leftPadding - 8f, topY + 6f);
+        statsPanel.sizeDelta = new Vector2(panelWidth + 16f, height + 12f);
+        statsPanel.SetAsFirstSibling();
+    }
+
+    static bool IsRowActive(TextMeshProUGUI tmp) =>
+        tmp != null && tmp.gameObject.activeInHierarchy;
+
+    void EnsureStatsPanel()
+    {
+        if (statsPanel != null)
+            return;
+
+        Transform parent = populationText != null
+            ? populationText.transform.parent
+            : FindAnyObjectByType<Canvas>()?.transform;
+        if (parent == null)
+            return;
+
+        var panelGo = new GameObject("StatsPanel");
+        panelGo.transform.SetParent(parent, false);
+        statsPanel = panelGo.AddComponent<RectTransform>();
+
+        var bg = panelGo.AddComponent<Image>();
+        bg.color = StatsPanelColor;
+        bg.raycastTarget = false;
+
+        var outline = panelGo.AddComponent<Outline>();
+        outline.effectColor = StatsPanelBorderColor;
+        outline.effectDistance = new Vector2(2f, -2f);
     }
 }

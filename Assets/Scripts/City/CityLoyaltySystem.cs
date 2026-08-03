@@ -50,7 +50,10 @@ public static class CityLoyaltySystem
 
         if (unit.Type == UnitType.SiegeEngine &&
             unit.Faction == FactionId.LutheranSynod &&
-            CityManager.Instance?.HasAnyPlayerBuilding(CityBuildId.BuildArmory) == true)
+            HexGridMap.Instance != null &&
+            HexGridMap.Instance.TryGetTile(unit.HexPosition, out var siegeTile) &&
+            siegeTile.Settlement is City armoryCity &&
+            armoryCity.Production?.HasBuilding(CityBuildId.BuildArmory) == true)
             basePressure += 2;
 
         return basePressure;

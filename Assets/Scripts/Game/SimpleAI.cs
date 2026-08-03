@@ -182,10 +182,11 @@ public class SimpleAI : MonoBehaviour
         int scouts = countUnits(UnitType.Scout);
         int siegeEngines = countUnits(UnitType.SiegeEngine);
         int galleys = countUnits(UnitType.CoastalGalley);
-        int patrols = countUnits(UnitType.CoastalPatrol);
         int explorers = countUnits(UnitType.CoastalExplorer);
         int deepSea = countUnits(UnitType.DeepSeaShip);
         bool coastal = CityManager.Instance != null && CityManager.Instance.CityTouchesNavalCoast(aiCity);
+        City navalBase = FindCoastalNavalBase(aiCity);
+        bool navalCoastal = navalBase != null;
         bool wharfTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.CoastalWharves) == true;
         bool dockTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.NavalWarfare) == true;
         bool oceanTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.OpenOceanNavigation) == true;
@@ -193,10 +194,12 @@ public class SimpleAI : MonoBehaviour
         bool horsemanTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.MartinChemnitz) == true;
         bool missionHouseTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.MissionarySending) == true;
         bool slingTech = archerTech;
-        bool siegeTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.JamesClerkMaxwell) == true;
+        bool siegeTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.JamesClerkMaxwell) == true
+            && ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.DavidChytraeus) == true;
         int archers = countUnits(UnitType.Archer);
         int horsemen = countUnits(UnitType.Horseman);
-        bool clusterArmory = CityManager.Instance?.ClusterHasBuilding(aiCity, CityBuildId.BuildArmory) == true;
+        City garrisonCity = FindGarrisonDistrictCity(aiCity);
+        bool localArmory = garrisonCity?.Production?.HasBuilding(CityBuildId.BuildArmory) == true;
 
         if (coastal && wharfTech && !aiCity.Production.HasBuilding(CityBuildId.BuildWharf) &&
             TryAiStartAndFull(aiCity, CityBuildId.BuildWharf))
@@ -207,25 +210,25 @@ public class SimpleAI : MonoBehaviour
             TryAiStartAndFull(aiCity, CityBuildId.BuildFishingPost))
             return;
 
-        if (coastal && dockTech && aiCity.Production.HasBuilding(CityBuildId.BuildWharf) &&
-            !aiCity.Production.HasBuilding(CityBuildId.BuildDock) &&
-            TryAiStartAndFull(aiCity, CityBuildId.BuildDock))
+        if (navalCoastal && dockTech && navalBase.Production.HasBuilding(CityBuildId.BuildWharf) &&
+            !navalBase.Production.HasBuilding(CityBuildId.BuildDock) &&
+            HamletSpecialtyDatabase.IsBuildAllowed(navalBase, CityBuildId.BuildDock) &&
+            TryAiStartAndFull(navalBase, CityBuildId.BuildDock))
             return;
 
-        if (coastal && dockTech && aiCity.Production.HasBuilding(CityBuildId.BuildDock) && galleys < 1 &&
-            TryAiStartAndFull(aiCity, CityBuildId.TrainCoastalGalley))
+        if (navalCoastal && dockTech && navalBase.Production.HasBuilding(CityBuildId.BuildDock) && galleys < 1 &&
+            HamletSpecialtyDatabase.IsBuildAllowed(navalBase, CityBuildId.TrainCoastalGalley) &&
+            TryAiStartAndFull(navalBase, CityBuildId.TrainCoastalGalley))
             return;
 
-        if (coastal && oceanTech && aiCity.Production.HasBuilding(CityBuildId.BuildDock) && deepSea < 1 &&
-            TryAiStartAndFull(aiCity, CityBuildId.TrainDeepSeaShip))
+        if (navalCoastal && oceanTech && navalBase.Production.HasBuilding(CityBuildId.BuildDock) && deepSea < 1 &&
+            HamletSpecialtyDatabase.IsBuildAllowed(navalBase, CityBuildId.TrainDeepSeaShip) &&
+            TryAiStartAndFull(navalBase, CityBuildId.TrainDeepSeaShip))
             return;
 
         if (coastal && wharfTech && aiCity.Production.HasBuilding(CityBuildId.BuildWharf) && explorers < 1 &&
+            HamletSpecialtyDatabase.IsBuildAllowed(aiCity, CityBuildId.TrainCoastalExplorer) &&
             TryAiStartAndFull(aiCity, CityBuildId.TrainCoastalExplorer))
-            return;
-
-        if (coastal && wharfTech && aiCity.Production.HasBuilding(CityBuildId.BuildWharf) && patrols < 1 &&
-            TryAiStartAndFull(aiCity, CityBuildId.TrainCoastalPatrol))
             return;
 
         if (!aiCity.Production.HasBuilding(CityBuildId.BuildChapel) &&
@@ -253,13 +256,13 @@ public class SimpleAI : MonoBehaviour
             TryAiStartAndFull(aiCity, CityBuildId.TrainHorseman))
             return;
 
-        if (preferSiege && siegeTech && clusterArmory && siegeEngines < 1 &&
-            TryAiStartAndFull(aiCity, CityBuildId.TrainSiegeEngine))
+        if (preferSiege && siegeTech && garrisonCity != null && localArmory && siegeEngines < 1 &&
+            TryAiStartAndFull(garrisonCity, CityBuildId.TrainSiegeEngine))
             return;
 
-        if (preferSiege && !clusterArmory &&
-            HamletSpecialtyDatabase.IsBuildAllowed(aiCity, CityBuildId.BuildArmory) &&
-            TryAiStartAndFull(aiCity, CityBuildId.BuildArmory))
+        if (preferSiege && garrisonCity != null && !localArmory &&
+            HamletSpecialtyDatabase.IsBuildAllowed(garrisonCity, CityBuildId.BuildArmory) &&
+            TryAiStartAndFull(garrisonCity, CityBuildId.BuildArmory))
             return;
 
         if (preferRanged && slingTech && slingers < 3 &&
@@ -302,6 +305,41 @@ public class SimpleAI : MonoBehaviour
         if (!aiCity.Production.TryStartAiBuild(id))
             return false;
         return aiCity.Production.IsTimerBusy && aiCity.Production.IsProdBusy;
+    }
+
+    static City FindGarrisonDistrictCity(City reference)
+    {
+        if (reference == null || CityManager.Instance == null)
+            return null;
+
+        foreach (var city in CityManager.Instance.GetSynodPlayerCities(reference.SynodPlayer))
+        {
+            if (city.Specialty == HamletSpecialty.Garrison)
+                return city;
+        }
+
+        return null;
+    }
+
+    static City FindCoastalNavalBase(City reference)
+    {
+        if (reference == null || CityManager.Instance == null)
+            return null;
+
+        var garrison = FindGarrisonDistrictCity(reference);
+        if (garrison != null && CityManager.Instance.CityTouchesNavalCoast(garrison))
+            return garrison;
+
+        if (CityManager.Instance.CityTouchesNavalCoast(reference))
+            return reference;
+
+        foreach (var city in CityManager.Instance.GetSynodPlayerCities(reference.SynodPlayer))
+        {
+            if (CityManager.Instance.CityTouchesNavalCoast(city))
+                return city;
+        }
+
+        return null;
     }
 
     static int CountSynodUnits(SynodPlayerId playerId, UnitType type) =>
