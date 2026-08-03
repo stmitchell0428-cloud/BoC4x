@@ -50,6 +50,11 @@ public class ArtEraVisualController : MonoBehaviour
         int tier = ConfessionResearchManager.Instance != null
             ? ConfessionResearchManager.Instance.GetHighestUnlockedTier()
             : 1;
+
+        if (MatchNarrativeChronology.Instance != null &&
+            MatchNarrativeChronology.Instance.Phase == NarrativeChronologyPhase.SalvationHistory)
+            tier = Mathf.Min(tier, 2);
+
         var nextEra = VisualArtEraResolver.FromTier(tier);
 
         if (!forceRefresh && nextEra == currentEra)

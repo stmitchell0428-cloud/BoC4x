@@ -71,7 +71,8 @@ public static class UnitUpgradeService
             return UnitUpgradeStatus.Locked;
 
         var faction = FirstSteps.Instance;
-        if (faction == null || faction.ScriptureManuscripts < def.ManuscriptCost)
+        int cost = EffectiveManuscriptCost(unit, id, def);
+        if (faction == null || faction.ScriptureManuscripts < cost)
             return UnitUpgradeStatus.InsufficientManuscripts;
 
         if (ClergyRoster.IsClergyUnit(def.ToType) && city != null &&
@@ -92,7 +93,7 @@ public static class UnitUpgradeService
 
         var def = UnitUpgradeDatabase.Get(id);
         var faction = FirstSteps.Instance;
-        faction.ScriptureManuscripts -= def.ManuscriptCost;
+        faction.ScriptureManuscripts -= EffectiveManuscriptCost(unit, id, def);
 
         unit.ReconfigureAs(def.ToType, consumeTurn: true);
         if (ClergyRoster.IsClergyUnit(def.ToType))
@@ -148,5 +149,19 @@ public static class UnitUpgradeService
             }
         }
         return false;
+    }
+
+    static int EffectiveManuscriptCost(Unit unit, UnitUpgradeId id, UnitUpgradeDefinition def)
+    {
+        int cost = def.ManuscriptCost;
+        if (id != UnitUpgradeId.SoldierToDefender)
+            return cost;
+
+        var city = CityManager.Instance?.GetCityForUnit(unit);
+        if (city != null &&
+            CityManager.Instance.ClusterHasBuilding(city, CityBuildId.BuildArmory))
+            cost = Mathf.Max(0, cost - 1);
+
+        return cost;
     }
 }

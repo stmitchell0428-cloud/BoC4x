@@ -32,17 +32,31 @@ public static class ChurchYearFlavor
                           $"({MonthName(watch.Month)} {watch.Day})";
             if (also.HasValue)
                 line += $"  ·  also {also.Value.Name} ({MonthName(also.Value.Month)} {also.Value.Day})";
-            return line;
+            return AppendSalvationDay(line);
         }
 
         var entry = ChurchYearCalendar.PrimaryEntryForTurn(CurrentTurn);
         if (entry.HasValue)
         {
-            return $"<color=#C9B896>Church Year:</color> {seasonName}  -  " +
-                   $"{MonthName(month)} {day}: {entry.Value.Name}";
+            return AppendSalvationDay(
+                $"<color=#C9B896>Church Year:</color> {seasonName}  -  " +
+                $"{MonthName(month)} {day}: {entry.Value.Name}");
         }
 
-        return $"<color=#C9B896>Church Year:</color> {seasonName}  -  {MonthName(month)} {day}";
+        return AppendSalvationDay(
+            $"<color=#C9B896>Church Year:</color> {seasonName}  -  {MonthName(month)} {day}");
+    }
+
+    static string AppendSalvationDay(string line)
+    {
+        if (MatchNarrativeChronology.Instance != null &&
+            MatchNarrativeChronology.Instance.Phase == NarrativeChronologyPhase.ChurchYear)
+        {
+            int narrativeDay = MatchNarrativeChronology.Instance.NarrativeDay;
+            return $"{line}  ·  <color=#AABB99>salvation day {narrativeDay}</color>";
+        }
+
+        return line;
     }
 
     /// <summary>Short banner line when this turn's month holds a principal feast of Christ.</summary>

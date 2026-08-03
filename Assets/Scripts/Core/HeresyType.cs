@@ -163,7 +163,8 @@ public static class HeresyDatabase
         if (!isRepeat)
         {
             var crisisHeresy = ForCrisis(crisis);
-            if (System.Array.IndexOf(GetHeresyPool(pack), crisisHeresy) >= 0)
+            if (System.Array.IndexOf(GetHeresyPool(pack), crisisHeresy) >= 0 &&
+                !active.Contains(crisisHeresy))
                 return crisisHeresy;
         }
 

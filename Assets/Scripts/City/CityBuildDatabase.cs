@@ -67,7 +67,7 @@ public static class CityBuildDatabase
             CityBuildId.TrainMissionary,
             "Send Missionary",
             "Ordain and send a missionary to preach and survey the land.",
-            "Spawns a missionary  -  upgrade to pastor on city hex (Walther Pastoral Theology)",
+            "Spawns a missionary  -  upgrade to pastor on city hex (Large Catechism)",
             CityBuildCategory.Unit,
             CityBuildTrack.Confessional,
             manuscriptCost: 2,
@@ -84,7 +84,7 @@ public static class CityBuildDatabase
             manuscriptCost: 3,
             turnsToComplete: 2,
             spawnsUnit: UnitType.Pastor,
-            requiredTech: ConfessionTechId.WaltherPastoralTheology),
+            requiredTech: ConfessionTechId.LargeCatechism),
 
         [CityBuildId.TrainDeaconess] = new CityBuildDefinition(
             CityBuildId.TrainDeaconess,
@@ -137,8 +137,8 @@ public static class CityBuildDatabase
         [CityBuildId.TrainSiegeEngine] = new CityBuildDefinition(
             CityBuildId.TrainSiegeEngine,
             "Build Siege Engine",
-            "Catapult and breaching engines to crack fortified dissenting cities.",
-            "Spawns a siege engine (slow, high loyalty pressure vs walls)",
+            "Artillery science — breaching engines from ordered mechanics (Maxwell tier).",
+            "Spawns a siege engine (slow, high loyalty pressure vs walls; cluster armory required)",
             CityBuildCategory.Unit,
             CityBuildTrack.Confessional,
             manuscriptCost: 4,
@@ -149,8 +149,8 @@ public static class CityBuildDatabase
         [CityBuildId.TrainCoastalPatrol] = new CityBuildDefinition(
             CityBuildId.TrainCoastalPatrol,
             "Train Coastal Patrol",
-            "Fast riders to scout shorelines, rivers, and coastal waters.",
-            "Spawns a coastal patrol (land + navigable water; +1 move on shore/water)",
+            "Light coastal craft to scout shorelines, rivers, and near-shore waters.",
+            "Spawns a coastal patrol boat (near-shore naval; +1 move on coast/water)",
             CityBuildCategory.Unit,
             CityBuildTrack.Confessional,
             manuscriptCost: 2,
@@ -314,7 +314,7 @@ public static class CityBuildDatabase
             CityBuildTrack.Secular,
             productionCost: 28,
             uniquePerCity: true,
-            requiredTech: ConfessionTechId.JohannesKepler),
+            requiredTech: ConfessionTechId.GutenbergPress),
 
         [CityBuildId.BuildObservatory] = new CityBuildDefinition(
             CityBuildId.BuildObservatory,
@@ -437,7 +437,7 @@ public static class CityBuildDatabase
             "Confessional Library",
             "Archive the loci, confessions, and patristic sources for study.",
             "+2 production and +1 manuscript per turn",
-            CityBuildCategory.SecularBuilding,
+            CityBuildCategory.ConfessionalBuilding,
             CityBuildTrack.Secular,
             productionCost: 24,
             uniquePerCity: true,

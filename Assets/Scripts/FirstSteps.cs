@@ -74,7 +74,17 @@ public class FirstSteps : MonoBehaviour
 
     public const float MaxCrisisAdherenceFloor = 0f;
 
-    public float EffectiveMinAdherenceFloor => 0f;
+    public float EffectiveMinAdherenceFloor
+    {
+        get
+        {
+            if (ConfessionResearchManager.Instance == null)
+                return 0f;
+
+            var mods = ConfessionResearchManager.Instance.GetEffectiveModifiers();
+            return mods.MinAdherenceFloor + mods.MinAdherenceFloorBonus;
+        }
+    }
 
     static bool ConfessionalPopulationGrowthAllowed()
     {
@@ -425,9 +435,15 @@ public class FirstSteps : MonoBehaviour
             string potency = ConfessionResearchManager.Instance != null
                 ? ConfessionResearchManager.Instance.AdherencePotencyLabel()
                 : "";
+            string fameWitness = MatchNarrativeChronology.Instance != null &&
+                                 MatchNarrativeChronology.Instance.IsEventResolved("formula")
+                ? confessionalFame >= 100
+                    ? "  |  <color=#99AABB>witness near fame win</color>"
+                    : "  |  <color=#99AABB>Formula bound — fame path open</color>"
+                : "";
             manuscriptUIText.text = TmpTextSanitizer.Sanitize(
                 $"Scripture Manuscripts  {scriptureManuscripts}  |  Catechisms  {boundCatechisms}\n" +
-                $"Confessional Fame  {confessionalFame}{legacyHint}  |  " +
+                $"Confessional Fame  {confessionalFame}{legacyHint}{fameWitness}  |  " +
                 $"<color=#99AABB><b>Y</b> synod brief</color>\n" +
                 potency);
         }
@@ -638,11 +654,7 @@ public class FirstSteps : MonoBehaviour
             }
 
             if (CrisisManager.Instance == null || CrisisManager.Instance.ActiveCrisis == CrisisType.None)
-            {
-                PopulationSync.ApplyLossAcrossPlayerCities(Random.Range(1, 3));
                 CrisisManager.Instance?.HandleLegalismCrisis(hadGuard: false);
-                Debug.LogWarning($"Turn {turn}: legalistic preaching shrank population to {population}");
-            }
 
             return;
         }
@@ -659,14 +671,7 @@ public class FirstSteps : MonoBehaviour
             }
 
             if (CrisisManager.Instance == null || CrisisManager.Instance.ActiveCrisis == CrisisType.None)
-            {
-                int loss = Mathf.Max(1, PopulationSync.SumSynodPopulation() / 4);
-                PopulationSync.ApplyLossAcrossPlayerCities(loss);
-                confessionalAdherence = Mathf.Clamp(confessionalAdherence + 5f, EffectiveMinAdherenceFloor, 100f);
-                spiritualComfort = 40f;
                 CrisisManager.Instance?.HandleAntinomianCrisis(hadGuard: false);
-                Debug.LogError($"Turn {turn}: antinomian fracture! Remaining pop: {population}");
-            }
 
             return;
         }

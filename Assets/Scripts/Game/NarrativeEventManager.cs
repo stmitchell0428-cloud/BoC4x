@@ -51,8 +51,6 @@ public class NarrativeEventManager : MonoBehaviour, IChoiceCardPresenter
             return;
         if (IsAwaitingPlayerChoice)
             return;
-        if (ChoiceCardBlocking.BlocksOtherEvents())
-            return;
 
         int turn = TurnManager.Instance.TurnNumber;
         if (turn < MinTurn)
@@ -60,7 +58,18 @@ public class NarrativeEventManager : MonoBehaviour, IChoiceCardPresenter
 
         MatchNarrativeChronology.Instance?.AdvanceForTurn(turn);
         QueueDueEvents();
+        ChoiceCardQueue.Register(ChoiceCardQueue.OrderNarrative, TryPresentTurnStartCard);
+    }
+
+    bool TryPresentTurnStartCard()
+    {
+        if (ChoiceCardBlocking.BlocksOtherEvents())
+            return false;
+        if (pendingEventIds.Count == 0)
+            return false;
+
         TryPresentNext();
+        return IsAwaitingPlayerChoice;
     }
 
     void QueueDueEvents()

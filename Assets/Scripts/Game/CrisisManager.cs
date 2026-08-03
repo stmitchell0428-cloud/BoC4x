@@ -910,6 +910,11 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
         if (ActiveCrisis == CrisisType.None || Stage == CrisisStage.None)
             return "";
 
+        if ((ActiveCrisis == CrisisType.Legalism || ActiveCrisis == CrisisType.Antinomian) &&
+            SchismaticBlocRegistry.Instance != null &&
+            SchismaticBlocRegistry.Instance.ActiveCount >= SchismaticBlocRegistry.MaxBlocs)
+            return "";
+
         return ActiveCrisis switch
         {
             CrisisType.DoctrinalDrift =>

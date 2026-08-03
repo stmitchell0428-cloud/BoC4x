@@ -199,7 +199,8 @@ public class CityProduction : MonoBehaviour
             return CityBuildStatus.Locked;
 
         if (id == CityBuildId.TrainSiegeEngine &&
-            (city.Production == null || !city.Production.HasBuilding(CityBuildId.BuildArmory)))
+            (CityManager.Instance == null ||
+             !CityManager.Instance.ClusterHasBuilding(city, CityBuildId.BuildArmory)))
             return CityBuildStatus.Locked;
 
         if (id == CityBuildId.TrainCoastalPatrol && !CityManager.Instance.CityTouchesNavalCoast(city))
@@ -302,7 +303,7 @@ public class CityProduction : MonoBehaviour
 
     public bool TryStartAiBuild(CityBuildId id)
     {
-        if (city.Faction == FactionId.LutheranSynod)
+        if (city.Faction == FactionId.LutheranSynod && city.SynodPlayer == SynodPlayerId.Player1)
             return false;
 
         var def = CityBuildDatabase.Get(id);
@@ -560,11 +561,18 @@ public class CityProduction : MonoBehaviour
             Debug.Log($"{city.CityName}: Library produced 1 manuscript.");
         }
 
-        if (HasBuilding(CityBuildId.BuildHospital) && Random.value < 0.35f)
+        if (HasBuilding(CityBuildId.BuildHospital))
         {
             city.Population += 1;
             city.RefreshAppearance();
             Debug.Log($"{city.CityName}: Hospital tended the sick (+1 population).");
+        }
+
+        if (HasBuilding(CityBuildId.BuildGranary) && Random.value < 0.5f)
+        {
+            city.Population += 1;
+            city.RefreshAppearance();
+            Debug.Log($"{city.CityName}: Granary tithe fed the needy (+1 population).");
         }
     }
 

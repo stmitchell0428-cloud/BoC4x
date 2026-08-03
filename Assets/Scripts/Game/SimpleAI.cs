@@ -189,8 +189,14 @@ public class SimpleAI : MonoBehaviour
         bool wharfTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.CoastalWharves) == true;
         bool dockTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.NavalWarfare) == true;
         bool oceanTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.OpenOceanNavigation) == true;
-        bool slingTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.ShepherdsSling) == true;
+        bool archerTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.ShepherdsSling) == true;
+        bool horsemanTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.MartinChemnitz) == true;
+        bool missionHouseTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.MissionarySending) == true;
+        bool slingTech = archerTech;
         bool siegeTech = ConfessionResearchManager.Instance?.IsTechUnlocked(ConfessionTechId.JamesClerkMaxwell) == true;
+        int archers = countUnits(UnitType.Archer);
+        int horsemen = countUnits(UnitType.Horseman);
+        bool clusterArmory = CityManager.Instance?.ClusterHasBuilding(aiCity, CityBuildId.BuildArmory) == true;
 
         if (coastal && wharfTech && !aiCity.Production.HasBuilding(CityBuildId.BuildWharf) &&
             TryAiStartAndFull(aiCity, CityBuildId.BuildWharf))
@@ -234,12 +240,24 @@ public class SimpleAI : MonoBehaviour
             TryAiStartAndFull(aiCity, CityBuildId.TrainMissionary))
             return;
 
-        if (preferSiege && siegeTech &&
-            aiCity.Production.HasBuilding(CityBuildId.BuildArmory) && siegeEngines < 1 &&
+        if (preferMissionaries && missionHouseTech && !aiCity.Production.HasBuilding(CityBuildId.BuildMissionHouse) &&
+            HamletSpecialtyDatabase.IsBuildAllowed(aiCity, CityBuildId.BuildMissionHouse) &&
+            TryAiStartAndFull(aiCity, CityBuildId.BuildMissionHouse))
+            return;
+
+        if (preferRanged && archerTech && archers < 2 &&
+            TryAiStartAndFull(aiCity, CityBuildId.TrainArcher))
+            return;
+
+        if (preferSoldiers && horsemanTech && horsemen < 1 &&
+            TryAiStartAndFull(aiCity, CityBuildId.TrainHorseman))
+            return;
+
+        if (preferSiege && siegeTech && clusterArmory && siegeEngines < 1 &&
             TryAiStartAndFull(aiCity, CityBuildId.TrainSiegeEngine))
             return;
 
-        if (preferSiege && !aiCity.Production.HasBuilding(CityBuildId.BuildArmory) &&
+        if (preferSiege && !clusterArmory &&
             HamletSpecialtyDatabase.IsBuildAllowed(aiCity, CityBuildId.BuildArmory) &&
             TryAiStartAndFull(aiCity, CityBuildId.BuildArmory))
             return;

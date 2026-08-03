@@ -2,6 +2,7 @@
 public class ConfessionModifiers
 {
     public int CoastalNavalMovementBonus = 0;
+    public int CoastalNavalDefenseBonus = 0;
     public int ExplorerSightBonus = 0;
     public float AdherenceDecayMultiplier = 1f;
     public float SettlementAdherenceDecayMultiplier = 1f;
@@ -26,6 +27,7 @@ public class ConfessionModifiers
     public float SchismaticDamageTakenMultiplier = 1f;
     public float PreachManuscriptRefundChance = 0f;
     public float MinAdherenceFloor = 0f;
+    public float MinAdherenceFloorBonus = 0f;
     public bool AntinomianGuard = false;
     public bool LegalismGuard = false;
 
@@ -48,6 +50,7 @@ public class ConfessionModifiers
         MissionaryAttackBonus += other.MissionaryAttackBonus;
         AllUnitsMovementBonus += other.AllUnitsMovementBonus;
         CoastalNavalMovementBonus += other.CoastalNavalMovementBonus;
+        CoastalNavalDefenseBonus += other.CoastalNavalDefenseBonus;
         ExplorerSightBonus += other.ExplorerSightBonus;
         TerrainMovePenaltyReduction += other.TerrainMovePenaltyReduction;
         LawGospelDriftMultiplier *= other.LawGospelDriftMultiplier;
@@ -56,6 +59,7 @@ public class ConfessionModifiers
         SchismaticDamageTakenMultiplier *= other.SchismaticDamageTakenMultiplier;
         PreachManuscriptRefundChance += other.PreachManuscriptRefundChance;
         MinAdherenceFloor = System.Math.Max(MinAdherenceFloor, other.MinAdherenceFloor);
+        MinAdherenceFloorBonus += other.MinAdherenceFloorBonus;
         AntinomianGuard |= other.AntinomianGuard;
         LegalismGuard |= other.LegalismGuard;
     }
@@ -85,6 +89,7 @@ public class ConfessionModifiers
             MissionaryAttackBonus = ScaleInt(source.MissionaryAttackBonus, potency),
             AllUnitsMovementBonus = ScaleInt(source.AllUnitsMovementBonus, potency),
             CoastalNavalMovementBonus = ScaleInt(source.CoastalNavalMovementBonus, potency),
+            CoastalNavalDefenseBonus = ScaleInt(source.CoastalNavalDefenseBonus, potency),
             ExplorerSightBonus = ScaleInt(source.ExplorerSightBonus, potency),
             TerrainMovePenaltyReduction = ScaleInt(source.TerrainMovePenaltyReduction, potency),
             LawGospelDriftMultiplier = LerpMultiplier(1f, source.LawGospelDriftMultiplier, potency),
@@ -93,6 +98,7 @@ public class ConfessionModifiers
             SchismaticDamageTakenMultiplier = LerpMultiplier(1f, source.SchismaticDamageTakenMultiplier, potency),
             PreachManuscriptRefundChance = source.PreachManuscriptRefundChance * potency,
             MinAdherenceFloor = source.MinAdherenceFloor * potency,
+            MinAdherenceFloorBonus = source.MinAdherenceFloorBonus * potency,
             AntinomianGuard = source.AntinomianGuard && potency >= 0.6f,
             LegalismGuard = source.LegalismGuard && potency >= 0.6f
         };
@@ -134,20 +140,21 @@ public class ConfessionModifiers
         ConfessionTechId.WaltherPastoralTheology => new ConfessionModifiers { PreachSpiritualComfortBonus = 8f },
         ConfessionTechId.FrancisPieper => new ConfessionModifiers { AdherenceDecayMultiplier = 0.9f },
         ConfessionTechId.CoastalWharves => new ConfessionModifiers { SettlementManuscriptBonus = 1 },
-        ConfessionTechId.NavalWarfare => new ConfessionModifiers { CoastalNavalMovementBonus = 1 },
-        ConfessionTechId.OpenOceanNavigation => new ConfessionModifiers { CoastalNavalMovementBonus = 1, ExplorerSightBonus = 1 },
+        ConfessionTechId.NavalWarfare => new ConfessionModifiers { CoastalNavalMovementBonus = 1, CoastalNavalDefenseBonus = 1 },
+        ConfessionTechId.OpenOceanNavigation => new ConfessionModifiers { CoastalNavalMovementBonus = 1, CoastalNavalDefenseBonus = 1, ExplorerSightBonus = 1 },
         ConfessionTechId.MissionarySending => new ConfessionModifiers { MissionaryMovementBonus = 1 },
         ConfessionTechId.JohannSebastianBach => new ConfessionModifiers { SpiritualComfortTurnBonus = 8f, PreachAdherenceBonus = 5f },
         ConfessionTechId.OttoVonGuericke => new ConfessionModifiers { SoldierDefenseBonus = 2, SiegePressureBonus = 2 },
         ConfessionTechId.MichaelFaraday => new ConfessionModifiers { AdherenceDecayMultiplier = 0.9f },
         ConfessionTechId.HermannSasse => new ConfessionModifiers { SchismaticDamageTakenMultiplier = 0.75f },
         ConfessionTechId.BoGiertz => new ConfessionModifiers { MissionaryAttackBonus = 2 },
-        ConfessionTechId.RobertPreus => new ConfessionModifiers { PopulationGrowthBonus = 1 },
+        ConfessionTechId.RobertPreus => new ConfessionModifiers { PopulationGrowthBonus = 1, MinAdherenceFloor = 40f },
         ConfessionTechId.SynodicalGovernance => new ConfessionModifiers { PopulationGrowthBonus = 2 },
         ConfessionTechId.EdRiojas => new ConfessionModifiers
         {
             PopulationGrowthBonus = 1,
-            SpiritualComfortTurnBonus = 1f
+            SpiritualComfortTurnBonus = 1f,
+            MinAdherenceFloorBonus = 5f
         },
         ConfessionTechId.JamesClerkMaxwell => new ConfessionModifiers { AllUnitsMovementBonus = 1, SoldierAttackBonus = 1, SiegePressureBonus = 1 },
         ConfessionTechId.LouisPasteur => new ConfessionModifiers { SettlementPopulationBonus = 1, PopulationGrowthBonus = 1 },
@@ -156,7 +163,7 @@ public class ConfessionModifiers
         ConfessionTechId.TwoKingdoms => new ConfessionModifiers { SoldierDefenseBonus = 2, LegalismDriftMultiplier = 0.88f },
         ConfessionTechId.LargeCatechism => new ConfessionModifiers { PreachAdherenceBonus = 5f, PreachManuscriptRefundChance = 0.15f },
         ConfessionTechId.GutenbergPress => new ConfessionModifiers { SettlementManuscriptBonus = 1, WildernessManuscriptBonus = 1 },
-        ConfessionTechId.DavidChytraeus => new ConfessionModifiers { SoldierDefenseBonus = 1 },
+        ConfessionTechId.DavidChytraeus => new ConfessionModifiers { SoldierDefenseBonus = 1, MinAdherenceFloorBonus = 12f },
         ConfessionTechId.NikolausSelnecker => new ConfessionModifiers { SpiritualComfortTurnBonus = 4f, CantorComfortBonus = 6f },
         ConfessionTechId.WilhelmLoehe => new ConfessionModifiers { MissionaryMovementBonus = 1, MissionaryAttackBonus = 1 },
         ConfessionTechId.CTCRReports => new ConfessionModifiers { AdherenceDecayMultiplier = 0.85f, MinAdherenceFloor = 50f },

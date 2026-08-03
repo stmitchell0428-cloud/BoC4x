@@ -700,9 +700,10 @@ public class CityScreenPanel : MonoBehaviour
                     : "Needs Mission House in cluster";
         }
         else if (status == CityBuildStatus.Locked && def.Id == CityBuildId.TrainSiegeEngine &&
-                 activeCity?.Production?.HasBuilding(CityBuildId.BuildArmory) != true)
+                 activeCity != null && CityManager.Instance != null &&
+                 !CityManager.Instance.ClusterHasBuilding(activeCity, CityBuildId.BuildArmory))
         {
-            costLine = "Needs Armory";
+            costLine = "Needs Armory in cluster";
         }
         else if (status == CityBuildStatus.Locked &&
                  (def.Id == CityBuildId.BuildWharf || def.Id == CityBuildId.BuildFishingPost ||
@@ -974,8 +975,9 @@ public class CityScreenPanel : MonoBehaviour
                         ? "<color=#888888>Train frontier settlers only while you have a single independent city.</color>"
                         : "<color=#888888>Build a Mission House anywhere in this city cluster first.</color>",
             _ when id == CityBuildId.TrainSiegeEngine &&
-                   activeCity?.Production?.HasBuilding(CityBuildId.BuildArmory) != true
-                => "<color=#888888>Requires an Armory in this city.</color>",
+                   activeCity != null && CityManager.Instance != null &&
+                   !CityManager.Instance.ClusterHasBuilding(activeCity, CityBuildId.BuildArmory)
+                => "<color=#888888>Requires an Armory in this city cluster.</color>",
             _ when (id == CityBuildId.BuildWharf || id == CityBuildId.BuildFishingPost ||
                      id == CityBuildId.BuildDock || id == CityBuildId.TrainCoastalPatrol ||
                      id == CityBuildId.TrainCoastalExplorer || id == CityBuildId.TrainCoastalGalley ||

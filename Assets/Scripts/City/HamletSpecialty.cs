@@ -52,13 +52,15 @@ public static class HamletSpecialtyDatabase
 
     public static bool IsDistrictExclusive(CityBuildId id) => districtExclusive.Contains(id);
 
+    static readonly HashSet<CityBuildId> capitalMetropolitan = BuildCapitalMetropolitan();
+
     public static bool IsBuildAllowed(City city, CityBuildId id)
     {
         if (city == null)
             return false;
 
         if (!city.IsHamlet)
-            return !IsDistrictExclusive(id);
+            return capitalMetropolitan.Contains(id);
 
         if (city.Specialty == HamletSpecialty.None)
             return false;
@@ -187,6 +189,7 @@ public static class HamletSpecialtyDatabase
             new[]
             {
                 CityBuildId.TrainMissionary,
+                CityBuildId.BuildSeminary,
                 CityBuildId.BuildScriptorium,
                 CityBuildId.BuildLibrary,
                 CityBuildId.BuildUniversity,
@@ -196,4 +199,27 @@ public static class HamletSpecialtyDatabase
             },
             new[] { UnitUpgradeId.MissionaryToPastor })
     };
+
+    static HashSet<CityBuildId> BuildCapitalMetropolitan()
+    {
+        return new HashSet<CityBuildId>
+        {
+            CityBuildId.BuildChapel,
+            CityBuildId.BuildCathedral,
+            CityBuildId.BuildSeminary,
+            CityBuildId.BuildScriptorium,
+            CityBuildId.BuildParishSchool,
+            CityBuildId.BindCatechism,
+            CityBuildId.BuildFortification,
+            CityBuildId.BuildGranary,
+            CityBuildId.BuildHospital,
+            CityBuildId.BuildOrphanage,
+            CityBuildId.BuildWharf,
+            CityBuildId.BuildFishingPost,
+            CityBuildId.TrainMissionary,
+            CityBuildId.TrainSoldier,
+            CityBuildId.TrainSlinger,
+            CityBuildId.TrainScout
+        };
+    }
 }

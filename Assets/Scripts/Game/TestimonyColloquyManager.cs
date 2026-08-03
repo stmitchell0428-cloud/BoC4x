@@ -56,7 +56,16 @@ public class TestimonyColloquyManager : MonoBehaviour, IChoiceCardPresenter
         if (IsAwaitingPlayerChoice)
             return;
 
+        ChoiceCardQueue.Register(ChoiceCardQueue.OrderTestimony, TryPresentTurnStartColloquy);
+    }
+
+    bool TryPresentTurnStartColloquy()
+    {
+        if (BlocksOtherEvents())
+            return false;
+
         TryPresentPending();
+        return IsAwaitingPlayerChoice;
     }
 
     public void OnTechUnlocked(ConfessionTechId id)

@@ -13,6 +13,12 @@ public static class ChoiceCardBlocking
             return true;
         if (TestimonyColloquyManager.Instance != null && TestimonyColloquyManager.Instance.IsAwaitingPlayerChoice)
             return true;
+        if (SynodicalEmphasisManager.Instance != null && SynodicalEmphasisManager.Instance.IsAwaitingPlayerChoice)
+            return true;
+        if (Tier2EmphasisManager.Instance != null && Tier2EmphasisManager.Instance.IsAwaitingPlayerChoice)
+            return true;
+        if (IdentityPickerPanel.Instance != null && IdentityPickerPanel.Instance.IsVisible)
+            return true;
         if (CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible)
             return true;
         return false;

@@ -12,7 +12,7 @@
 
 - [x] Narrative chronology Tier A shipped
 - [x] Naval split, testimony colloquies, church-year fixes shipped
-- [ ] Run this tree
+- [ ] Run this tree — **guided pass in progress** → [`GUIDED-AUDIT-PASS.md`](GUIDED-AUDIT-PASS.md) · **Virtue track V** (Option C, partially decided)
 
 ---
 
@@ -288,12 +288,15 @@ Narrative day +18/turn; church civil date +28/turn after Ascension
 Fame 120 / adherence streak / doctrine trio finish at different turns; no capstone
 │
 ├─ A) Formula narrative grants fame toward 120 + dashboard "witness" cue (Recommended)
+│     → Partially superseded by Virtue V4: soft profile, no witness-fame gate
 ├─ B) Lower fame threshold to 100
 ├─ C) Doctrine trio triggers optional epilogue card only
 └─ D) Leave as-is (sandbox wins)
 ```
 
-**Files:** `NarrativeEventDatabase.cs`, `MatchController.cs`, `GameHUD.cs`
+**Virtue track V4 (decided):** fame 120 only; virtue tags + annual ticks are flavor/stats, legacy variants optional (V6).
+
+**Files:** `NarrativeEventDatabase.cs`, `MatchController.cs`, `GameHUD.cs`, virtue dashboard (V)
 
 ---
 
@@ -415,14 +418,16 @@ Shows "Crisis: antinomian schism" when 3 blocs already full
 ### 27. Expand narrative spine `[P3]`
 
 ```
-Tier A = 10 events; Tier B = ~25 + variable quiet-turn advance
+Tier A = 10 events; Tier B = virtue + observance loop
 │
-├─ A) Add prophets, Pentecost, more martyr unlocks before Ascension
-├─ B) Add post-Formula Reformation figures (Chemnitz, Gerhard as narrative beats)
+├─ A) Virtue track V (Option C) — tags, first/annual feasts (Recommended — partially decided)
+├─ B) Add post-Formula narrative beats only (Chemnitz, Gerhard cards)
 └─ C) Ship Tier A only until playtest count ≥ 3 full matches
 ```
 
-**Files:** `NarrativeEventDatabase.cs`, `MatchNarrativeChronology.cs`
+**Virtue V (decided):** Option C framework, five tags, first-then-annual feasts, same tags on narrative. See **V** section.
+
+**Files:** `NarrativeEventDatabase.cs`, `MatchNarrativeChronology.cs`, virtue/observance files (V)
 
 ---
 
@@ -439,6 +444,54 @@ LSB fixed dates only; Easter season approximated
 
 ---
 
+## V — Virtue & observance (Option C, Aug 2026)
+
+**Merged from design session.** Full walkthrough in [`GUIDED-AUDIT-PASS.md`](GUIDED-AUDIT-PASS.md#virtue--observance-v--option-c). Implement **after P0–P1** unless playtest forces earlier.
+
+### V0. Framework `[DECIDED]`
+
+```
+Option C: grouped virtue tags + Law/Gospel primary axis
+Win: fame 120 unchanged; soft bonuses only — no affinity-locked win path
+```
+
+### V1. Five tags `[DECIDED]`
+
+First Table · Honor & Mercy · Fidelity & Truth · Neighbor & Contentment · Martyrial Witness  
+Same tags on narrative events + church-year feasts/martyrs.
+
+### V2. First encounter → annual commemoration `[DECIDED]`
+
+```
+First calendar hit → full choice card (Law/Gospel + tags)
+Later years → annual tick B (passive stat from first choice; no card)
+Martyrs and feasts share pipeline
+```
+
+**Gap vs code today:** feasts spawn once per match; no annual return tick yet.
+
+### V5. Annual tick strength `[OPEN]`
+
+```
+├─ A) Minimal (+1 comfort or adherence)
+├─ B) Moderate — tick follows first-choice lean (Recommended)
+└─ C) Dashboard flavor only
+```
+
+### V6. Legacy trait variants `[OPEN]`
+
+```
+├─ A) Dominant tag picks variant at fame 25/55 (Recommended)
+├─ B) Display-only until playtest
+└─ C) New virtue slot type
+```
+
+**Files:** `VirtueProfile` (new), `FeastObservanceRegistry` (new), `LiturgicalEventManager.cs`, `NarrativeEventManager.cs`, `SynodLegacyManager.cs`, `FirstSteps.cs`
+
+**Overlaps:** #18 victory pacing (V4 decided: soft) · #27 narrative Tier B (virtue system is the expansion)
+
+---
+
 ## Recommended traversal order
 
 ```
@@ -447,6 +500,7 @@ P1: 2-follow-up → 4 → 5 → 6 → 7 → 10 → 13 → 14 → 15 → 16
 P1: 8 → 9 → 11 → 12
 P2: 17 → 18 → 19 → 20–24 as time allows
 P3: 25 → 26 → 27 → 28
+V:  (after P1) V5 → V6 → implement V0–V4
 ```
 
 **Estimated passes:** 3–4 focused sessions (P0 one session, P1 two sessions, P2/P3 optional).

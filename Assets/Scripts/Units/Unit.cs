@@ -574,6 +574,8 @@ public class Unit : MonoBehaviour
         {
             UnitType.Soldier => mods.SoldierDefenseBonus,
             UnitType.Defender => mods.SoldierDefenseBonus + 2,
+            UnitType.CoastalGalley or UnitType.DeepSeaShip =>
+                mods.SoldierDefenseBonus + mods.CoastalNavalDefenseBonus,
             _ => 0
         };
         bonusMovement = (Type == UnitType.Missionary ? mods.MissionaryMovementBonus : 0) +

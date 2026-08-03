@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 /// <summary>Runs player end-turn phases automatically: growth -> migration -> production -> confessional.</summary>
@@ -41,6 +42,14 @@ public class EndTurnPhaseController : MonoBehaviour
     {
         if (TurnManager.Instance != null && TurnManager.Instance.IsPlayerTurn)
             playerEndPhasesRanThisTurn = false;
+
+        StartCoroutine(ProcessChoiceCardsNextFrame());
+    }
+
+    static IEnumerator ProcessChoiceCardsNextFrame()
+    {
+        yield return null;
+        ChoiceCardQueue.ProcessTurnStart();
     }
 
     public bool TryBeginPhasedEndTurn()
@@ -159,6 +168,12 @@ public class EndTurnPhaseController : MonoBehaviour
         if (Tier2EmphasisManager.Instance != null && Tier2EmphasisManager.Instance.IsAwaitingPlayerChoice)
         {
             reason = "<color=#88CCFF><b>Confessions emphasis</b>  -  choose your path (T to reopen)</color>";
+            return true;
+        }
+
+        if (IdentityPickerPanel.Instance != null && IdentityPickerPanel.Instance.IsVisible)
+        {
+            reason = "<color=#DDCC88><b>Confessional identity</b>  -  choose the synod's witness</color>";
             return true;
         }
 

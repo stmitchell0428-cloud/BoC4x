@@ -89,7 +89,7 @@ public class MatchLobbyPanel : MonoBehaviour
         CreateLabel(box.transform, "Title", "Book of Concord  -  New Match",
             new Vector2(0f, -16f), new Vector2(580f, 36f), 26f, FontStyles.Bold, TextAlignmentOptions.Center);
         CreateLabel(box.transform, "Subtitle",
-            "Configure the map and schism pool before the synod sets out.",
+            "Configure the map, AI synod neighbors, and internal schism pool before the synod sets out.",
             new Vector2(0f, -52f), new Vector2(580f, 48f), 15f, FontStyles.Normal, TextAlignmentOptions.Center);
         CreateLabel(box.transform, "Hint",
             "Use the  <  and  >  buttons beside each row to change settings.",

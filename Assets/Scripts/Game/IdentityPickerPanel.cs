@@ -7,6 +7,8 @@ public class IdentityPickerPanel : MonoBehaviour
 {
     public static IdentityPickerPanel Instance { get; private set; }
 
+    public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
+
     GameObject panelRoot;
 
     void Awake()

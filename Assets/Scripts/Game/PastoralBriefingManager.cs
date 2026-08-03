@@ -63,7 +63,13 @@ public class PastoralBriefingManager : MonoBehaviour, IChoiceCardPresenter
         if (ChoiceCardBlocking.BlocksOtherEvents())
             return;
 
+        ChoiceCardQueue.Register(ChoiceCardQueue.OrderPastoral, TryOfferBriefingCard);
+    }
+
+    bool TryOfferBriefingCard()
+    {
         TryOfferBriefing();
+        return IsAwaitingPlayerChoice;
     }
 
     public void OnChoiceCardDismissed()

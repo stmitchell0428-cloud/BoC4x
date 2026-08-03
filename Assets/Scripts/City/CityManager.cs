@@ -700,6 +700,23 @@ public class CityManager : MonoBehaviour
         return false;
     }
 
+    public bool ClusterHasBuilding(City city, CityBuildId id)
+    {
+        if (city == null)
+            return false;
+
+        var root = ClergyRoster.GetControllingRoot(city);
+        foreach (var member in GetSynodPlayerCities(city.SynodPlayer))
+        {
+            if (ClergyRoster.GetControllingRoot(member) != root)
+                continue;
+            if (member.Production != null && member.Production.HasBuilding(id))
+                return true;
+        }
+
+        return false;
+    }
+
     public bool CityTouchesNavalCoast(City city)
     {
         if (city == null || HexGridMap.Instance == null)

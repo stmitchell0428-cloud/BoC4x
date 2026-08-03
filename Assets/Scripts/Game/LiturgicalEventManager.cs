@@ -64,9 +64,7 @@ public class LiturgicalEventManager : MonoBehaviour, IChoiceCardPresenter
             return;
 
         RegisterSpawnsForTurn(turn);
-
-        if (TryPresentDecisionForSpawnedFeast(turn))
-            return;
+        ChoiceCardQueue.Register(ChoiceCardQueue.OrderLiturgical, () => TryPresentDecisionForSpawnedFeast(turn));
     }
 
     /// <summary>True once this feast has appeared on the dashboard calendar this match.</summary>
