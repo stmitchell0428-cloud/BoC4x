@@ -12,6 +12,8 @@
 **Lobby:** solo first (smoke) · then **2 players** for diplomacy/truce · Archipelago if testing naval  
 **No save/load** — fresh match each Play; lobby settings are not persisted between sessions.
 
+**Keep local ↔ GitHub aligned:** see **`SYNC.md`** (push local changes; pull agent/PR changes).
+
 1. Open **`Assets/Scenes/SampleScene.unity`** → wait for recompile.
 2. **Test Runner first:** EditMode → **BoC4x.Editor.Tests** → Run All.
 3. Play — work **`PLAYTEST-AUDIT-BATCH.md`** priority list **in order**. Click checkboxes as you go.
