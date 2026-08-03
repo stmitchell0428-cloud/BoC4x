@@ -41,6 +41,8 @@ public class FirstSteps : MonoBehaviour
     }
 
     public float ConfessionalAdherence => confessionalAdherence;
+    public float CivicRestraint => civicRestraint;
+    public float SpiritualComfort => spiritualComfort;
     public int ConfessionalFame => confessionalFame;
     public int BoundCatechisms => boundCatechisms;
 
@@ -70,6 +72,11 @@ public class FirstSteps : MonoBehaviour
     public void AdjustSpiritualComfort(float delta)
     {
         spiritualComfort = Mathf.Clamp(spiritualComfort + delta, 0f, 100f);
+    }
+
+    public void AdjustCivicRestraint(float delta)
+    {
+        civicRestraint = Mathf.Clamp(civicRestraint + delta, 0f, 100f);
     }
 
     public const float MaxCrisisAdherenceFloor = 0f;
@@ -376,7 +383,9 @@ public class FirstSteps : MonoBehaviour
         string factionLine = TurnManager.Instance
             ? $"Lutheran Synod  |  Turn {turn}"
             : $"Turn {turn}";
-        string churchYearLine = ChurchYearFlavor.FormatDashboardLine();
+        string churchYearLine = NomadicFoundingGate.IsNomadicPhase
+            ? SalvationHistoryFlavor.FormatDashboardLine()
+            : ChurchYearFlavor.FormatDashboardLine();
 
         if (queueReviewUIText != null)
             queueReviewUIText.text = TmpTextSanitizer.Sanitize(ActionQueueHud.FormatDashboardBlock());
