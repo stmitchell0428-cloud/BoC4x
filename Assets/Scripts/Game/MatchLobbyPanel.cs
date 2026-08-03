@@ -92,7 +92,7 @@ public class MatchLobbyPanel : MonoBehaviour
             "Configure the map and schism pool before the synod sets out.",
             new Vector2(0f, -52f), new Vector2(580f, 48f), 15f, FontStyles.Normal, TextAlignmentOptions.Center);
         CreateLabel(box.transform, "Hint",
-            "Use the  <  and  >  buttons beside each row to change settings.",
+            "Use the  <  and  >  buttons beside each row to change settings. Solo (1 player) is the default.",
             new Vector2(0f, -88f), new Vector2(580f, 24f), 13f, FontStyles.Italic, TextAlignmentOptions.Center)
             .color = new Color(0.72f, 0.76f, 0.82f);
 

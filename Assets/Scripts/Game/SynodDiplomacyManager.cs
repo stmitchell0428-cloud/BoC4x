@@ -131,9 +131,36 @@ public class SynodDiplomacyManager : MonoBehaviour
         }
 
         if (truces == 0)
-            return $"<color=#FFAA88>Diplomacy</color>  at war with {activeRivals.Count} rival synod(s)  |  <color=#AABBCC>D</color> panel";
+            return $"<color=#FFAA88>Diplomacy</color>  at war with {activeRivals.Count} rival synod(s)  |  <color=#AABBCC>D</color> or <color=#AABBCC>Y</color> brief";
 
-        return $"<color=#88CCAA>Diplomacy</color>  {truces} truce(s), {activeRivals.Count - truces} at war  |  <color=#AABBCC>D</color> panel";
+        return $"<color=#88CCAA>Diplomacy</color>  {truces} truce(s), {activeRivals.Count - truces} at war  |  <color=#AABBCC>D</color> or <color=#AABBCC>Y</color> brief";
+    }
+
+    public string FormatBriefRivalSection()
+    {
+        if (activeRivals.Count == 0)
+            return "";
+
+        var lines = new List<string>();
+        foreach (var rival in activeRivals)
+        {
+            string status = FormatStatusLabel(rival);
+            string truceHint = IsTruceActive(rival)
+                ? ""
+                : $"  <size=12><color=#AABBCC>Colloquy truce: {TruceManuscriptCost} mss / {TruceDurationTurns} turns (Y brief or D panel)</color></size>";
+            lines.Add($"<size=13><b>{SynodPlayerDatabase.DisplayName(rival)}</b>  -  {status}{truceHint}</size>");
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    public bool TryProposeTruceFromBrief(SynodPlayerId target)
+    {
+        if (!TryProposeTruce(target))
+            return false;
+
+        SynodBriefPanel.Instance?.RefreshContent();
+        return true;
     }
 
     public string FormatStatusLabel(SynodPlayerId rivalId)

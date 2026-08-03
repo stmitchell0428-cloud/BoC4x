@@ -115,31 +115,52 @@ public class TurnPhaseBanner : MonoBehaviour
         }
 
         string progress = MatchController.Instance?.VictoryProgressLabel() ?? "";
+        string populationWarning = MatchController.Instance?.FormatPopulationWarning() ?? "";
         string artEra = ArtEraVisualController.FormatEraLabel();
         string turnBit = $"Turn {TurnManager.Instance.TurnNumber}";
         string watch = ChurchYearFlavor.FormatWatchBannerLine();
+        string modalStack = ModalStackHelper.FormatBannerSuffix();
 
         if (!string.IsNullOrEmpty(extra))
         {
             bannerText.text = TmpTextSanitizer.Sanitize(
                 string.IsNullOrEmpty(watch)
-                    ? $"{phase}  |  {turnBit}\n{extra}"
-                    : $"{phase}  |  {turnBit}  |  {watch}\n{extra}");
+                    ? AppendModalStack($"{phase}  |  {turnBit}\n{extra}", modalStack)
+                    : AppendModalStack($"{phase}  |  {turnBit}  |  {watch}\n{extra}", modalStack));
+        }
+        else if (!string.IsNullOrEmpty(populationWarning))
+        {
+            bannerText.text = TmpTextSanitizer.Sanitize(
+                AppendModalStack($"{phase}  |  {turnBit}\n{populationWarning}", modalStack));
         }
         else if (!string.IsNullOrEmpty(watch))
         {
             bannerText.text = TmpTextSanitizer.Sanitize(
-                !string.IsNullOrEmpty(progress)
-                    ? $"{phase}  |  {turnBit}  |  {watch}\n{progress}  |  {artEra}"
-                    : $"{phase}  |  {turnBit}  |  {watch}  |  {artEra}");
+                AppendModalStack(
+                    !string.IsNullOrEmpty(progress)
+                        ? $"{phase}  |  {turnBit}  |  {watch}\n{progress}  |  {artEra}"
+                        : $"{phase}  |  {turnBit}  |  {watch}  |  {artEra}",
+                    modalStack));
         }
         else if (!string.IsNullOrEmpty(progress))
         {
-            bannerText.text = TmpTextSanitizer.Sanitize($"{phase}  |  {turnBit}  |  {progress}  |  {artEra}");
+            bannerText.text = TmpTextSanitizer.Sanitize(
+                AppendModalStack($"{phase}  |  {turnBit}  |  {progress}  |  {artEra}", modalStack));
         }
         else
         {
-            bannerText.text = TmpTextSanitizer.Sanitize($"{phase}  |  {turnBit}  |  {artEra}");
+            bannerText.text = TmpTextSanitizer.Sanitize(
+                AppendModalStack($"{phase}  |  {turnBit}  |  {artEra}", modalStack));
         }
+    }
+
+    static string AppendModalStack(string text, string modalStack)
+    {
+        if (string.IsNullOrEmpty(modalStack))
+            return text;
+
+        return text.Contains('\n')
+            ? $"{text}\n{modalStack}"
+            : $"{text}  |  {modalStack}";
     }
 }

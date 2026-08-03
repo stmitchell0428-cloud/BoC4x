@@ -106,9 +106,11 @@ public class DistrictOfferPanel : MonoBehaviour
             $"{offer.FlavorReason}\n\n" +
             $"<b>{offer.Parent.CityName}</b>  -  new district on {terrain} hex {offer.Hex}\n" +
             $"Suggested specialty: <color=#DDEE88>{spec}</color>\n" +
+            $"<size=12><color=#99AABB>Appeal score {offer.AppealScore:F0}. Press <b>G</b> for full appeal map.</color></size>\n" +
             "<size=12><color=#99AABB>Accept to found the district (you may confirm or change specialty).</color></size>");
 
         panelRoot.SetActive(true);
+        AppealOverlayController.Instance?.FlashDistrictSite(offer.Hex, offer.AppealScore);
         TurnPhaseBanner.Instance?.Refresh("<color=#AADDFF><b>District offer</b></color>  -  accept, defer, or decline");
         CameraFollow.Instance?.PanToHex(offer.Hex, 6f);
     }

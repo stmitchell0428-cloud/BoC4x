@@ -13,6 +13,8 @@ public class ClergyRosterPanel : MonoBehaviour
     TextMeshProUGUI bodyText;
     City viewedRoot;
 
+    public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
+
     void Awake()
     {
         Instance = this;

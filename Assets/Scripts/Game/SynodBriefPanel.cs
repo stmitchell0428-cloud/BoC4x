@@ -10,6 +10,7 @@ public class SynodBriefPanel : MonoBehaviour
 
     GameObject panelRoot;
     TextMeshProUGUI bodyText;
+    Transform diplomacyActionsRoot;
 
     public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
 
@@ -128,6 +129,24 @@ public class SynodBriefPanel : MonoBehaviour
         scroll.content = contentRect;
         scroll.viewport = viewportRect;
 
+        var diplomacyGo = new GameObject("DiplomacyActions");
+        diplomacyGo.transform.SetParent(box.transform, false);
+        diplomacyActionsRoot = diplomacyGo.transform;
+        var diplomacyRect = diplomacyGo.AddComponent<RectTransform>();
+        diplomacyRect.anchorMin = new Vector2(0f, 0f);
+        diplomacyRect.anchorMax = new Vector2(1f, 0f);
+        diplomacyRect.pivot = new Vector2(0.5f, 0f);
+        diplomacyRect.sizeDelta = new Vector2(-40f, 34f);
+        diplomacyRect.anchoredPosition = new Vector2(0f, 52f);
+
+        var diplomacyLayout = diplomacyGo.AddComponent<HorizontalLayoutGroup>();
+        diplomacyLayout.spacing = 8f;
+        diplomacyLayout.childAlignment = TextAnchor.MiddleCenter;
+        diplomacyLayout.childControlWidth = false;
+        diplomacyLayout.childControlHeight = true;
+        diplomacyLayout.childForceExpandWidth = false;
+        diplomacyLayout.childForceExpandHeight = true;
+
         CreateButton(box.transform, "Close (Y)", new Vector2(0f, 16f), Hide);
     }
 
@@ -204,6 +223,15 @@ public class SynodBriefPanel : MonoBehaviour
         if (panelRoot == null || bodyText == null)
             return;
 
+        RefreshContent();
+        panelRoot.SetActive(true);
+    }
+
+    public void RefreshContent()
+    {
+        if (bodyText == null)
+            return;
+
         bodyText.text = TmpTextSanitizer.Sanitize(FirstSteps.Instance?.FormatSynodBriefContent() ?? "Synod brief unavailable.");
         bodyText.ForceMeshUpdate();
 
@@ -215,7 +243,58 @@ public class SynodBriefPanel : MonoBehaviour
             bodyText.rectTransform.sizeDelta = new Vector2(-8f, height);
         }
 
-        panelRoot.SetActive(true);
+        RebuildDiplomacyActions();
+    }
+
+    void RebuildDiplomacyActions()
+    {
+        if (diplomacyActionsRoot == null)
+            return;
+
+        for (int i = diplomacyActionsRoot.childCount - 1; i >= 0; i--)
+            Destroy(diplomacyActionsRoot.GetChild(i).gameObject);
+
+        var diplomacy = SynodDiplomacyManager.Instance;
+        if (diplomacy == null || !diplomacy.HasRivals)
+            return;
+
+        foreach (var rival in diplomacy.ActiveRivals)
+        {
+            if (diplomacy.IsTruceActive(rival))
+                continue;
+
+            var rivalId = rival;
+            CreateDiplomacyButton(
+                $"Colloquy truce — {SynodPlayerDatabase.DisplayName(rivalId)}",
+                () => diplomacy.TryProposeTruceFromBrief(rivalId));
+        }
+    }
+
+    void CreateDiplomacyButton(string label, UnityEngine.Events.UnityAction onClick)
+    {
+        var btnGo = new GameObject(label);
+        btnGo.transform.SetParent(diplomacyActionsRoot, false);
+        btnGo.AddComponent<LayoutElement>().preferredWidth = 220f;
+
+        var img = btnGo.AddComponent<Image>();
+        img.color = new Color(0.16f, 0.28f, 0.22f, 1f);
+        var btn = btnGo.AddComponent<Button>();
+        btn.targetGraphic = img;
+        btn.onClick.AddListener(onClick);
+
+        var labelGo = new GameObject("Label");
+        labelGo.transform.SetParent(btnGo.transform, false);
+        var labelRect = labelGo.AddComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = new Vector2(6f, 0f);
+        labelRect.offsetMax = new Vector2(-6f, 0f);
+        var tmp = labelGo.AddComponent<TextMeshProUGUI>();
+        CopyFont(tmp);
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.fontSize = 12f;
+        tmp.text = TmpTextSanitizer.Sanitize(label);
+        tmp.raycastTarget = false;
     }
 
     public void Hide()

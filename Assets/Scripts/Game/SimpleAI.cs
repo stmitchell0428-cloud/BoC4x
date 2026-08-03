@@ -6,6 +6,8 @@ public class SimpleAI : MonoBehaviour
 {
     public static SimpleAI Instance { get; private set; }
 
+    const int MaxUnitActionsPerTurn = 12;
+
     FactionId pendingFinishFaction = FactionId.LutheranSynod;
     SynodPlayerId pendingFinishSynod = SynodPlayerId.None;
     SchismaticBlocId pendingFinishBloc = SchismaticBlocId.None;
@@ -46,20 +48,30 @@ public class SimpleAI : MonoBehaviour
         var enemyCities = CollectSynodAiCityTargets(playerId);
         var cityThreat = aiCity != null ? FindNearestThreatToCity(aiCity, enemyUnits, map, 4) : null;
         var personality = SynodPlayerDatabase.PersonalityFor(playerId);
+        int actionsUsed = 0;
 
         foreach (var unit in units.OrderBy(u => u.Health / (float)u.MaxHealth))
         {
+            if (actionsUsed >= MaxUnitActionsPerTurn)
+                break;
             if (NavalMovementRules.IsNavalUnit(unit.Type))
             {
                 if (TryExecuteNavalBlockade(unit, enemyCities, enemyUnits, map))
+                {
+                    actionsUsed++;
                     continue;
+                }
                 if (TryAiAmphibiousDisembark(unit, enemyCities, map))
+                {
+                    actionsUsed++;
                     continue;
+                }
             }
 
             if (ShouldRetreat(unit, enemyUnits, map, aiCity))
             {
                 RetreatTowardCity(unit, aiCity, map);
+                actionsUsed++;
                 continue;
             }
 
@@ -68,6 +80,7 @@ public class SimpleAI : MonoBehaviour
                 map.WrappedDistance(unit.HexPosition, cityThreat.HexPosition) <= 5)
             {
                 ExecuteUnitAttackPlan(unit, cityThreat, map);
+                actionsUsed++;
                 continue;
             }
 
@@ -79,6 +92,7 @@ public class SimpleAI : MonoBehaviour
                 map.WrappedDistance(unit.HexPosition, targetCity?.HexPosition ?? unit.HexPosition) + 1)
             {
                 ExecuteUnitAttackPlan(unit, targetUnit, map);
+                actionsUsed++;
                 continue;
             }
 
@@ -87,6 +101,7 @@ public class SimpleAI : MonoBehaviour
             {
                 TryMoveToward(unit, targetCity.HexPosition, map);
                 CityManager.Instance?.TryCaptureCityAt(unit, unit.HexPosition);
+                actionsUsed++;
                 continue;
             }
 
@@ -94,6 +109,7 @@ public class SimpleAI : MonoBehaviour
                 ExecuteUnitAttackPlan(unit, targetUnit, map);
             else if (targetCity != null && personality.PreferMissionaries && unit.Type == UnitType.Missionary)
                 TryMoveToward(unit, targetCity.HexPosition, map);
+            actionsUsed++;
         }
 
         MatchController.Instance?.EvaluateConditions();
@@ -339,20 +355,30 @@ public class SimpleAI : MonoBehaviour
         var cityThreat = aiCity != null ? FindNearestThreatToCity(aiCity, playerUnits, map, 4) : null;
         var profile = SchismaticBlocRegistry.Instance?.ProfileForBloc(blocId)
                       ?? HeresyDatabase.ProfileFor(HeresyType.DoctrinalDrift);
+        int actionsUsed = 0;
 
         foreach (var unit in units.OrderBy(u => u.Health / (float)u.MaxHealth))
         {
+            if (actionsUsed >= MaxUnitActionsPerTurn)
+                break;
             if (NavalMovementRules.IsNavalUnit(unit.Type))
             {
                 if (TryExecuteNavalBlockade(unit, playerCities, playerUnits, map))
+                {
+                    actionsUsed++;
                     continue;
+                }
                 if (TryAiAmphibiousDisembark(unit, playerCities, map))
+                {
+                    actionsUsed++;
                     continue;
+                }
             }
 
             if (ShouldRetreat(unit, playerUnits, map, aiCity))
             {
                 RetreatTowardCity(unit, aiCity, map);
+                actionsUsed++;
                 continue;
             }
 
@@ -361,6 +387,7 @@ public class SimpleAI : MonoBehaviour
                 map.WrappedDistance(unit.HexPosition, cityThreat.HexPosition) <= 5)
             {
                 ExecuteUnitAttackPlan(unit, cityThreat, map);
+                actionsUsed++;
                 continue;
             }
 
@@ -372,6 +399,7 @@ public class SimpleAI : MonoBehaviour
                 map.WrappedDistance(unit.HexPosition, targetCity?.HexPosition ?? unit.HexPosition) + 1)
             {
                 ExecuteUnitAttackPlan(unit, targetUnit, map);
+                actionsUsed++;
                 continue;
             }
 
@@ -379,6 +407,7 @@ public class SimpleAI : MonoBehaviour
             {
                 TryMoveToward(unit, targetCity.HexPosition, map);
                 CityManager.Instance?.TryCaptureCityAt(unit, unit.HexPosition);
+                actionsUsed++;
                 continue;
             }
 
@@ -386,6 +415,7 @@ public class SimpleAI : MonoBehaviour
                 ExecuteUnitAttackPlan(unit, targetUnit, map);
             else if (targetCity != null && profile.PreferMissionaries && unit.Type == UnitType.Missionary)
                 TryMoveToward(unit, targetCity.HexPosition, map);
+            actionsUsed++;
         }
 
         MatchController.Instance?.EvaluateConditions();

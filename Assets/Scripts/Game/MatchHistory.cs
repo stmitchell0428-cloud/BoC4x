@@ -70,6 +70,49 @@ public class MatchHistory : MonoBehaviour
         combatContactBlocs.Add(blocId);
     }
 
+    public string FormatEmphasisGateSummary()
+    {
+        bool schism = HasActiveSchism();
+        bool augsburg = CanOfferAugsburgConfessionalEmphasis();
+        bool smalcald = CanOfferSmalcaldConfessionalEmphasis();
+
+        if (!schism && !HasPlayerCombat)
+            return "<size=12><color=#AABBCC>Military witness: no combat yet — Smalcald emphasis locked until schismatic battle.</color></size>";
+
+        var lines = new List<string>();
+        lines.Add("<size=13><color=#DDCC88><b>Emphasis gates</b></color></size>");
+
+        string scoutGate = augsburg
+            ? "<color=#88FFAA>Scout contact met</color> — Augsburg confessional emphasis available"
+            : schism
+                ? "<color=#FFCC88>Scout a schismatic bloc</color> — Augsburg confessional emphasis locked"
+                : "<color=#CCCCCC>Augsburg emphasis needs schism + scout contact</color>";
+        lines.Add($"<size=12>{scoutGate}</size>");
+
+        string combatGate = smalcald
+            ? "<color=#88FFAA>Military witness met</color> — Smalcald confessional emphasis available"
+            : schism
+                ? "<color=#FFCC88>Fight schismatic forces</color> — Smalcald confessional emphasis locked"
+                : "<color=#CCCCCC>Smalcald emphasis needs schism + combat</color>";
+        lines.Add($"<size=12>{combatGate}</size>");
+
+        if (playerSchismaticCombatEngagements > 0)
+            lines.Add($"<size=12><color=#AABBCC>Military witness: {playerSchismaticCombatEngagements} schismatic engagement(s) logged.</color></size>");
+
+        return string.Join("\n", lines);
+    }
+
+    public string FormatBriefMilitaryWitnessLine()
+    {
+        if (playerSchismaticCombatEngagements > 0)
+            return $"<size=12><color=#88CCAA><b>Military witness:</b> {playerSchismaticCombatEngagements} schismatic combat engagement(s) — Smalcald emphasis gate met.</color></size>";
+
+        if (HasPlayerCombat)
+            return "<size=12><color=#FFCC88><b>Military witness:</b> synod combat logged, but no schismatic battle yet.</color></size>";
+
+        return "<size=12><color=#AABBCC><b>Military witness:</b> none yet — Smalcald emphasis unlocks after schismatic combat.</color></size>";
+    }
+
     static bool HasActiveSchism() =>
         SchismaticBlocRegistry.Instance != null && SchismaticBlocRegistry.Instance.HasAnySchism;
 

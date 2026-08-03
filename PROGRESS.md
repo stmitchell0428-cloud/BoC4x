@@ -9,7 +9,7 @@
 ## Resume here (next session) — morning playtest
 
 **Lobby:** solo · Grand · Archipelago · Full canon · coastal capital preferred.  
-**No save/load** — fresh match. **⏳ later** is clear (nothing to implement before Play).
+**No save/load** — fresh match each Play; lobby settings are not persisted between sessions.
 
 1. Open **`Assets/Scenes/SampleScene.unity`** → wait for recompile.
 2. **Test Runner first:** EditMode → **BoC4x.Editor.Tests** → Run All (incl. `ChurchYearCalendarTests`, `EraBranchRulesTests`, `EmphasisGateTests`).

@@ -26,10 +26,12 @@ public class GameHUD : MonoBehaviour
     TextMeshProUGUI adherenceText;
     TextMeshProUGUI manuscriptText;
     TextMeshProUGUI waltherText;
+    RectTransform dashboardColumnPanel;
 
     public float DashboardBottomY { get; private set; }
 
     static readonly Color DashboardColor = new(0.92f, 0.9f, 0.85f);
+    static readonly Color DashboardColumnColor = new(0.04f, 0.06f, 0.10f, 0.88f);
     static readonly Color QueuePanelColor = new(0.05f, 0.08f, 0.13f, 0.94f);
     static readonly Color QueuePanelBorderColor = new(0.35f, 0.48f, 0.62f, 0.9f);
     static readonly Color NomadicPanelColor = new(0.12f, 0.09f, 0.05f, 0.94f);
@@ -196,8 +198,44 @@ public class GameHUD : MonoBehaviour
         y = PlaceRow(waltherText, y, secondaryFontSize);
 
         DashboardBottomY = ComputeDashboardBottomY();
+        UpdateDashboardColumnLayout();
         TurnPhaseBanner.Instance?.ApplyHudClearance(QueuePanelRightEdge + 8f, topPadding);
         TerrainInfoPanel.Instance?.ApplyTopHudClearance(DashboardBottomY);
+    }
+
+    void EnsureDashboardColumn()
+    {
+        if (dashboardColumnPanel != null)
+            return;
+
+        Transform parent = populationText != null
+            ? populationText.transform.parent
+            : FindAnyObjectByType<Canvas>()?.transform;
+        if (parent == null)
+            return;
+
+        var go = new GameObject("DashboardColumn");
+        go.transform.SetParent(parent, false);
+        dashboardColumnPanel = go.AddComponent<RectTransform>();
+        var bg = go.AddComponent<Image>();
+        bg.color = DashboardColumnColor;
+        bg.raycastTarget = false;
+        dashboardColumnPanel.SetAsFirstSibling();
+    }
+
+    void UpdateDashboardColumnLayout()
+    {
+        EnsureDashboardColumn();
+        if (dashboardColumnPanel == null)
+            return;
+
+        float height = DashboardBottomY + 8f;
+        float width = panelWidth + leftPadding + 8f;
+        dashboardColumnPanel.anchorMin = new Vector2(0f, 1f);
+        dashboardColumnPanel.anchorMax = new Vector2(0f, 1f);
+        dashboardColumnPanel.pivot = new Vector2(0f, 1f);
+        dashboardColumnPanel.anchoredPosition = new Vector2(4f, -4f);
+        dashboardColumnPanel.sizeDelta = new Vector2(width, height);
     }
 
     float ComputeDashboardBottomY()

@@ -15,12 +15,14 @@ A hex-grid turn-based strategy prototype themed around the Lutheran confessional
 |---------|---------|
 | **Map seed** | `0` = random; any integer reproduces the layout |
 | **Map size** | Compact (40×28), Standard (64×42), Grand (80×52) |
-| **Players** | 1–4 (solo default; extra slots reserved for future AI) |
+| **Players** | 1–4 (**solo default** — one human synod; 2–4 adds AI Lutheran rivals on the map) |
 | **Map wrap** | Toroidal, Bounded, Cylindrical (E/W only) |
 | **Heresy pack** | Full canon, Reformation core, Radical fringe |
-| **Coasts & rivers** | Normal or Archipelago (more water — naval stub) |
+| **Coasts & rivers** | Normal or Archipelago (more water — coastal galleys & patrol) |
 
-Naval units are not built yet; **naval coast** tiles (shore, rivers, map-edge seas) are tagged on the map for future ship movement.
+**Naval:** Build a **Dock** at coastal Market districts, then train **Coastal Galleys** and **Coastal Patrol**. Galleys blockade and ferry troops; deep ocean beyond coastal range stays impassable.
+
+**Save/load:** Not implemented — each match starts fresh from the lobby. See `PROGRESS.md` for session notes.
 
 ### Visual art eras
 
@@ -150,8 +152,8 @@ Ocean, lake, and river tiles are **bright blue** and impassable. Shore tiles gra
 
 **C** opens the city on your selected unit's tile, or the nearest/capital city. With multiple cities, use the **tabs** at the top of the city screen. A **loyalty bar** shows synod hold (green → orange → red under enemy siege).
 
-- **Production** and **Research** queues show in the upper-left HUD with turns remaining (Spiritual and Secular research lines).
-- **Adherence win progress** appears in the adherence line and top banner when you approach 95%.
+- **Production** and **Scripture** queues show in the upper-left HUD with turns remaining (Doctrine, Culture, and Secular research lines).
+- **Adherence win progress** appears in the adherence line and top banner when you approach 100%.
 - **Two Kingdoms growth:** settlers migrate when **food surplus** (produced − consumed) is positive **and** **blended appeal** (secular × spiritual) is high enough. Secular appeal comes from granaries, markets, worked food tiles, and civic restraint; spiritual appeal from chapels, schools, adherence, and comfort. Imbalance triggers Walther tensions (legalism, antinomian drift, etc.).
 - **Housing cap** limits population until you build parish infrastructure (chapel, granary, church, orphanage). **Workers** ≈ ⅓ of population — only one secular production project per free worker pool; short workers halve build speed.
 - **Organic districts:** after **2+ turns of food surplus**, the game may offer a district site inside your borders (accept / defer / decline). Specialty is suggested from your building mix.
@@ -159,7 +161,7 @@ Ocean, lake, and river tiles are **bright blue** and impassable. Shore tiles gra
 - **Siege engines:** Garrison districts with an **Armory** and **James Clerk Maxwell** research can train **Siege Engines** — slow but apply high loyalty pressure/turn (partially bypasses fortifications). **Otto von Guericke**, **Maxwell**, and a synod **Armory** further boost siege pressure.
 - **Coastal patrol:** Market districts touching shore or naval coast can train **Coastal Patrol** after **Missionary Sending** — moves on land and **navigable water**; +1 move when starting on shore or water. **Deep ocean** beyond coastal range is impassable (wider range on Archipelago maps).
 - **Dock and galley:** build a **Dock** at coastal Market districts, then train **Coastal Galleys**. **O** boards adjacent troops; **L** or click highlighted shore lands them (2 cargo). AI rivals on coast may blockade and invade by sea.
-- **Lobby rivals:** set **Players** to 2–4 in the match lobby to spawn 1–3 active schismatic blocs at game start (in addition to crisis schisms later).
+- **Lobby rivals:** set **Players** to 2–4 in the match lobby to spawn 1–3 **AI Lutheran synod rivals** at game start (diplomacy/truce via **D** or **Y** brief). Crisis schisms still spawn separate heresy blocs later.
 - **Ordain Pastor** — upgrade missionary on city hex (Large Catechism); or train at capital after **Parish Church** / **Seminary** building, or at Seminary districts.
 - **Commission Deaconess** at Seminary districts only (Large Catechism).
 - **Train Cantor** at Seminary districts (Chorale Tradition).
@@ -224,18 +226,18 @@ Ocean, lake, and river tiles are **bright blue** and impassable. Shore tiles gra
 
 **Synod victory (any one):**
 
-- Hold **95%+ adherence** for **5 consecutive player turns**
-- Unlock **Robert Preus** + **James Clerk Maxwell**
+- Hold **100% adherence** for **5 consecutive player turns**
+- Unlock the **Tier 6 doctrine trio**: CTCR Reports, Norman Nagel, and Global Lutheran Fellowship
 - Reach **75 confessional fame**
 
 **Defeat (always):**
 
-- Destroy all synod units
-- Population 0 or adherence 0%
+- Destroy all synod units with no cities remaining
+- Population at **0 for 2 turns** (grace period) or adherence at 0%
 
 **Schismatic victory (only after schism):**
 
-- Capture **Wittenberg**
+- Capture the synod **capital** (founded at nomadic start — usually Wittenberg)
 
 ## Architecture
 

@@ -910,7 +910,7 @@ public class CityScreenPanel : MonoBehaviour
     string FormatProductionStatusLine()
     {
         if (activeCity?.Production == null || !activeCity.Production.IsProducing)
-            return "Production: idle";
+            return "<color=#FFAA66><b>BUILD</b></color>  idle";
 
         var production = activeCity.Production;
         var def = CityBuildDatabase.Get(production.ActiveBuildId.Value);
@@ -919,10 +919,10 @@ public class CityScreenPanel : MonoBehaviour
         if (def.UsesProduction)
         {
             string etaText = eta.HasValue ? $" | ~{eta.Value} turn{(eta.Value == 1 ? "" : "s")} left" : "";
-            return $"Building: {def.Name} ({production.ProductionProgress}/{def.ProductionCost} prod{etaText})";
+            return $"<color=#FFCC55><b>BUILD</b></color>  {def.Name} ({production.ProductionProgress}/{def.ProductionCost} prod{etaText})";
         }
 
-        return $"Building: {def.Name} ({production.TurnsRemainingOnProject} turn{(production.TurnsRemainingOnProject == 1 ? "" : "s")} left)";
+        return $"<color=#FFCC55><b>BUILD</b></color>  {def.Name} ({production.TurnsRemainingOnProject} turn{(production.TurnsRemainingOnProject == 1 ? "" : "s")} left)";
     }
 
     string GetBuildStartFailureMessage(CityBuildId id)

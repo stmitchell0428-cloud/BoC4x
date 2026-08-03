@@ -16,14 +16,17 @@ public class MatchController : MonoBehaviour
     const float AdherenceWinPercent = 100f;
     const int AdherenceWinTurns = 5;
     const int FameWinThreshold = 75;
+    const int PopulationCollapseGraceTurns = 2;
 
     public float AdherenceWinTarget => AdherenceWinPercent;
     public int AdherenceWinTurnsRequired => AdherenceWinTurns;
     public int FameWinTarget => FameWinThreshold;
     public int AdherenceWinStreak => adherenceWinStreak;
+    public int PopulationCollapseGraceRemaining => populationCollapseGraceRemaining;
 
     MatchResult result = MatchResult.InProgress;
     int adherenceWinStreak;
+    int populationCollapseGraceRemaining = PopulationCollapseGraceTurns;
     string victoryDetail = "";
 
     public MatchResult Result => result;
@@ -54,6 +57,16 @@ public class MatchController : MonoBehaviour
             return;
         }
 
+        if (faction != null)
+        {
+            bool hasSynodCities = CityManager.Instance != null &&
+                                  CityManager.Instance.GetSynodPlayerCities(SynodPlayerId.Player1).Count > 0;
+            if (hasSynodCities && faction.population <= 0)
+                populationCollapseGraceRemaining = Mathf.Max(0, populationCollapseGraceRemaining - 1);
+            else if (faction.population > 0)
+                populationCollapseGraceRemaining = PopulationCollapseGraceTurns;
+        }
+
         EvaluateConditions();
     }
 
@@ -72,7 +85,7 @@ public class MatchController : MonoBehaviour
         bool playerHasUnits = TurnManager.Instance.GetSynodUnits(SynodPlayerId.Player1).Any(u => u.IsAlive);
         bool playerHasCities = CityManager.Instance.GetSynodPlayerCities(SynodPlayerId.Player1).Count > 0;
 
-        var wittenberg = CityManager.Instance.GetCityByName("Wittenberg");
+        var capital = CityManager.Instance.PlayerCapital;
 
         if (!playerHasUnits && !playerHasCities)
         {
@@ -87,10 +100,10 @@ public class MatchController : MonoBehaviour
             return;
         }
 
-        if (wittenberg != null && wittenberg.Faction == FactionId.Schismatic &&
+        if (capital != null && capital.Faction == FactionId.Schismatic &&
             SchismManager.Instance != null && SchismManager.Instance.HasSchismed)
         {
-            EndMatch(MatchResult.SchismaticVictory, "Wittenberg fell to schismatic forces.");
+            EndMatch(MatchResult.SchismaticVictory, $"{capital.CityName} fell to schismatic forces.");
             return;
         }
 
@@ -115,7 +128,13 @@ public class MatchController : MonoBehaviour
             bool hasSynodCities = CityManager.Instance.GetSynodPlayerCities(SynodPlayerId.Player1).Count > 0;
             if (hasSynodCities && faction.population <= 0)
             {
-                EndMatch(MatchResult.SynodDefeat, "The synod's population collapsed.");
+                if (populationCollapseGraceRemaining <= 0)
+                {
+                    EndMatch(MatchResult.SynodDefeat, "The synod's population collapsed.");
+                    return;
+                }
+
+                TurnPhaseBanner.Instance?.Refresh(FormatPopulationWarning());
                 return;
             }
 
@@ -223,10 +242,31 @@ public class MatchController : MonoBehaviour
         lines.Add("");
         lines.Add("<size=12><color=#FFAA88><b>Defeat risks</b></color></size>");
         lines.Add("<size=12>• Army wiped with no cities remaining</size>");
-        lines.Add("<size=12>• Synod population collapses to zero</size>");
+        lines.Add("<size=12>• Synod population collapses to zero (2-turn grace once at 0)</size>");
         lines.Add("<size=12>• Confessional adherence falls to 0%</size>");
-        lines.Add("<size=12>• Wittenberg captured by schismatic forces after a schism</size>");
+        string capitalName = CityManager.Instance?.PlayerCapital?.CityName ?? "your capital";
+        lines.Add($"<size=12>• {capitalName} captured by schismatic forces after a schism</size>");
 
         return string.Join("\n", lines);
+    }
+
+    public string FormatPopulationWarning()
+    {
+        var faction = FirstSteps.Instance;
+        if (faction == null)
+            return "";
+
+        if (faction.population <= 0 && populationCollapseGraceRemaining > 0)
+        {
+            return $"<color=#FF8866><b>Population collapse</b></color>  -  " +
+                   $"{populationCollapseGraceRemaining} turn(s) to recover before defeat";
+        }
+
+        if (faction.population > 0 && faction.population <= 3)
+        {
+            return $"<color=#FFAA66><b>Critical population</b></color>  -  only {faction.population} remaining";
+        }
+
+        return "";
     }
 }
