@@ -14,31 +14,27 @@
 
 1. Open **`Assets/Scenes/SampleScene.unity`** → wait for recompile.
 2. **Test Runner first:** EditMode → **BoC4x.Editor.Tests** → Run All.
-3. Play — work **`PLAYTEST-AUDIT-BATCH.md`** priority table **in order**. Mark pass/fail as you go.
+3. Play — work **`PLAYTEST-AUDIT-BATCH.md`** priority list **in order**. Click checkboxes as you go.
 
 ### Priority checks (tightening batch — do these first)
 
-| | Focus | What to verify |
-|---|--------|----------------|
-| [ ] | **BUILD / SCRIPTURE HUD** | Left queue: **BUILD** + **SCRIPTURE** labels; banner compact line matches |
-| [ ] | **End Turn defer** | Pastoral or district offer open → End Turn **still advances**; crisis/emphasis **still block** |
-| [ ] | **Y brief yields fix** | Districts/hamlets present → CITY YIELDS shows real lines (not false “no production”) |
-| [ ] | **Military witness** | **Y** brief + **T** sidebar show Augsburg/Smalald gates and combat witness |
-| [ ] | **Brief diplomacy** | 2-player lobby → **Y** rival status + colloquy truce button; **D** panel still works |
-| [ ] | **PlayerCapital win** | Schismatic capture of founded capital triggers defeat with capital name |
-| [ ] | **Population grace** | Pop 0 → 2-turn grace banner; defeat on 3rd turn at 0; critical warning at ≤3 |
-| [ ] | **HUD polish** | Unified left column background; `[N panels open]` on banner when modals open |
-| [ ] | **District appeal** | Offer flashes hex appeal; **G** map toggle still works |
-| [ ] | **AI turn budget** | 2-player: AI turns complete without long stalls (12 actions/turn cap) |
+- [ ] **BUILD / SCRIPTURE HUD** — Left queue: **BUILD** + **SCRIPTURE** labels; banner compact line matches
+- [ ] **End Turn defer** — Pastoral or district offer open → End Turn **still advances**; crisis/emphasis **still block**
+- [ ] **Y brief yields fix** — Districts/hamlets present → CITY YIELDS shows real lines (not false “no production”)
+- [ ] **Military witness** — **Y** brief + **T** sidebar show Augsburg/Smalald gates and combat witness
+- [ ] **Brief diplomacy** — 2-player lobby → **Y** rival status + colloquy truce button; **D** panel still works
+- [ ] **PlayerCapital win** — Schismatic capture of founded capital triggers defeat with capital name
+- [ ] **Population grace** — Pop 0 → 2-turn grace banner; defeat on 3rd turn at 0; critical warning at ≤3
+- [ ] **HUD polish** — Unified left column background; `[N panels open]` on banner when modals open
+- [ ] **District appeal** — Offer flashes hex appeal; **G** map toggle still works
+- [ ] **AI turn budget** — 2-player: AI turns complete without long stalls (12 actions/turn cap)
 
 ### Regression (if time)
 
-| | Focus | What to verify |
-|---|--------|----------------|
-| [ ] | **Church Year / WATCH** | Advent start; WATCH on principal feasts |
-| [ ] | **Parish heal / militia / walls** | +4 HP on city hex; militia strike; walls block entry |
-| [ ] | **Crisis loop** | Pick crisis → single End Turn advances |
-| [ ] | **R — clergy roster** | **R** opens roster (bootstrap fix may still be needed) |
+- [ ] **Church Year / WATCH** — Advent start; WATCH on principal feasts
+- [ ] **Parish heal / militia / walls** — +4 HP on city hex; militia strike; walls block entry
+- [ ] **Crisis loop** — Pick crisis → single End Turn advances
+- [ ] **R — clergy roster** — **R** opens roster (bootstrap fix may still be needed)
 
 **Full audit:** see **`PLAYTEST-AUDIT-BATCH.md`**.
 
