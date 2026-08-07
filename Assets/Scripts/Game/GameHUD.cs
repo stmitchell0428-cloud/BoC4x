@@ -7,16 +7,16 @@ public class GameHUD : MonoBehaviour
 {
     public static GameHUD Instance { get; private set; }
 
-    public float leftPadding = 16f;
-    public float topPadding = 12f;
-    public float rowGap = 8f;
-    public float minRowHeight = 22f;
-    public float panelWidth = 720f;
-    public float queuePanelWidth = 400f;
-    public float primaryFontSize = 19f;
-    public float secondaryFontSize = 17f;
-    public float queueFontSize = 20f;
-    public float queuePanelPadding = 10f;
+    public float leftPadding = 14f;
+    public float topPadding = 10f;
+    public float rowGap = 6f;
+    public float minRowHeight = 20f;
+    public float panelWidth = 520f;
+    public float queuePanelWidth = 360f;
+    public float primaryFontSize = 17f;
+    public float secondaryFontSize = 15f;
+    public float queueFontSize = 17f;
+    public float queuePanelPadding = 8f;
 
     TextMeshProUGUI queueReviewText;
     RectTransform queueReviewPanel;
@@ -34,7 +34,7 @@ public class GameHUD : MonoBehaviour
     static readonly Color DashboardColor = new(0.92f, 0.9f, 0.85f);
     static readonly Color StatsPanelColor = new(0.05f, 0.08f, 0.13f, 0.88f);
     static readonly Color StatsPanelBorderColor = new(0.35f, 0.48f, 0.62f, 0.75f);
-    static readonly Color DashboardColumnColor = new(0.04f, 0.06f, 0.10f, 0.88f);
+    static readonly Color DashboardColumnColor = new(0.04f, 0.06f, 0.10f, 0.72f);
     static readonly Color QueuePanelColor = new(0.05f, 0.08f, 0.13f, 0.94f);
     static readonly Color QueuePanelBorderColor = new(0.35f, 0.48f, 0.62f, 0.9f);
     static readonly Color NomadicPanelColor = new(0.12f, 0.09f, 0.05f, 0.94f);
@@ -250,12 +250,12 @@ public class GameHUD : MonoBehaviour
         if (dashboardColumnPanel == null)
             return;
 
-        float height = DashboardBottomY + 8f;
-        float width = panelWidth + leftPadding + 8f;
+        float height = Mathf.Max(80f, DashboardBottomY + 6f);
+        float width = Mathf.Max(queuePanelWidth, panelWidth) + leftPadding + 4f;
         dashboardColumnPanel.anchorMin = new Vector2(0f, 1f);
         dashboardColumnPanel.anchorMax = new Vector2(0f, 1f);
         dashboardColumnPanel.pivot = new Vector2(0f, 1f);
-        dashboardColumnPanel.anchoredPosition = new Vector2(4f, -4f);
+        dashboardColumnPanel.anchoredPosition = new Vector2(2f, -2f);
         dashboardColumnPanel.sizeDelta = new Vector2(width, height);
     }
 

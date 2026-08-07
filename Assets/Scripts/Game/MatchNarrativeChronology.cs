@@ -7,7 +7,19 @@ public class MatchNarrativeChronology : MonoBehaviour
     public const int DefaultDaysPerTurn = 18;
     public const int ForcedAscensionTurn = 40;
 
-    public static MatchNarrativeChronology Instance { get; private set; }
+    static MatchNarrativeChronology instance;
+
+    public static MatchNarrativeChronology Instance
+    {
+        get
+        {
+            // EditMode tests AddComponent without Awake/OnEnable — resolve from the scene.
+            if (instance == null)
+                instance = Object.FindAnyObjectByType<MatchNarrativeChronology>();
+            return instance;
+        }
+        private set => instance = value;
+    }
 
     public NarrativeChronologyPhase Phase { get; private set; } = NarrativeChronologyPhase.SalvationHistory;
     public int NarrativeDay { get; private set; }
@@ -19,13 +31,22 @@ public class MatchNarrativeChronology : MonoBehaviour
 
     void Awake() => Instance = this;
 
+    void OnEnable() => Instance = this;
+
     void OnDestroy()
     {
-        if (Instance == this)
+        if (instance == this)
             Instance = null;
     }
 
     public bool IsEventResolved(string id) => resolvedEventIds.Contains(id);
+
+    /// <summary>Mark an event done without day jumps (e.g. loading-screen intro already applied effects).</summary>
+    public void MarkEventResolved(string id)
+    {
+        if (!string.IsNullOrEmpty(id))
+            resolvedEventIds.Add(id);
+    }
 
     public bool IsCommemorationUnlocked(ChurchYearEntry entry)
     {

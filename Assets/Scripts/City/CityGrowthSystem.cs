@@ -7,8 +7,8 @@ using UnityEngine;
 public static class CityGrowthSystem
 {
     public const int FoodConsumptionPerPop = 1;
-    public const int UrbanFoodBaseline = 4;
-    public const int CapitalUrbanFoodBaseline = 6;
+    public const int UrbanFoodBaseline = 6;
+    public const int CapitalUrbanFoodBaseline = 10;
     public const int FoundingCapitalPopulation = 15;
     public const int CapitalDeficitGraceTurns = 8;
     public const float MigrationAppealThreshold = 18f;
@@ -236,7 +236,7 @@ public static class CityGrowthSystem
             return 0;
 
         int food = 0;
-        if (production.HasBuilding(CityBuildId.BuildGranary)) food += 3;
+        if (production.HasBuilding(CityBuildId.BuildGranary)) food += 5;
         if (production.HasBuilding(CityBuildId.BuildMill)) food += 1;
         if (production.HasBuilding(CityBuildId.BuildMarketHall)) food += 1;
         if (production.HasBuilding(CityBuildId.BuildWharf) &&
@@ -543,6 +543,12 @@ public static class CityGrowthSystem
     public static int RequiredSurplusStreakForDistrict(City parent) =>
         CountChildDistricts(parent) == 0 ? 1 : MinSurplusStreakForDistrict;
 
+    public static bool MeetsDistrictFoodGate(GrowthSnapshot snap) =>
+        snap.FoodSurplus > 0 || (snap.FoodSurplus == 0 && snap.HousingRoom <= 0);
+
+    public static bool MeetsDistrictStreakCondition(GrowthSnapshot snap) =>
+        MeetsDistrictFoodGate(snap);
+
     public static DistrictSiteOffer? FindBestDistrictOffer(City parent, int surplusStreak)
     {
         if (parent == null || parent.IsHamlet ||
@@ -556,7 +562,7 @@ public static class CityGrowthSystem
             return null;
 
         var snap = Evaluate(parent);
-        if (snap.FoodSurplus <= 0 || snap.BlendedAppeal < MigrationAppealThreshold)
+        if (!MeetsDistrictFoodGate(snap) || snap.BlendedAppeal < MigrationAppealThreshold)
             return null;
 
         var territory = TerritoryManager.Instance.GetTerritory(parent);
@@ -848,8 +854,8 @@ public static class CityGrowthSystem
         var sb = new StringBuilder();
         sb.Append("<b>Growth</b> ");
         sb.Append(s.FoodSurplus >= 0
-            ? $"<color=#88DDAA>food +{s.FoodSurplus}</color>"
-            : $"<color=#FF9988>food {s.FoodSurplus}</color>");
+            ? $"<color=#88DDAA>food +{s.FoodSurplus}</color> ({s.FoodProduced}/{s.FoodConsumed})"
+            : $"<color=#FF9988>food {s.FoodSurplus}</color> ({s.FoodProduced}/{s.FoodConsumed})");
         sb.Append($"  |  appeal {s.BlendedAppeal:F0} (L{s.SecularAppeal:F0}/G{s.SpiritualAppeal:F0})");
         sb.Append($"  |  housing {city.Population}/{s.HousingCap}");
         sb.Append($"  |  workers {s.AvailableWorkers}/{s.TotalWorkers}");
@@ -858,13 +864,20 @@ public static class CityGrowthSystem
         int streakNeed = RequiredSurplusStreakForDistrict(city);
         if (CountChildDistricts(city) < GetMaxDistrictCount(city))
         {
-            if (FindBestDistrictOffer(city, streak).HasValue)
-                sb.Append("  |  <color=#DDEE88>district offer ready</color>");
-            else if (s.FoodSurplus > 0 && streak >= streakNeed)
+            int cooldown = CityGrowthManager.Instance?.GetDistrictOfferCooldown(city) ?? 0;
+            bool pendingHere = CityGrowthManager.Instance != null &&
+                               CityGrowthManager.Instance.HasPendingOffer;
+            if (cooldown > 0)
+                sb.Append($"  |  <color=#99AABB>district offer cooldown {cooldown}t</color>");
+            else if (pendingHere && DistrictOfferPanel.Instance != null && DistrictOfferPanel.Instance.IsVisible)
+                sb.Append("  |  <color=#DDEE88>district offer open</color>");
+            else if (FindBestDistrictOffer(city, streak).HasValue)
+                sb.Append("  |  <color=#DDEE88>district offer ready (end turn)</color>");
+            else if (MeetsDistrictFoodGate(s) && streak >= streakNeed)
                 sb.Append($"  |  <color=#99AABB>{ExplainDistrictBlocker(city, s)}</color>");
-            else if (s.FoodSurplus > 0 && streak > 0)
+            else if (MeetsDistrictFoodGate(s) && streak > 0)
                 sb.Append($"  |  district streak {streak}/{streakNeed}");
-            else if (s.FoodSurplus <= 0)
+            else if (!MeetsDistrictFoodGate(s))
                 sb.Append("  |  <color=#99AABB>need food surplus for districts</color>");
         }
 

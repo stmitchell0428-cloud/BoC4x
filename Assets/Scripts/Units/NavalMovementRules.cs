@@ -25,8 +25,9 @@ public static class NavalMovementRules
 
         if (unitType == UnitType.CoastalExplorer)
         {
+            // Rivers/lakes always; coastal sea (navigable ocean band) allowed; deep ocean blocked.
             if (isWater)
-                return tile.IsNavigableWater && tile.Terrain != TerrainType.Ocean;
+                return tile.IsNavigableWater;
             if (!TerrainRules.IsPassable(tile.Terrain))
                 return false;
             return tile.Terrain == TerrainType.Shore || tile.IsNavalCoast;
@@ -119,7 +120,7 @@ public static class NavalMovementRules
         if (terrain == TerrainType.Ocean)
         {
             if (isNavigableWater)
-                return "  |  <color=#88AAFF>Coastal sea — galley+</color>";
+                return "  |  <color=#88AAFF>Coastal sea — explorer + galley</color>";
             return "  |  <color=#6688AA>Open ocean — deep-sea ship only</color>";
         }
 
@@ -136,7 +137,7 @@ public static class NavalMovementRules
         return unit.Type switch
         {
             UnitType.CoastalExplorer =>
-                "  |  <color=#88CCFF>Rivers, lakes, and shore — not open sea</color>",
+                "  |  <color=#88CCFF>Rivers, lakes, coastal sea — not deep ocean</color>",
             UnitType.CoastalGalley =>
                 "  |  <color=#88CCFF>Water only — land troops via cargo disembark</color>",
             UnitType.DeepSeaShip =>

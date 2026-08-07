@@ -67,10 +67,13 @@ public class ClergyRosterPanel : MonoBehaviour
         boxRect.sizeDelta = new Vector2(560f, 520f);
         box.AddComponent<Image>().color = new Color(0.08f, 0.11f, 0.16f, 0.98f);
 
-        titleText = CreateLabel(box.transform, "Title", "Clergy roster", new Vector2(0f, -12f), 22f, FontStyles.Bold);
-        bodyText = CreateLabel(box.transform, "Body", "", new Vector2(0f, -52f), 14f, FontStyles.Normal);
-        bodyText.alignment = TextAlignmentOptions.TopLeft;
-        bodyText.GetComponent<RectTransform>().sizeDelta = new Vector2(520f, 300f);
+        titleText = CreateLabel(box.transform, "Title", "Clergy roster", new Vector2(0f, -12f), 22f, FontStyles.Bold,
+            TextAlignmentOptions.Center, new Vector2(520f, 32f));
+        bodyText = CreateLabel(box.transform, "Body", "", new Vector2(0f, -48f), 14f, FontStyles.Normal,
+            TextAlignmentOptions.TopLeft, new Vector2(520f, 340f));
+        bodyText.textWrappingMode = TextWrappingModes.Normal;
+        bodyText.overflowMode = TextOverflowModes.Overflow;
+        bodyText.raycastTarget = false;
 
         CreateButton(box.transform, "Assign selected here", new Vector2(-170f, 56f), AssignSelected);
         CreateButton(box.transform, "Parish ministry", new Vector2(170f, 56f), AssignChaplainParish);
@@ -79,7 +82,15 @@ public class ClergyRosterPanel : MonoBehaviour
         CreateButton(box.transform, "Close", new Vector2(0f, -32f), Hide);
     }
 
-    static TextMeshProUGUI CreateLabel(Transform parent, string name, string text, Vector2 pos, float size, FontStyles style)
+    static TextMeshProUGUI CreateLabel(
+        Transform parent,
+        string name,
+        string text,
+        Vector2 pos,
+        float size,
+        FontStyles style,
+        TextAlignmentOptions alignment,
+        Vector2 sizeDelta)
     {
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
@@ -87,13 +98,13 @@ public class ClergyRosterPanel : MonoBehaviour
         rect.anchorMin = new Vector2(0.5f, 1f);
         rect.anchorMax = new Vector2(0.5f, 1f);
         rect.pivot = new Vector2(0.5f, 1f);
-        rect.sizeDelta = new Vector2(520f, 300f);
+        rect.sizeDelta = sizeDelta;
         rect.anchoredPosition = pos;
         var tmp = go.AddComponent<TextMeshProUGUI>();
         CopyFont(tmp);
         tmp.fontSize = size;
         tmp.fontStyle = style;
-        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.alignment = alignment;
         tmp.richText = true;
         tmp.text = TmpTextSanitizer.Sanitize(text);
         return tmp;

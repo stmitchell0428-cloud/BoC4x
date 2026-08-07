@@ -536,7 +536,6 @@ public class FirstSteps : MonoBehaviour
     public void RunGrowthPhase()
     {
         CityGrowthManager.Instance?.ProcessGrowthFoodPhase(FactionId.LutheranSynod);
-        CityGrowthManager.Instance?.TickCooldowns();
         PopulationSync.SyncPlayerFactionFromCities();
         RefreshDashboard();
         TerrainInfoPanel.Instance?.RefreshCityYield();

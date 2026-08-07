@@ -57,7 +57,7 @@ public class CityGrowthManager : MonoBehaviour
                 continue;
 
             var snap = CityGrowthSystem.Evaluate(city);
-            UpdateSurplusStreak(city, snap.FoodSurplus);
+            UpdateSurplusStreak(city, snap);
 
             if (snap.FoodSurplus < 0)
                 CityGrowthSystem.ApplyHybridFoodDeficit(city, snap);
@@ -88,10 +88,12 @@ public class CityGrowthManager : MonoBehaviour
             TerrainInfoPanel.Instance?.RefreshCityYield();
         }
 
-        if (offerDistricts && faction == FactionId.LutheranSynod &&
-            !HasPendingOffer && DistrictOfferPanel.Instance != null && !DistrictOfferPanel.Instance.IsVisible)
+        if (offerDistricts && faction == FactionId.LutheranSynod)
         {
-            TryQueueDistrictOffer();
+            TickCooldowns();
+            EnsurePendingDistrictOfferVisible();
+            if (!HasPendingOffer && DistrictOfferPanel.Instance != null && !DistrictOfferPanel.Instance.IsVisible)
+                TryQueueDistrictOffer();
         }
     }
 
@@ -121,7 +123,7 @@ public class CityGrowthManager : MonoBehaviour
 
             var snap = CityGrowthSystem.Evaluate(city);
 
-            UpdateSurplusStreak(city, snap.FoodSurplus);
+            UpdateSurplusStreak(city, snap);
 
 
 
@@ -155,10 +157,12 @@ public class CityGrowthManager : MonoBehaviour
 
 
 
-        if (offerDistricts && faction == FactionId.LutheranSynod &&
-            !HasPendingOffer && DistrictOfferPanel.Instance != null && !DistrictOfferPanel.Instance.IsVisible)
+        if (offerDistricts && faction == FactionId.LutheranSynod)
         {
-            TryQueueDistrictOffer();
+            TickCooldowns();
+            EnsurePendingDistrictOfferVisible();
+            if (!HasPendingOffer && DistrictOfferPanel.Instance != null && !DistrictOfferPanel.Instance.IsVisible)
+                TryQueueDistrictOffer();
         }
     }
 
@@ -173,7 +177,7 @@ public class CityGrowthManager : MonoBehaviour
                 continue;
 
             var snap = CityGrowthSystem.Evaluate(city);
-            UpdateSurplusStreak(city, snap.FoodSurplus);
+            UpdateSurplusStreak(city, snap);
 
             if (snap.FoodSurplus < 0)
                 CityGrowthSystem.ApplyHybridFoodDeficit(city, snap);
@@ -191,7 +195,7 @@ public class CityGrowthManager : MonoBehaviour
             return;
 
         var snap = CityGrowthSystem.Evaluate(city);
-        UpdateSurplusStreak(city, snap.FoodSurplus);
+        UpdateSurplusStreak(city, snap);
 
         if (snap.FoodSurplus < 0)
             CityGrowthSystem.ApplyHybridFoodDeficit(city, snap);
@@ -203,18 +207,12 @@ public class CityGrowthManager : MonoBehaviour
 
 
 
-    void UpdateSurplusStreak(City city, int surplus)
-
+    void UpdateSurplusStreak(City city, CityGrowthSystem.GrowthSnapshot snap)
     {
-
-        if (surplus > 0)
-
+        if (CityGrowthSystem.MeetsDistrictStreakCondition(snap))
             foodSurplusStreak[city] = foodSurplusStreak.GetValueOrDefault(city) + 1;
-
         else
-
             foodSurplusStreak[city] = 0;
-
     }
 
 
@@ -224,6 +222,29 @@ public class CityGrowthManager : MonoBehaviour
         foodSurplusStreak.GetValueOrDefault(city);
 
 
+
+    public void EnsurePendingDistrictOfferVisible()
+    {
+        if (!pendingOffer.HasValue)
+            return;
+
+        var panel = DistrictOfferPanel.Instance;
+        if (panel == null)
+        {
+            pendingOffer = null;
+            return;
+        }
+
+        if (panel.IsVisible)
+            return;
+
+        panel.Show(pendingOffer.Value);
+        if (!panel.IsVisible)
+        {
+            Debug.LogWarning("Pending district offer could not be shown — clearing.");
+            pendingOffer = null;
+        }
+    }
 
     void TryQueueDistrictOffer()
 
@@ -272,16 +293,27 @@ public class CityGrowthManager : MonoBehaviour
 
 
         if (!best.HasValue)
-
             return;
 
-
-
         pendingOffer = best;
+        var panel = DistrictOfferPanel.Instance;
+        if (panel == null)
+        {
+            Debug.LogWarning("District offer queued but DistrictOfferPanel missing.");
+            pendingOffer = null;
+            return;
+        }
 
-        DistrictOfferPanel.Instance?.Show(best.Value);
-
+        panel.Show(best.Value);
+        if (!panel.IsVisible)
+        {
+            Debug.LogWarning("DistrictOfferPanel.Show failed — clearing pending offer so it can retry next turn.");
+            pendingOffer = null;
+        }
     }
+
+    public int GetDistrictOfferCooldown(City city) =>
+        city == null ? 0 : districtOfferCooldown.GetValueOrDefault(city);
 
 
 

@@ -24,6 +24,7 @@ public class CameraFollow : MonoBehaviour
     Vector3 dragPanCamStart;
     Vector2 dragPanMouseStart;
     Camera cam;
+    int playerCityFocusIndex;
 
     void Awake()
     {
@@ -76,6 +77,49 @@ public class CameraFollow : MonoBehaviour
             userPanning = false;
     }
 
+    /// <summary>Home — cycle independent player cities; falls back to selected unit.</summary>
+    public void RecenterOnPlayerCity()
+    {
+        if (CityManager.Instance == null || HexGridMap.Instance == null)
+        {
+            RecenterOnActiveUnit();
+            return;
+        }
+
+        var cities = new System.Collections.Generic.List<City>();
+        foreach (var city in CityManager.Instance.GetPlayerCities())
+        {
+            if (city != null && city.IsIndependentCity)
+                cities.Add(city);
+        }
+
+        if (cities.Count == 0)
+        {
+            RecenterOnActiveUnit();
+            return;
+        }
+
+        cities.Sort((a, b) =>
+        {
+            if (a.IsCapital != b.IsCapital)
+                return a.IsCapital ? -1 : 1;
+            return string.CompareOrdinal(a.CityName, b.CityName);
+        });
+
+        playerCityFocusIndex = ((playerCityFocusIndex % cities.Count) + cities.Count) % cities.Count;
+        var focus = cities[playerCityFocusIndex];
+        playerCityFocusIndex = (playerCityFocusIndex + 1) % cities.Count;
+
+        ClearTemporaryPan();
+        userPanning = true;
+        dragPanActive = false;
+        playerTarget = null;
+        var world = ResolveFollowWorld(HexGridMap.Instance.HexToWorld(focus.HexPosition));
+        transform.position = new Vector3(world.x, world.y, cameraHeightDepth);
+        TurnPhaseBanner.Instance?.Refresh(
+            $"<color=#88CCFF><b>Camera</b></color>  -  {focus.SettlementDisplayName()}  |  Home cycles cities");
+    }
+
     void Update()
     {
         if (!TurnManager.Instance?.IsPlayerTurn ?? true)
@@ -91,7 +135,7 @@ public class CameraFollow : MonoBehaviour
         HandleDragPan();
 
         if (Keyboard.current != null && Keyboard.current.homeKey.wasPressedThisFrame)
-            RecenterOnActiveUnit();
+            RecenterOnPlayerCity();
     }
 
     void HandleKeyboardPan()

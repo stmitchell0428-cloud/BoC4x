@@ -13,9 +13,17 @@ public class NavalMovementRulesTests
     }
 
     [Test]
-    public void Explorer_CannotEnterOceanEvenWhenNavigable()
+    public void Explorer_CanEnterCoastalSeaWhenNavigable()
     {
         var tile = MakeTile(TerrainType.Ocean, navigable: true);
+        Assert.IsTrue(NavalMovementRules.CanEnterTile(UnitType.CoastalExplorer, tile));
+        UnityEngine.Object.DestroyImmediate(tile.gameObject);
+    }
+
+    [Test]
+    public void Explorer_CannotEnterDeepOcean()
+    {
+        var tile = MakeTile(TerrainType.Ocean, navigable: false);
         Assert.IsFalse(NavalMovementRules.CanEnterTile(UnitType.CoastalExplorer, tile));
         UnityEngine.Object.DestroyImmediate(tile.gameObject);
     }

@@ -514,7 +514,7 @@ public class CityProduction : MonoBehaviour
                 city.RefreshAppearance();
                 break;
             case CityBuildId.BuildGranary:
-                Debug.Log($"{city.CityName}: Parish Granary ready  -  +3 food/turn from stored grain.");
+                Debug.Log($"{city.CityName}: Parish Granary ready  -  +5 food/turn from stored grain.");
                 break;
             case CityBuildId.BuildParishChurch:
                 faction.confessionalAdherence = Mathf.Clamp(faction.confessionalAdherence + 8f, 0f, 100f);

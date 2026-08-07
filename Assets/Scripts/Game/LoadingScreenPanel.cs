@@ -17,11 +17,7 @@ public class LoadingScreenPanel : MonoBehaviour
     Button skipButton;
     Image progressFill;
 
-    Transform choiceRow;
-    readonly System.Collections.Generic.List<GameObject> choiceButtons = new();
-
     int beatIndex;
-    bool choiceResolved;
     bool loadComplete;
     bool introSkipped;
 
@@ -35,23 +31,58 @@ public class LoadingScreenPanel : MonoBehaviour
 
     public bool EnsureUiBuilt()
     {
-        if (panelRoot != null)
+        if (UiIsHealthy())
             return true;
 
+        TearDownUi();
         BuildUI();
         if (panelRoot != null)
             panelRoot.SetActive(false);
 
-        if (panelRoot == null)
+        if (panelRoot == null || continueButton == null)
+        {
             Debug.LogError("LoadingScreenPanel: failed to build UI  -  no Canvas available.");
+            return false;
+        }
 
-        return panelRoot != null;
+        return true;
+    }
+
+    bool UiIsHealthy() =>
+        panelRoot != null &&
+        chapterText != null &&
+        narrativeText != null &&
+        continueButton != null &&
+        continueLabel != null;
+
+    void TearDownUi()
+    {
+        // DestroyImmediate so a deferred Destroy cannot wipe the next frame's rebuild.
+        if (panelRoot != null)
+            DestroyImmediate(panelRoot);
+
+        panelRoot = null;
+        chapterText = null;
+        narrativeText = null;
+        continueLabel = null;
+        footerHintText = null;
+        continueButton = null;
+        skipButton = null;
+        progressFill = null;
     }
 
     void OnDestroy()
     {
         if (Instance == this)
             Instance = null;
+        panelRoot = null;
+        chapterText = null;
+        narrativeText = null;
+        continueLabel = null;
+        footerHintText = null;
+        continueButton = null;
+        skipButton = null;
+        progressFill = null;
     }
 
     void Update()
@@ -118,7 +149,7 @@ public class LoadingScreenPanel : MonoBehaviour
         bodyRect.anchorMin = new Vector2(0.5f, 1f);
         bodyRect.anchorMax = new Vector2(0.5f, 1f);
         bodyRect.pivot = new Vector2(0.5f, 1f);
-        bodyRect.sizeDelta = new Vector2(560f, 340f);
+        bodyRect.sizeDelta = new Vector2(560f, 260f);
         bodyRect.anchoredPosition = new Vector2(0f, -156f);
         narrativeText = bodyGo.AddComponent<TextMeshProUGUI>();
         CopyFont(narrativeText);
@@ -127,24 +158,7 @@ public class LoadingScreenPanel : MonoBehaviour
         narrativeText.richText = true;
         narrativeText.textWrappingMode = TextWrappingModes.Normal;
         narrativeText.lineSpacing = 2f;
-
-        var choiceGo = new GameObject("ChoiceRow");
-        choiceGo.transform.SetParent(panelRoot.transform, false);
-        choiceRow = choiceGo.transform;
-        var choiceRect = choiceGo.AddComponent<RectTransform>();
-        choiceRect.anchorMin = new Vector2(0.5f, 0f);
-        choiceRect.anchorMax = new Vector2(0.5f, 0f);
-        choiceRect.pivot = new Vector2(0.5f, 0f);
-        choiceRect.sizeDelta = new Vector2(560f, 120f);
-        choiceRect.anchoredPosition = new Vector2(0f, 120f);
-        var choiceLayout = choiceGo.AddComponent<HorizontalLayoutGroup>();
-        choiceLayout.spacing = 8f;
-        choiceLayout.childAlignment = TextAnchor.MiddleCenter;
-        choiceLayout.childControlWidth = true;
-        choiceLayout.childControlHeight = true;
-        choiceLayout.childForceExpandWidth = true;
-        choiceLayout.childForceExpandHeight = true;
-        choiceGo.SetActive(false);
+        narrativeText.raycastTarget = false;
 
         CreateBottomBar(panelRoot.transform);
         CreateContinueButton(panelRoot.transform);
@@ -248,12 +262,14 @@ public class LoadingScreenPanel : MonoBehaviour
 
     public void Show()
     {
+        // Always rebuild so lobby→match never reuses a destroyed ChoiceRow / Continue button.
+        TearDownUi();
         if (!EnsureUiBuilt())
             return;
 
+        panelRoot.SetActive(true);
         panelRoot.transform.SetAsLastSibling();
         beatIndex = 0;
-        choiceResolved = false;
         loadComplete = false;
         introSkipped = false;
         SetLoadProgress(0f);
@@ -261,7 +277,6 @@ public class LoadingScreenPanel : MonoBehaviour
         RefreshContinueButton();
         if (skipButton != null)
             skipButton.gameObject.SetActive(true);
-        panelRoot.SetActive(true);
     }
 
     public void SetLoadProgress(float progress)
@@ -287,8 +302,6 @@ public class LoadingScreenPanel : MonoBehaviour
     void ShowBeat(int index)
     {
         beatIndex = index;
-        choiceResolved = false;
-        ClearChoiceButtons();
 
         if (index < SalvationHistoryDatabase.IntroBeatCount)
         {
@@ -307,24 +320,11 @@ public class LoadingScreenPanel : MonoBehaviour
                 narrativeText.text = TmpTextSanitizer.Sanitize(body);
             }
 
-            if (beat.HasChoices)
-            {
-                BuildChoiceButtons(beat.Choices);
-                choiceRow?.gameObject.SetActive(true);
-                RefreshContinueButton();
-            }
-            else
-            {
-                choiceRow?.gameObject.SetActive(false);
-                choiceResolved = true;
-            }
-
+            // Intro Law/Gospel choices are the narrative card after turn 1 — not on the loading screen.
+            RefreshContinueButton();
             FirstSteps.Instance?.RefreshDashboard();
             return;
         }
-
-        choiceRow?.gameObject.SetActive(false);
-        choiceResolved = true;
 
         int edenIndex = index - SalvationHistoryDatabase.IntroBeatCount;
         var eden = LoadingNarrative.GetBeat(edenIndex);
@@ -334,78 +334,24 @@ public class LoadingScreenPanel : MonoBehaviour
             narrativeText.text = TmpTextSanitizer.Sanitize(eden.Body);
     }
 
-    void ClearChoiceButtons()
-    {
-        foreach (var btn in choiceButtons)
-        {
-            if (btn != null)
-                Destroy(btn);
-        }
-        choiceButtons.Clear();
-    }
-
-    void BuildChoiceButtons(System.Collections.Generic.IReadOnlyList<SalvationHistoryDatabase.Choice> choices)
-    {
-        if (choiceRow == null)
-            return;
-
-        foreach (var choice in choices)
-        {
-            var btnGo = new GameObject(choice.Label);
-            btnGo.transform.SetParent(choiceRow, false);
-            btnGo.AddComponent<LayoutElement>().minWidth = 160f;
-
-            var img = btnGo.AddComponent<Image>();
-            img.color = new Color(0.18f, 0.28f, 0.38f, 1f);
-            var btn = btnGo.AddComponent<Button>();
-            btn.targetGraphic = img;
-
-            var labelGo = new GameObject("Label");
-            labelGo.transform.SetParent(btnGo.transform, false);
-            var labelRect = labelGo.AddComponent<RectTransform>();
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = new Vector2(6f, 6f);
-            labelRect.offsetMax = new Vector2(-6f, -6f);
-            var tmp = labelGo.AddComponent<TextMeshProUGUI>();
-            CopyFont(tmp);
-            tmp.fontSize = 12f;
-            tmp.alignment = TextAlignmentOptions.TopLeft;
-            tmp.richText = true;
-            tmp.text = TmpTextSanitizer.Sanitize(
-                $"<b>{choice.Label}</b>\n<size=11><color=#CCEEFF>{choice.Description}</color></size>");
-            tmp.raycastTarget = false;
-
-            bool disabled = choice.Label.Contains("hexameron") &&
-                            (FirstSteps.Instance == null || FirstSteps.Instance.ScriptureManuscripts < 2);
-            btn.interactable = !disabled;
-            if (disabled)
-                img.color = new Color(0.12f, 0.14f, 0.18f, 0.85f);
-
-            var captured = choice;
-            btn.onClick.AddListener(() =>
-            {
-                captured.Apply?.Invoke();
-                choiceResolved = true;
-                RefreshContinueButton();
-                FirstSteps.Instance?.RefreshDashboard();
-            });
-
-            choiceButtons.Add(btnGo);
-        }
-    }
-
     void RefreshContinueButton()
     {
         if (continueButton == null || continueLabel == null)
-            return;
+        {
+            Debug.LogWarning("LoadingScreenPanel: Continue button missing — rebuilding UI.");
+            if (!EnsureUiBuilt())
+                return;
+            ShowBeat(beatIndex);
+            if (continueButton == null || continueLabel == null)
+                return;
+        }
 
         bool onLastBeat = beatIndex >= TotalBeatCount - 1;
         continueLabel.text = TmpTextSanitizer.Sanitize(onLastBeat
             ? loadComplete ? "Go forth" : "Preparing the land..."
             : "Continue");
 
-        bool canAdvance = choiceResolved && (onLastBeat ? loadComplete : true);
+        bool canAdvance = onLastBeat ? loadComplete : true;
         continueButton.interactable = canAdvance;
 
         if (footerHintText != null)
@@ -416,10 +362,10 @@ public class LoadingScreenPanel : MonoBehaviour
                     ? "Entering the map..."
                     : "Skipping intro  -  the map is still generating...");
             }
-            else if (!choiceResolved)
+            else if (beatIndex < SalvationHistoryDatabase.IntroBeatCount)
             {
                 footerHintText.text = TmpTextSanitizer.Sanitize(
-                    "Choose a response above, then Continue (or Skip intro with Esc).");
+                    "Click Continue or press Space. Creation choices come after your first turn.");
             }
             else
             {
@@ -427,7 +373,7 @@ public class LoadingScreenPanel : MonoBehaviour
                     ? loadComplete
                         ? "Click Go forth or press Space to begin. Matches are not saved — use the lobby each session."
                         : "The map is still generating..."
-                    : "Click Continue, press Space, or choose Skip intro (Esc).");
+                    : "Click Continue, press Space, or Skip intro (Esc).");
             }
         }
 
@@ -453,10 +399,6 @@ public class LoadingScreenPanel : MonoBehaviour
 
     void ShowSkippedState()
     {
-        ClearChoiceButtons();
-        choiceRow?.gameObject.SetActive(false);
-        choiceResolved = true;
-
         if (chapterText != null)
             chapterText.text = TmpTextSanitizer.Sanitize("Preparing the map");
         if (narrativeText != null)
@@ -491,6 +433,7 @@ public class LoadingScreenPanel : MonoBehaviour
         if (panelRoot != null)
             panelRoot.SetActive(false);
         GameHUD.Instance?.EnsureDashboardVisible();
+        NarrativeEventManager.Instance?.NotifyLoadingScreenClosed();
     }
 
     static void CopyFont(TextMeshProUGUI tmp)

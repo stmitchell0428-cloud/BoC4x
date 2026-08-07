@@ -9,7 +9,9 @@ public class NarrativeChronologyTests
     public void SetUp()
     {
         root = new GameObject("NarrativeChronologyTests");
-        root.AddComponent<MatchNarrativeChronology>();
+        var chrono = root.AddComponent<MatchNarrativeChronology>();
+        // EditMode does not invoke Awake — touch Instance so the lazy bind sees this component.
+        Assert.AreSame(chrono, MatchNarrativeChronology.Instance);
     }
 
     [TearDown]

@@ -387,7 +387,7 @@ public static class CityBuildDatabase
             CityBuildId.BuildGranary,
             "Parish Granary",
             "Store grain against famine; tithe and distribute to the needy.",
-            "+3 food each turn when complete",
+            "+5 food each turn when complete",
             CityBuildCategory.ConfessionalBuilding,
             CityBuildTrack.Confessional,
             manuscriptCost: 3,

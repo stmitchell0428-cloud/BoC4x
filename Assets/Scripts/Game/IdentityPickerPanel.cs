@@ -11,8 +11,6 @@ public class IdentityPickerPanel : MonoBehaviour
 
     GameObject panelRoot;
 
-    public bool IsVisible => panelRoot != null && panelRoot.activeSelf;
-
     void Awake()
     {
         Instance = this;

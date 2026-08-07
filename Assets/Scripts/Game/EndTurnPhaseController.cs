@@ -88,8 +88,10 @@ public class EndTurnPhaseController : MonoBehaviour
 
         SynodicalEmphasisManager.Instance?.EnsurePendingChoiceVisible();
         Tier2EmphasisManager.Instance?.EnsurePendingChoicesVisible();
+        CityGrowthManager.Instance?.EnsurePendingDistrictOfferVisible();
 
-        if (EndTurnDeferHelper.HasDeferrableChoicePending)
+        // Pastoral briefings auto-defer; district offers block until Accept / Not now / Decline.
+        if (EndTurnDeferHelper.HasAutoDeferChoicePending)
             EndTurnDeferHelper.DeferPendingChoices();
 
         SanitizeStaleChoicePanels();
@@ -104,7 +106,9 @@ public class EndTurnPhaseController : MonoBehaviour
             TestimonyColloquyManager.Instance?.EnsurePendingColloquyVisible();
             SynodicalEmphasisManager.Instance?.EnsurePendingChoiceVisible();
             Tier2EmphasisManager.Instance?.EnsurePendingChoicesVisible();
+            CityGrowthManager.Instance?.EnsurePendingDistrictOfferVisible();
             CrisisCardPanel.Instance?.BringToFront();
+            DistrictOfferPanel.Instance?.BringToFront();
             TurnPhaseBanner.Instance?.Refresh(blockReasonAfterPhases);
             Debug.LogWarning($"End Turn blocked after phases: {StripRichText(blockReasonAfterPhases)}");
             return false;
@@ -138,7 +142,19 @@ public class EndTurnPhaseController : MonoBehaviour
             return true;
         }
 
-        // Pastoral briefing + district offers auto-defer via EndTurnDeferHelper (do not block).
+        // Pastoral briefing auto-defers via EndTurnDeferHelper. District offers block.
+        if (DistrictOfferPanel.Instance != null && DistrictOfferPanel.Instance.IsVisible)
+        {
+            reason = "<color=#AADDFF><b>District offer</b>  -  Accept, Not now, or Decline (Esc = Not now)</color>";
+            return true;
+        }
+
+        if (CityGrowthManager.Instance != null && CityGrowthManager.Instance.HasPendingOffer)
+        {
+            reason = "<color=#AADDFF><b>District offer</b>  -  Accept, Not now, or Decline</color>";
+            return true;
+        }
+
         if (NarrativeEventManager.Instance != null && NarrativeEventManager.Instance.IsAwaitingPlayerChoice)
         {
             reason = "<color=#DDBB88><b>Narrative chronology</b>  -  choose the synod's witness</color>";
@@ -199,6 +215,9 @@ public class EndTurnPhaseController : MonoBehaviour
 
     static void SanitizeStaleChoicePanels()
     {
+        // Awaiting with no visible card → clear stuck flags (playtest softlock).
+        ClearOrphanedAwaitingFlags();
+
         if (CrisisCardPanel.Instance == null || !CrisisCardPanel.Instance.IsVisible)
             return;
 
@@ -207,6 +226,34 @@ public class EndTurnPhaseController : MonoBehaviour
 
         Debug.LogWarning("End Turn: hiding stale CrisisCardPanel with no active presenter.");
         CrisisCardPanel.Instance.Hide();
+    }
+
+    static void ClearOrphanedAwaitingFlags()
+    {
+        bool cardVisible = CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible;
+        if (cardVisible)
+            return;
+
+        if (NarrativeEventManager.Instance != null && NarrativeEventManager.Instance.IsAwaitingPlayerChoice)
+        {
+            Debug.LogWarning("End Turn: clearing orphaned narrative awaiting flag (no visible card).");
+            NarrativeEventManager.Instance.ForceClearAwaiting();
+        }
+
+        if (LiturgicalEventManager.Instance != null && LiturgicalEventManager.Instance.IsAwaitingPlayerChoice)
+        {
+            if (!cardVisible)
+                LiturgicalEventManager.Instance.EnsurePendingEventVisible();
+        }
+
+        if (TestimonyColloquyManager.Instance != null && TestimonyColloquyManager.Instance.IsAwaitingPlayerChoice)
+        {
+            if (!cardVisible)
+                TestimonyColloquyManager.Instance.EnsurePendingColloquyVisible();
+        }
+
+        if (CrisisManager.Instance != null && CrisisManager.Instance.IsAwaitingPlayerChoice && !cardVisible)
+            CrisisManager.Instance.EnsurePendingCrisisCardVisible();
     }
 
     public static void SanitizeStaleChoicePanelsPublic() => SanitizeStaleChoicePanels();

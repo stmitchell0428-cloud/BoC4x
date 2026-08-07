@@ -1,32 +1,34 @@
-# Guided audit pass — saved for later
+# Guided audit pass — design backlog
+
+**Purpose:** Decide *what to build* (A/B/C per node). **Not** the daily playtest list and **not** the session bookmark.
+
+| Need | File |
+|------|------|
+| Sit down / lobby / last fixes | [`PROGRESS.md`](PROGRESS.md) |
+| Smoke-test this build | [`PLAYTEST-AUDIT-BATCH.md`](PLAYTEST-AUDIT-BATCH.md) |
+| File lists & branch trees | [`AUDIT-DECISION-TREE.md`](AUDIT-DECISION-TREE.md) |
 
 **Status:** In progress · **Resume at:** Node **#1** (P0)  
-**Companion:** [`AUDIT-DECISION-TREE.md`](AUDIT-DECISION-TREE.md) (technical detail + file lists)
-
-**Also decided (virtue track V):** Option C framework — see [Virtue & observance (V)](#virtue--observance-v--option-c) below. Implement **after P0–P1** unless a node explicitly overlaps (#18, #27).
+**Next playtest first:** [`PLAYTEST-AUDIT-BATCH.md`](PLAYTEST-AUDIT-BATCH.md) (district offer / Home / Growth) — then return here for design picks.  
+**Virtue track V:** Option C framework — see [Virtue & observance (V)](#virtue--observance-v--option-c). Implement **after P0–P1** unless a node overlaps (#18, #27).
 
 ---
 
-## How to use this doc
+## How to use
 
 1. Work **top to bottom** — do not skip P0 before P1.
-2. For each node: read **What's wrong** → pick **A / B / C** (or sub-choice) → write your choice in **Your pick**.
-3. When you finish a node and want it coded, tell the agent: *"Implement audit node #N with branch X."*
-4. Playtest using the checklist at the bottom after each sprint.
+2. For each node: read **What's wrong** → pick **A / B / C** → write **Your pick**.
+3. To code a node: *"Implement audit node #N with branch X."*
+4. After a sprint of implementations, smoke with [`PLAYTEST-AUDIT-BATCH.md`](PLAYTEST-AUDIT-BATCH.md).
 
-**Traversal order (recommended):**  
-P0: 1 → 2 → 3 → P1: 2-follow-up → 4 → 5 → 6 → 7 → 10 → 13 → 14 → 15 → 16 → 8 → 9 → 11 → 12 → P2: 17–24 → P3: 25–28 → **V: virtue implementation (after P1)**
+**Traversal order:**  
+P0: 1 → 2 → 3 → P1: 2-follow-up → 4 → 5 → 6 → 7 → 10 → 13 → 14 → 15 → 16 → 8 → 9 → 11 → 12 → P2: 17–24 → P3: 25–28 → **V** (after P1)
 
 ---
 
-## Note on uncommitted draft code
+## Note on old draft code
 
-An earlier session **mistakenly implemented branch A for all nodes** before you chose. That diff may still be in your working tree. When you resume:
-
-- **Option A:** `git checkout` / discard those changes and decide fresh from this doc.
-- **Option B:** Review the diff node-by-node; keep what matches your picks, revert the rest.
-
-This guided pass assumes **you** are choosing — nothing is decided until you fill in **Your pick**.
+An earlier session may have implemented branch A before picks were filled. If a messy diff remains: discard and decide fresh, or keep only what matches your picks. Nothing here is “done” until **Your pick** is filled and shipped.
 
 ---
 
@@ -580,23 +582,22 @@ Church-year line reads e.g. `Salvation day 540 · Church Year: Lent · Mar 12` (
 
 ---
 
-## Playtest checklist (after each sprint)
+## After implementing a sprint
 
-| After | Verify |
-|-------|--------|
-| P0 | CTCR floor holds in crisis; AI rival builds wharf/soldier; Walther tech panel honest |
-| P1 cities | Garrison siege works; capital/district rules feel intentional |
-| P1 flow | ≤1 narrative card per turn; identity required at founding |
-| P2 | Dashboard clocks clear; Formula/fame + virtue summary understood |
-| V | First feast choice → annual tick; tags visible on dashboard |
-| Full | Solo coastal Grand, fame 120, Ascension before turn 40, 0–3 schisms |
+Smoke-test with [`PLAYTEST-AUDIT-BATCH.md`](PLAYTEST-AUDIT-BATCH.md). Do not maintain a second checklist in this file.
+
+| After | Spot-check |
+|-------|------------|
+| P0 | CTCR floor / AI rival builds / Walther copy honest |
+| P1 | Siege + card queue + identity at founding |
+| V | Feast choice → annual tick (when coded) |
 
 ---
 
 ## When you resume in chat
 
-Say: **"Continue guided audit pass from node #1"** (or **#N** if you've filled picks above).
+**Next session default:** playtest first via [`PLAYTEST-AUDIT-BATCH.md`](PLAYTEST-AUDIT-BATCH.md), then say **"Continue guided audit pass from node #1"** when ready for design picks.
 
-We'll do one node at a time: I'll restate the tradeoffs, you pick, then optionally implement that node only.
+One node at a time: restate tradeoffs → you pick → optionally implement that node only.
 
-*Saved Aug 2026.*
+*Saved Aug 2026 · doc roles cleaned Aug 7, 2026 · checkpoint Aug 7 evening.*

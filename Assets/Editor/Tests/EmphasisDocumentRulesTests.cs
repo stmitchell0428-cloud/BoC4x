@@ -25,7 +25,8 @@ namespace BoC4x.Tests
             var scaled = EmphasisDocumentRules.ApplyDocumentPotency(raw, 0.5f);
 
             Assert.IsTrue(scaled.LegalismGuard);
-            Assert.Greater(scaled.AdherenceDecayMultiplier, 0.95f);
+            // Lerp(1 → 0.9, 0.5) ≈ 0.95 — use delta (exact GreaterOrEqual vs 0.95f flakes on float).
+            Assert.AreEqual(0.95f, scaled.AdherenceDecayMultiplier, 0.001f);
         }
 
         [Test]

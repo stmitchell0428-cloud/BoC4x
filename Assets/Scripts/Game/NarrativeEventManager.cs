@@ -51,6 +51,8 @@ public class NarrativeEventManager : MonoBehaviour, IChoiceCardPresenter
             return;
         if (IsAwaitingPlayerChoice)
             return;
+        if (LoadingScreenPanel.Instance != null && LoadingScreenPanel.Instance.IsVisible)
+            return;
 
         int turn = TurnManager.Instance.TurnNumber;
         if (turn < MinTurn)
@@ -111,6 +113,17 @@ public class NarrativeEventManager : MonoBehaviour, IChoiceCardPresenter
         TurnPhaseBanner.Instance?.Refresh();
     }
 
+    public void ForceClearAwaiting()
+    {
+        IsAwaitingPlayerChoice = false;
+        ClearPendingCard();
+        if (deferredPresentRoutine != null)
+        {
+            StopCoroutine(deferredPresentRoutine);
+            deferredPresentRoutine = null;
+        }
+    }
+
     public void OnChoiceCardCancelled()
     {
         ApplyDeferredJudgment();
@@ -132,6 +145,23 @@ public class NarrativeEventManager : MonoBehaviour, IChoiceCardPresenter
         }
 
         TryShowImmediate(pendingTitle, pendingBody, pendingChoices);
+    }
+
+    /// <summary>Loading screen blocked turn-start cards — re-queue when it closes.</summary>
+    public void NotifyLoadingScreenClosed()
+    {
+        if (IsAwaitingPlayerChoice)
+            return;
+        if (TurnManager.Instance == null || !TurnManager.Instance.IsPlayerTurn)
+            return;
+
+        int turn = TurnManager.Instance.TurnNumber;
+        if (turn < MinTurn)
+            return;
+
+        MatchNarrativeChronology.Instance?.AdvanceForTurn(turn);
+        QueueDueEvents();
+        ChoiceCardQueue.Register(ChoiceCardQueue.OrderNarrative, TryPresentTurnStartCard);
     }
 
     void ClearPendingCard()

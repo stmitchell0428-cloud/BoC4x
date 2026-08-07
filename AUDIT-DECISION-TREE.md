@@ -1,19 +1,20 @@
-# BoC4x — Audit Decision Tree
+# BoC4x — Audit decision tree
 
-**Purpose:** Work through every weak area from the full-game audit (Aug 2026). Each node is a **decision** — pick one branch, implement, playtest, then move on.
+**Purpose:** Technical companion to [`GUIDED-AUDIT-PASS.md`](GUIDED-AUDIT-PASS.md) — branch trees and file lists per node.  
+**Not** the session bookmark ([`PROGRESS.md`](PROGRESS.md)) and **not** the playtest checklist ([`PLAYTEST-AUDIT-BATCH.md`](PLAYTEST-AUDIT-BATCH.md)).
 
-**How to use:** Start at **Sprint 0**, descend in order. Mark choices in `PROGRESS.md` or git commit messages. Do not skip **P0** before **P1**.
+**How to use:** Make picks in the guided pass. Use this file when you need files/branches. Do not skip **P0** before **P1**.
 
 **Legend:** `[P0]` critical · `[P1]` logic gap · `[P2]` theme/polish · `[P3]` optional
 
 ---
 
-## Sprint 0 — Save point (done when this file exists)
+## Sprint 0 — Save point
 
 - [x] Narrative chronology Tier A shipped
 - [x] Naval split, testimony colloquies, church-year fixes shipped
-- [ ] Run this tree — **guided pass in progress** → [`GUIDED-AUDIT-PASS.md`](GUIDED-AUDIT-PASS.md) · **Virtue track V** (Option C, partially decided)
-
+- [x] Aug 7 playtest fixes: district offer End Turn block (no auto-defer), city Home cycle, food baseline/granary, EditMode chronology bind
+- [ ] Run guided nodes → [`GUIDED-AUDIT-PASS.md`](GUIDED-AUDIT-PASS.md) · virtue track V (Option C, partially decided)
 ---
 
 ## P0 — Trust (mechanics must match UI)
@@ -504,16 +505,10 @@ V:  (after P1) V5 → V6 → implement V0–V4
 
 ---
 
-## Playtest checklist (after each sprint)
+## After implementing a sprint
 
-| After | Verify |
-|-------|--------|
-| P0 | CTCR floor holds in crisis; AI rival builds wharf/soldier; Walther tech panel honest |
-| P1 cities | Garrison siege works; capital/district rules feel intentional |
-| P1 flow | ≤1 narrative card per turn; identity required at founding |
-| P2 | Dashboard clocks clear; Formula/fame relationship understood |
-| Full | Solo coastal Grand, fame 120, Ascension before turn 40, 0–3 schisms |
+Smoke-test with [`PLAYTEST-AUDIT-BATCH.md`](PLAYTEST-AUDIT-BATCH.md). Record design picks in [`GUIDED-AUDIT-PASS.md`](GUIDED-AUDIT-PASS.md) (or mark branches here with `→ DECIDED: branch X`).
 
 ---
 
-*Generated Aug 2026 from full-game audit. Update this file when branches are chosen (mark with `→ DECIDED: branch X`).*
+*Generated Aug 2026 from full-game audit. Doc roles cleaned Aug 7, 2026.*

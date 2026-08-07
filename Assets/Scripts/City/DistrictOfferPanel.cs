@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 
@@ -25,6 +26,14 @@ public class DistrictOfferPanel : MonoBehaviour
     {
         if (Instance == this)
             Instance = null;
+    }
+
+    void Update()
+    {
+        if (!IsVisible || Keyboard.current == null)
+            return;
+        if (Keyboard.current.escapeKey.wasPressedThisFrame)
+            CityGrowthManager.Instance?.DeferPendingOffer();
     }
 
     void EnsureUI()
@@ -107,12 +116,19 @@ public class DistrictOfferPanel : MonoBehaviour
             $"<b>{offer.Parent.CityName}</b>  -  new district on {terrain} hex {offer.Hex}\n" +
             $"Suggested specialty: <color=#DDEE88>{spec}</color>\n" +
             $"<size=12><color=#99AABB>Appeal score {offer.SiteScore:F0}. Press <b>G</b> for full appeal map.</color></size>\n" +
-            "<size=12><color=#99AABB>Accept to found the district, then choose its specialty on the next screen.</color></size>");
+            "<size=12><color=#99AABB>Accept to found the district, then choose its specialty. Esc = Not now.</color></size>");
 
         panelRoot.SetActive(true);
+        BringToFront();
         AppealOverlayController.Instance?.FlashDistrictSite(offer.Hex, offer.SiteScore);
         TurnPhaseBanner.Instance?.Refresh("<color=#AADDFF><b>District offer</b></color>  -  accept, defer, or decline");
         CameraFollow.Instance?.PanToHex(offer.Hex, 6f);
+    }
+
+    public void BringToFront()
+    {
+        if (panelRoot != null)
+            panelRoot.transform.SetAsLastSibling();
     }
 
     public void Hide()

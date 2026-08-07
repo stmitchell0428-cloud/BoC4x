@@ -19,6 +19,8 @@ public static class ChoiceCardBlocking
             return true;
         if (IdentityPickerPanel.Instance != null && IdentityPickerPanel.Instance.IsVisible)
             return true;
+        if (LoadingScreenPanel.Instance != null && LoadingScreenPanel.Instance.IsVisible)
+            return true;
         if (CrisisCardPanel.Instance != null && CrisisCardPanel.Instance.IsVisible)
             return true;
         return false;

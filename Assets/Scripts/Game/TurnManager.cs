@@ -126,20 +126,33 @@ public class TurnManager : MonoBehaviour
         if (MatchController.Instance != null && MatchController.Instance.IsMatchOver)
             return;
 
-        EndTurnPhaseController.SanitizeStaleChoicePanelsPublic();
-        if (EndTurnPhaseController.TryGetEndTurnBlockReason(out string blockReason))
+        // Player choice cards must not stall AI / rival slots (softlock: card awaiting + invisible UI).
+        if (!IsPlayerTurn)
         {
-            Debug.LogWarning($"TurnManager.EndTurn blocked: {blockReason}");
+            AdvanceTurnInternal();
             return;
         }
 
-        if (IsPlayerTurn)
+        EndTurnPhaseController.SanitizeStaleChoicePanelsPublic();
+        if (EndTurnPhaseController.TryGetEndTurnBlockReason(out string blockReason))
         {
-            // Marches now advance at the start of the next player turn (after RefreshTurn).
-            // Keep a no-op-safe pass here only for leftover MP on the same turn as the order.
-            AdvancePendingPlayerMoveOrders();
+            // Re-show a pending narrative/crisis card if state says awaiting but UI is missing.
+            NarrativeEventManager.Instance?.EnsurePendingEventVisible();
+            LiturgicalEventManager.Instance?.EnsurePendingEventVisible();
+            TestimonyColloquyManager.Instance?.EnsurePendingColloquyVisible();
+            CrisisManager.Instance?.EnsurePendingCrisisCardVisible();
+            CrisisCardPanel.Instance?.BringToFront();
+            TurnPhaseBanner.Instance?.Refresh(blockReason);
+            Debug.LogWarning($"TurnManager.EndTurn blocked: {StripBlockReason(blockReason)}");
+            return;
         }
 
+        AdvancePendingPlayerMoveOrders();
+        AdvanceTurnInternal();
+    }
+
+    void AdvanceTurnInternal()
+    {
         TurnEnded?.Invoke();
         SelectedUnit = null;
         HexSelectionController.Instance?.ClearHighlights();
@@ -158,6 +171,14 @@ public class TurnManager : MonoBehaviour
 
         StartFactionTurn();
     }
+
+    static string StripBlockReason(string richText) =>
+        string.IsNullOrEmpty(richText)
+            ? ""
+            : richText.Replace("<b>", "").Replace("</b>", "")
+                .Replace("<color=#FFAA66>", "").Replace("<color=#88CCFF>", "")
+                .Replace("<color=#FFDD88>", "").Replace("<color=#DDCC88>", "")
+                .Replace("<color=#DDBB88>", "").Replace("</color>", "");
 
     void StartFactionTurn()
     {

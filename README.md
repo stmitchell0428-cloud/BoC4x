@@ -22,7 +22,7 @@ A hex-grid turn-based strategy prototype themed around the Lutheran confessional
 
 **Naval:** Build a **Dock** at coastal Market districts, then train **Coastal Galleys** and **Coastal Patrol**. Galleys blockade and ferry troops; deep ocean beyond coastal range stays impassable.
 
-**Save/load:** Not implemented — each match starts fresh from the lobby. See `PROGRESS.md` for session notes.
+**Save/load:** Not implemented — each match starts fresh from the lobby. Session bookmark: [`PROGRESS.md`](PROGRESS.md).
 
 ### Visual art eras
 
@@ -244,7 +244,7 @@ Ocean, lake, and river tiles are **bright blue** and impassable. Shore tiles gra
 
 See `Assets/` — `HexGridMap.cs`, `FirstSteps.cs`, `Scripts/` for units, cities, tech, AI, fog, match flow.
 
-**Developer checkpoint:** [`PROGRESS.md`](PROGRESS.md) — session state, playtest checklist, and prioritized next steps.
+**Developer docs:** [`PROGRESS.md`](PROGRESS.md) (resume) · [`PLAYTEST-AUDIT-BATCH.md`](PLAYTEST-AUDIT-BATCH.md) (next playtest) · [`GUIDED-AUDIT-PASS.md`](GUIDED-AUDIT-PASS.md) (design backlog) · [`SYNC.md`](SYNC.md) (GitHub sync).
 
 ## Roadmap (later)
 

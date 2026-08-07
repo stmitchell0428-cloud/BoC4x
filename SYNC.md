@@ -57,10 +57,12 @@ Then open a PR on GitHub: **local/full-tree-aug3 → master**.
 | **Cloud ← your local changes** | commit + `git push` on your machine |
 | **Check if you're aligned** | `git fetch origin && git status` — should say *up to date* |
 
+**Session bookmark:** [`PROGRESS.md`](PROGRESS.md) · next smoke list: [`PLAYTEST-AUDIT-BATCH.md`](PLAYTEST-AUDIT-BATCH.md)
+
 ## After pulling
 
 1. Open Unity → wait for recompile  
 2. Run EditMode tests once  
-3. Play a quick smoke test  
+3. Play from lobby using the playtest checklist  
 
 If something only works locally, it is **not synced** until pushed.
