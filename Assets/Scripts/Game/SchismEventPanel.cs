@@ -128,7 +128,7 @@ public class SchismEventPanel : MonoBehaviour
         string axisNote = profile.AxisTweak switch
         {
             HeresyAxisTweak.Appeal => "This dissent draws migrants through gospel appeal  -  comfort over confession.",
-            HeresyAxisTweak.Restraint => "This dissent enforces rigid civic restraint  -  law without gospel comfort.",
+            HeresyAxisTweak.Restraint => "This dissent enforces rigid Civic Restraint (Law) without Gospel comfort.",
             HeresyAxisTweak.Doctrine => "This dissent challenges confessional doctrine  -  adherence fractures first.",
             _ => ""
         };

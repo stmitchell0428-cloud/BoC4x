@@ -65,7 +65,22 @@ public class AppealOverlayController : MonoBehaviour
             return;
 
         HexSelectionController.Instance?.ClearHighlights();
+        ApplyAppealMarks();
+        TurnPhaseBanner.Instance?.Refresh(BuildBannerMessage());
+    }
 
+    /// <summary>Redraw appeal marks without clearing existing move/selection rings.</summary>
+    public void RefreshPreserveSelection()
+    {
+        if (!IsActive || HexGridMap.Instance == null || CityManager.Instance == null)
+            return;
+
+        ApplyAppealMarks();
+        TurnPhaseBanner.Instance?.Refresh(BuildBannerMessage());
+    }
+
+    void ApplyAppealMarks()
+    {
         lastExcellentCount = 0;
         lastGoodCount = 0;
 
@@ -98,8 +113,6 @@ public class AppealOverlayController : MonoBehaviour
                 }
             }
         }
-
-        TurnPhaseBanner.Instance?.Refresh(BuildBannerMessage());
     }
 
     string BuildBannerMessage()

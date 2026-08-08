@@ -11,6 +11,14 @@ namespace BoC4x.Tests
         }
 
         [Test]
+        public void DistrictPacing_RequiresStreakAndAge()
+        {
+            Assert.GreaterOrEqual(CityGrowthSystem.MinSurplusStreakForDistrict, 2);
+            Assert.GreaterOrEqual(CityGrowthSystem.MinTurnsBeforeDistrictOffer, 8);
+            Assert.GreaterOrEqual(CityGrowthSystem.MaxDistrictsPerCity, 6);
+        }
+
+        [Test]
         public void MeetsDistrictFoodGate_PositiveSurplus()
         {
             var snap = new CityGrowthSystem.GrowthSnapshot { FoodSurplus = 2, HousingRoom = 5 };

@@ -328,9 +328,6 @@ public class HexSelectionController : MonoBehaviour
         HighlightAttackTargets(selected);
         HighlightDisembarkShores(selected);
         HighlightPlacementRecommendations(selected);
-
-        if (AppealOverlayController.Instance != null && AppealOverlayController.Instance.IsActive)
-            AppealOverlayController.Instance.Refresh();
     }
 
     public void MarkHighlight(HexCoordinates coords, HighlightKind kind)

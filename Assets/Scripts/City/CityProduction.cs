@@ -203,9 +203,11 @@ public class CityProduction : MonoBehaviour
         if (id == CityBuildId.TrainCoastalExplorer && !CityManager.Instance.CityTouchesNavalCoast(city))
             return CityBuildStatus.Locked;
 
-        if ((id == CityBuildId.BuildWharf || id == CityBuildId.BuildFishingPost ||
-             id == CityBuildId.BuildDock || id == CityBuildId.TrainCoastalGalley ||
-             id == CityBuildId.TrainCoastalExplorer || id == CityBuildId.TrainDeepSeaShip) &&
+        if (NavalMovementRules.RequiresOceanAccess(id) &&
+            !CityManager.Instance.CityTouchesOceanCoast(city))
+            return CityBuildStatus.Locked;
+
+        if (id == CityBuildId.BuildFishingPost &&
             !CityManager.Instance.CityTouchesNavalCoast(city))
             return CityBuildStatus.Locked;
 

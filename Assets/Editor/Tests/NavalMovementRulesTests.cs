@@ -59,4 +59,14 @@ public class NavalMovementRulesTests
         Assert.IsTrue(NavalMovementRules.CanEnterTile(UnitType.CoastalGalley, tile));
         UnityEngine.Object.DestroyImmediate(tile.gameObject);
     }
+
+    [Test]
+    public void RequiresOceanAccess_WharfDockAndShips()
+    {
+        Assert.IsTrue(NavalMovementRules.RequiresOceanAccess(CityBuildId.BuildWharf));
+        Assert.IsTrue(NavalMovementRules.RequiresOceanAccess(CityBuildId.BuildDock));
+        Assert.IsTrue(NavalMovementRules.RequiresOceanAccess(CityBuildId.TrainCoastalGalley));
+        Assert.IsFalse(NavalMovementRules.RequiresOceanAccess(CityBuildId.BuildFishingPost));
+        Assert.IsFalse(NavalMovementRules.RequiresOceanAccess(CityBuildId.TrainCoastalExplorer));
+    }
 }

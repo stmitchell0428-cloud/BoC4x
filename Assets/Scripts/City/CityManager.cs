@@ -427,7 +427,10 @@ public class CityManager : MonoBehaviour
         if (HexGridMap.Instance == null || city == null)
             return null;
 
+        HexCoordinates? bestNaval = null;
+        int bestNavalScore = int.MinValue;
         HexCoordinates? fallback = null;
+
         foreach (var neighbor in HexGridMap.Instance.GetWrappedNeighbors(city.HexPosition))
         {
             if (!HexGridMap.Instance.TryGetTile(neighbor, out var tile))
@@ -437,13 +440,15 @@ public class CityManager : MonoBehaviour
 
             if (NavalMovementRules.IsNavalUnit(type))
             {
-                if (!NavalMovementRules.CanEnterTile(type, tile))
+                if (!NavalMovementRules.CanEnterTile(type, tile, city.Faction, city.SynodPlayer))
                     continue;
 
-                if (TerrainRules.IsWater(tile.Terrain) ||
-                    tile.Terrain == TerrainType.Shore ||
-                    tile.IsNavalCoast)
-                    return neighbor;
+                int score = NavalSpawnScore(tile, type);
+                if (score > bestNavalScore)
+                {
+                    bestNavalScore = score;
+                    bestNaval = neighbor;
+                }
 
                 fallback ??= neighbor;
                 continue;
@@ -455,7 +460,69 @@ public class CityManager : MonoBehaviour
             return neighbor;
         }
 
-        return fallback;
+        return bestNaval ?? fallback;
+    }
+
+    static int NavalSpawnScore(HexTile tile, UnitType type)
+    {
+        // Prefer ocean (especially navigable coastal sea) over inland lakes.
+        if (tile.Terrain == TerrainType.Ocean)
+            return tile.IsNavigableWater || type == UnitType.DeepSeaShip ? 100 : 80;
+        if (tile.Terrain == TerrainType.River)
+            return 40;
+        if (tile.Terrain == TerrainType.Lake)
+            return 20;
+        if (tile.Terrain == TerrainType.Shore || tile.IsNavalCoast)
+            return 10;
+        return 0;
+    }
+
+    /// <summary>Ocean shore / ocean-adjacent naval coast — not lakes alone.</summary>
+    public bool CityTouchesOceanCoast(City city)
+    {
+        if (city == null || HexGridMap.Instance == null)
+            return false;
+
+        if (HexGridMap.Instance.TryGetTile(city.HexPosition, out var center) &&
+            TileTouchesOcean(center))
+            return true;
+
+        foreach (var neighbor in HexGridMap.Instance.GetWrappedNeighbors(city.HexPosition))
+        {
+            if (HexGridMap.Instance.TryGetTile(neighbor, out var tile) &&
+                TileTouchesOcean(tile))
+                return true;
+        }
+
+        return false;
+    }
+
+    static bool TileTouchesOcean(HexTile tile)
+    {
+        if (tile == null)
+            return false;
+        if (tile.Terrain == TerrainType.Ocean)
+            return true;
+        if (tile.Terrain == TerrainType.Shore)
+        {
+            // Shore next to ocean (not lake-only).
+            foreach (var n in HexGridMap.Instance.GetWrappedNeighbors(tile.Coordinates))
+            {
+                if (HexGridMap.Instance.TryGetTile(n, out var nt) && nt.Terrain == TerrainType.Ocean)
+                    return true;
+            }
+        }
+
+        if (tile.IsNavalCoast)
+        {
+            foreach (var n in HexGridMap.Instance.GetWrappedNeighbors(tile.Coordinates))
+            {
+                if (HexGridMap.Instance.TryGetTile(n, out var nt) && nt.Terrain == TerrainType.Ocean)
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     public bool TryFoundCityFromNomadicSettler(Unit settler, string cityName = "Wittenberg")

@@ -22,7 +22,8 @@ public static class SynodLegacyTraitDatabase
 
     public static string Description(SynodLegacyTraitId id) => id switch
     {
-        SynodLegacyTraitId.GerhardLegacy => "Legalism was checked  -  Law and Gospel held together.",
+        SynodLegacyTraitId.GerhardLegacy =>
+            "Legalism Guard — when Civic Restraint (Law) runs high and Spiritual Comfort (Gospel) is low, the synod recenters instead of fracturing.",
         SynodLegacyTraitId.ConcordLegacy => "Antinomian drift was rebuked  -  confession held firm.",
         SynodLegacyTraitId.CrisisSurvivor => "The synod endured doctrinal tension without fracturing.",
         SynodLegacyTraitId.ConfessionalWitness => "Word and deed spread  -  fame across the land.",
@@ -34,7 +35,7 @@ public static class SynodLegacyTraitDatabase
     public static string FormatGameplayEffects(SynodLegacyTraitId id) => id switch
     {
         SynodLegacyTraitId.GerhardLegacy =>
-            "Softens legalism crises; 15% less Law/Gospel drift each turn",
+            "Softens legalism crises (recenters Law/Gospel); −15% Law/Gospel drift/turn; hides legalism warning",
         SynodLegacyTraitId.ConcordLegacy =>
             "Softens antinomian crises; +2 adherence when preaching",
         SynodLegacyTraitId.CrisisSurvivor =>

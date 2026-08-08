@@ -699,7 +699,7 @@ public class Unit : MonoBehaviour
 
         // Destination permanently invalid (terrain / walls) — cancel.
         if (!HexGridMap.Instance.TryGetTile(target, out var targetTile) ||
-            !NavalMovementRules.CanEnterTile(Type, targetTile) ||
+            !NavalMovementRules.CanEnterTile(Type, targetTile, Faction, SynodPlayer) ||
             CityDefenses.BlocksHostileEntryAt(target, this))
         {
             ClearMoveOrder();
@@ -790,7 +790,7 @@ public class Unit : MonoBehaviour
     bool IsValidMoveDestination(HexCoordinates target)
     {
         if (!HexGridMap.Instance.TryGetTile(target, out var tile)) return false;
-        if (!NavalMovementRules.CanEnterTile(Type, tile)) return false;
+        if (!NavalMovementRules.CanEnterTile(Type, tile, Faction, SynodPlayer)) return false;
         if (tile.Occupant != null) return false;
         if (CityDefenses.BlocksHostileEntryAt(target, this)) return false;
         return true;

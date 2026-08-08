@@ -477,7 +477,7 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
 
             TryPresentCard(
                 "<color=#FF8866>Crisis  -  Legalism (saturated)</color>",
-                "Civic restraint has crushed gospel comfort — and three dissenting synods already stand abroad. " +
+                "Civic Restraint (Law) has crushed Spiritual Comfort (Gospel) — and three dissenting synods already stand abroad. " +
                 "There is no fourth capital left to found.\n\n" +
                 "<i>How will the synod absorb this unrest?</i>",
                 choices);
@@ -496,7 +496,7 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
 
         TryPresentCard(
             "<color=#FF8866>Crisis  -  Legalism</color>",
-            "Civic restraint has crushed gospel comfort. Pastors report empty pews and harsh catechism classes.\n\n" +
+            "Civic Restraint (Law) has crushed Spiritual Comfort (Gospel). Pastors report empty pews and harsh catechism classes.\n\n" +
             "<i>How will the synod respond?</i>",
             openChoices);
     }
@@ -549,9 +549,9 @@ public class CrisisManager : MonoBehaviour, IChoiceCardPresenter
         {
             var choices = new List<CrisisCardChoice>
             {
-                new("Catechism review", "+4 adherence, +5 restraint",
+                new("Catechism review", "+4 adherence, Civic Restraint (Law) +5",
                     () => ResolveDriftRecovery(4f, 5f, 0f)),
-                new("Open forum", "+3 comfort, -2 restraint",
+                new("Open forum", "+3 Spiritual Comfort (Gospel), Civic Restraint (Law) −2",
                     () => ResolveDriftRecovery(2f, -2f, 3f)),
                 new("Press on", "Drift continues",
                     () => ResolveDriftContinue())

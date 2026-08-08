@@ -1388,7 +1388,7 @@ public class HexGridMap : MonoBehaviour
         if (origin == target) return true;
         if (!TryGetTile(target, out var targetTile) || targetTile.Occupant != null)
             return false;
-        if (!NavalMovementRules.CanEnterTile(unitType, targetTile))
+        if (!NavalMovementRules.CanEnterTile(unitType, targetTile, faction, SynodPlayerId.None))
             return false;
         return GetMovementCosts(origin, range, faction, unitType).TryGetValue(target, out cost);
     }
@@ -1447,9 +1447,13 @@ public class HexGridMap : MonoBehaviour
             foreach (var neighbor in GetWrappedNeighbors(current))
             {
                 if (!TryGetTile(neighbor, out var tile)) continue;
-                if (!NavalMovementRules.CanEnterTile(unitType, tile)) continue;
-                if (!NavalMovementRules.CanTraverse(currentTile, tile, unitType)) continue;
-                if (tile.Occupant != null) continue;
+                if (!NavalMovementRules.CanEnterTile(unitType, tile, faction, SynodPlayerId.None))
+                    continue;
+                if (!NavalMovementRules.CanTraverse(currentTile, tile, unitType))
+                    continue;
+                if (tile.Occupant != null &&
+                    !(NavalMovementRules.IsNavalUnit(unitType) && tile.Occupant.Faction == faction))
+                    continue;
 
                 int nextCost = currentCost + NavalMovementRules.StepCost(unitType, tile);
                 if (nextCost > range) continue;
@@ -1493,7 +1497,7 @@ public class HexGridMap : MonoBehaviour
 
         if (!TryGetTile(target, out var targetTile) || targetTile.Occupant != null)
             return false;
-        if (!NavalMovementRules.CanEnterTile(unitType, targetTile))
+        if (!NavalMovementRules.CanEnterTile(unitType, targetTile, faction, SynodPlayerId.None))
             return false;
 
         var best = new Dictionary<HexCoordinates, int> { [origin] = 0 };
@@ -1512,11 +1516,12 @@ public class HexGridMap : MonoBehaviour
             {
                 if (!TryGetTile(neighbor, out var tile))
                     continue;
-                if (!NavalMovementRules.CanEnterTile(unitType, tile))
+                if (!NavalMovementRules.CanEnterTile(unitType, tile, faction, SynodPlayerId.None))
                     continue;
                 if (!NavalMovementRules.CanTraverse(currentTile, tile, unitType))
                     continue;
-                if (tile.Occupant != null)
+                if (tile.Occupant != null &&
+                    !(NavalMovementRules.IsNavalUnit(unitType) && tile.Occupant.Faction == faction))
                     continue;
 
                 int nextCost = currentCost + NavalMovementRules.StepCost(unitType, tile);

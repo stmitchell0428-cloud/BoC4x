@@ -69,17 +69,28 @@ public class ClergyRosterPanel : MonoBehaviour
 
         titleText = CreateLabel(box.transform, "Title", "Clergy roster", new Vector2(0f, -12f), 22f, FontStyles.Bold,
             TextAlignmentOptions.Center, new Vector2(520f, 32f));
-        bodyText = CreateLabel(box.transform, "Body", "", new Vector2(0f, -48f), 14f, FontStyles.Normal,
-            TextAlignmentOptions.TopLeft, new Vector2(520f, 340f));
+        CreateLabel(box.transform, "Hint",
+            "<size=12><color=#99AABB>Select a unit on the map first. Chaplain actions need a Chaplain selected.</color></size>",
+            new Vector2(0f, -44f), 12f, FontStyles.Normal, TextAlignmentOptions.Center, new Vector2(520f, 24f));
+
+        bodyText = CreateLabel(box.transform, "Body", "", new Vector2(0f, -72f), 14f, FontStyles.Normal,
+            TextAlignmentOptions.TopLeft, new Vector2(520f, 280f));
         bodyText.textWrappingMode = TextWrappingModes.Normal;
         bodyText.overflowMode = TextOverflowModes.Overflow;
         bodyText.raycastTarget = false;
 
-        CreateButton(box.transform, "Assign selected here", new Vector2(-170f, 56f), AssignSelected);
-        CreateButton(box.transform, "Parish ministry", new Vector2(170f, 56f), AssignChaplainParish);
-        CreateButton(box.transform, "Escort selected unit", new Vector2(-170f, 12f), AssignChaplainEscort);
-        CreateButton(box.transform, "Hospital ministry", new Vector2(170f, 12f), AssignChaplainHospital);
-        CreateButton(box.transform, "Close", new Vector2(0f, -32f), Hide);
+        CreateLabel(box.transform, "ChaplainHeader",
+            "<color=#DDEE88><b>Chaplain assignments</b></color>",
+            new Vector2(0f, 148f), 13f, FontStyles.Bold, TextAlignmentOptions.Center, new Vector2(520f, 22f));
+        CreateButton(box.transform, "Parish ministry", new Vector2(-170f, 108f), AssignChaplainParish);
+        CreateButton(box.transform, "Escort military", new Vector2(0f, 108f), AssignChaplainEscort);
+        CreateButton(box.transform, "Hospital ministry", new Vector2(170f, 108f), AssignChaplainHospital);
+
+        CreateLabel(box.transform, "RosterHeader",
+            "<color=#AACCFF><b>Roster</b></color>",
+            new Vector2(0f, 64f), 13f, FontStyles.Bold, TextAlignmentOptions.Center, new Vector2(520f, 22f));
+        CreateButton(box.transform, "Assign selected here", new Vector2(-120f, 24f), AssignSelected);
+        CreateButton(box.transform, "Close", new Vector2(120f, 24f), Hide);
     }
 
     static TextMeshProUGUI CreateLabel(

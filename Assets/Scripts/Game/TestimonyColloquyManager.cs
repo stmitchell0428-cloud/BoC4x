@@ -238,11 +238,11 @@ public class TestimonyColloquyManager : MonoBehaviour, IChoiceCardPresenter
         {
             new(
                 "Archive patristic loci",
-                "Adherence +10, Gospel +4 · Legalism Guard legacy",
+                "Adherence +10, Gospel +4 · Gerhard's Loci Guard (softens legalism crises, −15% Law/Gospel drift)",
                 () => ApplyGerhardArchivePatristicLoci()),
             new(
                 "Bind catechism to fathers (3 mss)",
-                "Law +5, adherence +8, -3 mss",
+                "Civic Restraint (Law) +5, adherence +8, −3 mss",
                 () => ApplyTestimony(5f, 3f, 8f, fame: 1, mssCost: 3, "Gerhard catechism binding"))
         };
 

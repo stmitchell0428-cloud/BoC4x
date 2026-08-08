@@ -385,7 +385,8 @@ public class HexTile : MonoBehaviour
 
     static bool ShouldDrawHighlight(FogVisibility visibility, HighlightKind kind) =>
         kind != HighlightKind.None &&
-        (visibility == FogVisibility.Visible ||
+        ((visibility == FogVisibility.Visible) ||
+         (visibility == FogVisibility.Explored && UsesRingHighlight(kind)) ||
          IsAppealHighlight(kind) ||
          IsPlacementHighlight(kind));
 }

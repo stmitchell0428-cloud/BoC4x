@@ -12,10 +12,12 @@ public static class CityGrowthSystem
     public const int FoundingCapitalPopulation = 15;
     public const int CapitalDeficitGraceTurns = 8;
     public const float MigrationAppealThreshold = 18f;
-    public const int MinSurplusStreakForDistrict = 1;
+    public const int MinSurplusStreakForDistrict = 2;
+    public const int MinTurnsBeforeDistrictOffer = 8;
     public const int MaxMigrationPerCityPerTurn = 4;
     public const int WorkerPopulationDivisor = 3;
     public const int WorkersPerActiveProject = 1;
+    public const int MaxDistrictsPerCity = 6;
 
     public struct GrowthSnapshot
     {
@@ -520,16 +522,16 @@ public static class CityGrowthSystem
 
         int fromPop = parent.SizeTier switch
         {
-            City.CitySizeTier.Capital => 2,
-            City.CitySizeTier.Large => 2,
-            City.CitySizeTier.Medium => 1,
-            _ => 0
+            City.CitySizeTier.Capital => 3,
+            City.CitySizeTier.Large => 3,
+            City.CitySizeTier.Medium => 2,
+            _ => 1
         };
 
         int territoryTiles = TerritoryManager.Instance?.GetTerritoryTileCount(parent) ?? 0;
-        int fromTerritory = territoryTiles >= 12 ? 2 : territoryTiles >= 8 ? 1 : 0;
+        int fromTerritory = territoryTiles >= 16 ? 3 : territoryTiles >= 12 ? 2 : territoryTiles >= 8 ? 1 : 0;
 
-        return Mathf.Clamp(fromPop + fromTerritory, 0, 4);
+        return Mathf.Clamp(fromPop + fromTerritory, 0, MaxDistrictsPerCity);
     }
 
     public static int CountChildDistricts(City parent)
@@ -541,7 +543,16 @@ public static class CityGrowthSystem
     }
 
     public static int RequiredSurplusStreakForDistrict(City parent) =>
-        CountChildDistricts(parent) == 0 ? 1 : MinSurplusStreakForDistrict;
+        MinSurplusStreakForDistrict;
+
+    public static bool CityEligibleForDistrictOffer(City parent)
+    {
+        if (parent == null || parent.IsHamlet)
+            return false;
+        if (TurnManager.Instance == null)
+            return true;
+        return TurnManager.Instance.TurnNumber - parent.FoundedOnTurn >= MinTurnsBeforeDistrictOffer;
+    }
 
     public static bool MeetsDistrictFoodGate(GrowthSnapshot snap) =>
         snap.FoodSurplus > 0 || (snap.FoodSurplus == 0 && snap.HousingRoom <= 0);
@@ -554,6 +565,8 @@ public static class CityGrowthSystem
         if (parent == null || parent.IsHamlet ||
             CityManager.Instance == null || HexGridMap.Instance == null ||
             TerritoryManager.Instance == null)
+            return null;
+        if (!CityEligibleForDistrictOffer(parent))
             return null;
         if (surplusStreak < RequiredSurplusStreakForDistrict(parent))
             return null;
@@ -871,6 +884,14 @@ public static class CityGrowthSystem
                 sb.Append($"  |  <color=#99AABB>district offer cooldown {cooldown}t</color>");
             else if (pendingHere && DistrictOfferPanel.Instance != null && DistrictOfferPanel.Instance.IsVisible)
                 sb.Append("  |  <color=#DDEE88>district offer open</color>");
+            else if (!CityEligibleForDistrictOffer(city))
+            {
+                int need = MinTurnsBeforeDistrictOffer;
+                int age = TurnManager.Instance != null
+                    ? TurnManager.Instance.TurnNumber - city.FoundedOnTurn
+                    : 0;
+                sb.Append($"  |  <color=#99AABB>districts unlock in {Mathf.Max(0, need - age)}t</color>");
+            }
             else if (FindBestDistrictOffer(city, streak).HasValue)
                 sb.Append("  |  <color=#DDEE88>district offer ready (end turn)</color>");
             else if (MeetsDistrictFoodGate(s) && streak >= streakNeed)
@@ -879,6 +900,8 @@ public static class CityGrowthSystem
                 sb.Append($"  |  district streak {streak}/{streakNeed}");
             else if (!MeetsDistrictFoodGate(s))
                 sb.Append("  |  <color=#99AABB>need food surplus for districts</color>");
+            else if (MeetsDistrictFoodGate(s) && streak < streakNeed)
+                sb.Append($"  |  district streak {streak}/{streakNeed}");
         }
 
         if (s.TensionLabel != "Balanced")

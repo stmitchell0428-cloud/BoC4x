@@ -375,7 +375,7 @@ public class CityGrowthManager : MonoBehaviour
 
 
 
-        districtOfferCooldown[pendingOffer.Value.Parent] = 3;
+        districtOfferCooldown[pendingOffer.Value.Parent] = 6;
 
         pendingOffer = null;
 

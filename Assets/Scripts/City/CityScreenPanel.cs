@@ -792,6 +792,20 @@ public class CityScreenPanel : MonoBehaviour
             costLine = "Coastal Garrison district only";
         }
         else if (status == CityBuildStatus.Locked &&
+                 NavalMovementRules.RequiresOceanAccess(def.Id) &&
+                 activeCity != null && CityManager.Instance != null &&
+                 !CityManager.Instance.CityTouchesOceanCoast(activeCity))
+        {
+            costLine = "Needs ocean coast";
+        }
+        else if (status == CityBuildStatus.Locked &&
+                 def.Id == CityBuildId.BuildFishingPost &&
+                 activeCity != null && CityManager.Instance != null &&
+                 !CityManager.Instance.CityTouchesNavalCoast(activeCity))
+        {
+            costLine = "Needs shore, lake, or naval coast";
+        }
+        else if (status == CityBuildStatus.Locked &&
                  (def.Id == CityBuildId.BuildWharf || def.Id == CityBuildId.BuildFishingPost ||
                   def.Id == CityBuildId.BuildDock ||
                   def.Id == CityBuildId.TrainCoastalExplorer || def.Id == CityBuildId.TrainCoastalGalley ||
@@ -1070,14 +1084,16 @@ public class CityScreenPanel : MonoBehaviour
                    activeCity != null &&
                    !HamletSpecialtyDatabase.IsBuildAllowed(activeCity, id)
                 => "<color=#888888>Build war docks and galleys at a coastal Garrison district.</color>",
-            _ when (id == CityBuildId.BuildWharf || id == CityBuildId.BuildFishingPost ||
-                     id == CityBuildId.BuildDock ||
-                     id == CityBuildId.TrainCoastalExplorer || id == CityBuildId.TrainCoastalGalley ||
-                     id == CityBuildId.TrainDeepSeaShip) &&
+            _ when NavalMovementRules.RequiresOceanAccess(id) &&
+                   activeCity != null &&
+                   CityManager.Instance != null &&
+                   !CityManager.Instance.CityTouchesOceanCoast(activeCity)
+                => "<color=#888888>City must touch ocean (lake shore is not enough for Wharf/galleys).</color>",
+            _ when (id == CityBuildId.BuildFishingPost || id == CityBuildId.TrainCoastalExplorer) &&
                    activeCity != null &&
                    CityManager.Instance != null &&
                    !CityManager.Instance.CityTouchesNavalCoast(activeCity)
-                => "<color=#888888>City must touch shore or a tagged naval coast hex.</color>",
+                => "<color=#888888>City must touch shore, lake, or a tagged naval coast hex.</color>",
             _ when NavalMovementRules.RequiresWharf(id) && id != CityBuildId.BuildWharf &&
                    activeCity?.Production?.HasBuilding(CityBuildId.BuildWharf) != true
                 => "<color=#888888>Requires a Wharf in this city.</color>",
